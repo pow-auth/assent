@@ -32,4 +32,15 @@ defmodule Assent.JWTAdapter do
       adapter         -> {adapter, default_opts}
     end
   end
+
+  @doc """
+  Loads a private key from the provided configuration
+  """
+  @spec load_private_key(Config.t()) :: {:ok, binary()} | {:error, term()}
+  def load_private_key(config) do
+    case Config.fetch(config, :private_key_path) do
+      {:ok, path}    -> File.read(path)
+      {:error, _any} -> Config.fetch(config, :private_key)
+    end
+  end
 end

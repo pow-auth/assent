@@ -11,6 +11,7 @@ Multi-provider authentication framework.
   * OAuth 2.0 - `Assent.Strategy.OAuth2`
   * OpenID Connect - `Assent.Strategy.OIDC`
 * Includes the following provider strategies:
+  * Apple Sign In - `Assent.Strategy.Apple`
   * Auth0 - `Assent.Strategy.Auth0`
   * Azure AD - `Assent.Strategy.AzureAD`
   * Basecamp - `Assent.Strategy.Basecamp`
