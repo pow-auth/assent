@@ -7,21 +7,21 @@ Multi-provider authentication framework.
 ## Features
 
 * Includes the following base strategies:
-  * [OAuth 1.0](lib/pow_assent/strategies/oauth.ex)
-  * [OAuth 2.0](lib/pow_assent/strategies/oauth2.ex)
+  * OAuth 1.0 - `Assent.Strategy.OAuth`
+  * OAuth 2.0 - `Assent.Strategy.OAuth2`
 * Includes the following provider strategies:
-  * [Auth0](lib/pow_assent/strategies/auth0.ex)
-  * [Azure AD](lib/pow_assent/strategies/azure_oauth2.ex)
-  * [Basecamp](lib/pow_assent/strategies/basecamp.ex)
-  * [Discord](lib/pow_assent/strategies/discord.ex)
-  * [Facebook](lib/pow_assent/strategies/facebook.ex)
-  * [Github](lib/pow_assent/strategies/github.ex)
-  * [Gitlab](lib/pow_assent/strategies/gitlab.ex)
-  * [Google](lib/pow_assent/strategies/google.ex)
-  * [Instagram](lib/pow_assent/strategies/instagram.ex)
-  * [Slack](lib/pow_assent/strategies/slack.ex)
-  * [Twitter](lib/pow_assent/strategies/twitter.ex)
-  * [VK](lib/pow_assent/strategies/vk.ex)
+  * Auth0 - `Assent.Strategy.Auth0`
+  * Azure AD - `Assent.Strategy.AzureOauth2`
+  * Basecamp - `Assent.Strategy.Basecamp`
+  * Discord - `Assent.Strategy.Discord`
+  * Facebook - `Assent.Strategy.Facebook`
+  * Github - `Assent.Strategy.Github`
+  * Gitlab - `Assent.Strategy.Gitlab`
+  * Google - `Assent.Strategy.Google`
+  * Instagram - `Assent.Strategy.Instagram`
+  * Slack - `Assent.Strategy.Slack`
+  * Twitter - `Assent.Strategy.Twitter`
+  * VK - `Assent.Strategy.VK`
 
 ## Installation
 
