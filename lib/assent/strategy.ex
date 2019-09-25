@@ -63,20 +63,23 @@ defmodule Assent.Strategy do
   """
   @spec decode_response({atom(), any()}, Config.t()) :: {atom(), any()}
   def decode_response({status, %{body: body, headers: headers} = resp}, config) do
-    {status, %{resp | body: decode_body(headers, body, config)}}
+    case decode_body(headers, body, config) do
+      {:ok, body}     -> {status, %{resp | body: body}}
+      {:error, error} -> {:error, error}
+    end
   end
   def decode_response(any, _config), do: any
 
   defp decode_body(headers, body, config) do
     case List.keyfind(headers, "content-type", 0) do
       {"content-type", "application/json" <> _rest} ->
-        decode_json!(body, config)
+        decode_json(body, config)
       {"content-type", "text/javascript" <> _rest} ->
-        decode_json!(body, config)
+        decode_json(body, config)
       {"content-type", "application/x-www-form-urlencoded" <> _reset} ->
-        URI.decode_query(body)
+        {:ok, URI.decode_query(body)}
       _any ->
-        body
+        {:ok, body}
       end
   end
 
@@ -94,14 +97,29 @@ defmodule Assent.Strategy do
   @doc """
   Decode a JSON response to a map
   """
-  @spec decode_json!(binary(), Config.t()) :: map()
-  def decode_json!(response, config) do
+  @spec decode_json(binary(), Config.t()) :: {:ok, map()} | {:error, term()}
+  def decode_json(response, config) do
     json_library = Config.get(config, :json_library, default_json_library())
-    json_library.decode!(response)
+    json_library.decode(response)
   end
 
   defp default_json_library do
     Application.get_env(:assent, :json_library) || Application.get_env(:phoenix, :json_library, Poison)
+  end
+
+  @doc """
+  Decode a JWT token
+  """
+  @spec decode_jwt(binary(), Config.t()) :: {:ok, map()} | {:error, term()}
+  def decode_jwt(token, config) do
+    case String.split(token, ".") do
+      [_headers, payload, _signature] ->
+        payload
+        |> Base.decode64!(padding: false)
+        |> decode_json(config)
+      _any ->
+        {:error, "Invalid JWT"}
+    end
   end
 
   @doc """

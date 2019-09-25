@@ -33,12 +33,12 @@ defmodule Assent.StrategyTest do
   end
 
   defmodule JSONMock do
-    def decode!(_string), do: :decoded
+    def decode(_string), do: {:ok, :decoded}
   end
 
-  test "decode_json!/2" do
-    assert Strategy.decode_json!("{\"a\": 1}", []) == %{"a" => 1}
-    assert Strategy.decode_json!("{\"a\": 1}", json_library: JSONMock) == :decoded
+  test "decode_json/2" do
+    assert Strategy.decode_json("{\"a\": 1}", []) == {:ok, %{"a" => 1}}
+    assert Strategy.decode_json("{\"a\": 1}", json_library: JSONMock) == {:ok, :decoded}
   end
 
   defmodule HTTPMock do
@@ -49,5 +49,11 @@ defmodule Assent.StrategyTest do
   test "request/5" do
     assert Strategy.request(:get, "https://localhost:4000/", nil, [], http_adapter: HTTPMock) == {:ok, %{status: 200}}
     assert Strategy.request(:get, "https://localhost:4000/", nil, [], http_adapter: {HTTPMock, a: 1}) == {:ok, %{status: 200, opts: [a: 1]}}
+  end
+
+  @jwt "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+
+  test "decode_jwt/2" do
+    assert Strategy.decode_jwt(@jwt, []) == {:ok, %{"sub" => "1234567890", "name" => "John Doe", "iat" => 1_516_239_022}}
   end
 end
