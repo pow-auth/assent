@@ -35,8 +35,7 @@ defp deps do
 
     # Optional, but recommended for SSL validation with :httpc adapter
     {:certifi, "~> 2.4"},
-    {:ssl_verify_fun, "~> 1.1"},
-    # ...
+    {:ssl_verify_fun, "~> 1.1"}
   ]
 end
 ```
@@ -45,7 +44,7 @@ Run `mix deps.get` to install it.
 
 ## Getting started
 
-A strategy consists of two phases request and callback. In the request phase the user would normally be redirected to the provider for authentication. After authentication the provider will be return the user to the callback phase to authorize access.
+A strategy consists of two phases; request and callback. In the request phase the user would normally be redirected to the provider for authentication. After authentication, the provider will be redirect the user back to the callback phase.
 
 ### Single provider example
 
@@ -56,8 +55,10 @@ config = [
   redirect_uri: "http://localhost:4000/oauth/callback"
 ]
 
+# Redirect user to provider
 {:ok, %{url: url, session_params: session_params}} = Assent.Strategy.Github.authorize_url(config)
 
+# Handle callback
 {:ok, %{user: user, token: token}} =
   config
   |> Assent.Config.put(:session_params, session_params)
@@ -87,7 +88,7 @@ defmodule MultiProvider do
     config[:strategy].authorize_url(config)
   end
 
-  @spec request(atom(), map(), map()) :: {:ok, map()} | {:error, term()}
+  @spec callback(atom(), map(), map()) :: {:ok, map()} | {:error, term()}
   def callback(provider, params, session_params \\ %{}) do
     config =
       provider
@@ -164,8 +165,7 @@ defp deps do
   [
     # ...
     {:mint, "~> 0.1.0"},
-    {:castore, "~> 0.1.0"}, # Required for SSL validation
-    # ...
+    {:castore, "~> 0.1.0"} # Required for SSL validation
   ]
 end
 ```
