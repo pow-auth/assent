@@ -34,6 +34,8 @@ defmodule Assent.MixProject do
     [
       {:oauther, "~> 1.1"},
 
+      {:jose, "~> 1.8", optional: true},
+
       {:certifi, ">= 0.0.0", optional: true},
       {:ssl_verify_fun, ">= 0.0.0", optional: true},
 
