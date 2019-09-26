@@ -80,5 +80,10 @@ defmodule Assent.Strategy.AzureOAuth2 do
   end
 
   @spec get_user(Config.t(), map()) :: {:ok, map()} | {:error, term()}
-  def get_user(config, token), do: Helpers.decode_jwt(token["id_token"], config)
+  def get_user(config, token) do
+    case Helpers.decode_jwt(token["id_token"], config) do
+      {:ok, jwt}      -> {:ok, jwt.payload}
+      {:error, error} -> {:error, error}
+    end
+  end
 end
