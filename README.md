@@ -180,6 +180,31 @@ config = [
 ]
 ```
 
+## JWT Adapter
+
+By default the built-in `Assent.JWTAdapter.AssentJWT` is used for JWT parsing, but you can change it to any third-party library with a custom `Assent.JWTAdapter`. A [JOSE](https://github.com/potatosalad/erlang-jose) adapter is included.
+
+To use JOSE, update `mix.exs`:
+
+```elixir
+defp deps do
+  [
+    # ...
+    {:jose, "~> 1.8"}
+  ]
+end
+```
+
+And pass the `:jwt_adapter` with your provider configuration:
+
+```elixir
+config = [
+  client_id: "REPLACE_WITH_CLIENT_ID",
+  client_secret: "REPLACE_WITH_CLIENT_SECRET",
+  jwt_adapter: Assent.JWTAdapter.JOSE
+]
+```
+
 ## LICENSE
 
 (The MIT License)
