@@ -26,4 +26,13 @@ defmodule Assent.Config do
 
   @doc false
   defdelegate merge(config_a, config_b), to: Keyword
+
+  @doc false
+  @spec json_library(t()) :: module()
+  def json_library(config) do
+    config
+    |> get(:json_library, nil)
+    |> Kernel.||(Application.get_env(:assent, :json_library))
+    |> Kernel.||(Application.get_env(:phoenix, :json_library, Poison))
+  end
 end

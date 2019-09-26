@@ -98,29 +98,13 @@ defmodule Assent.Strategy do
   Decode a JSON response to a map
   """
   @spec decode_json(binary(), Config.t()) :: {:ok, map()} | {:error, term()}
-  def decode_json(response, config) do
-    json_library = Config.get(config, :json_library, default_json_library())
-    json_library.decode(response)
-  end
-
-  defp default_json_library do
-    Application.get_env(:assent, :json_library) || Application.get_env(:phoenix, :json_library, Poison)
-  end
+  def decode_json(response, config), do: Config.json_library(config).decode(response)
 
   @doc """
-  Decode a JWT token
+  Decodes a JSON Web Token
   """
-  @spec decode_jwt(binary(), Config.t()) :: {:ok, map()} | {:error, term()}
-  def decode_jwt(token, config) do
-    case String.split(token, ".") do
-      [_headers, payload, _signature] ->
-        payload
-        |> Base.decode64!(padding: false)
-        |> decode_json(config)
-      _any ->
-        {:error, "Invalid JWT"}
-    end
-  end
+  @spec decode_jwt(binary(), Config.t()) :: {:ok, %Assent.JWTAdapter.JWT{}} | {:error, term()}
+  def decode_jwt(token, config), do: Assent.JWTAdapter.decode(token, Keyword.take(config, [:json_library, :jwt_adapter]))
 
   @doc """
   Generates a URL

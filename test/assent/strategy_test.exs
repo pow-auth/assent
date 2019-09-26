@@ -51,9 +51,24 @@ defmodule Assent.StrategyTest do
     assert Strategy.request(:get, "https://localhost:4000/", nil, [], http_adapter: {HTTPMock, a: 1}) == {:ok, %{status: 200, opts: [a: 1]}}
   end
 
-  @jwt "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+  defmodule CustomJSONLibrary do
+    @doc false
+    def decode(_binary), do: {:ok, :decoded}
+  end
+
+  defmodule CustomJWTAdapter do
+    @doc false
+    def decode(_binary, _opts), do: :decoded
+  end
 
   test "decode_jwt/2" do
-    assert Strategy.decode_jwt(@jwt, []) == {:ok, %{"sub" => "1234567890", "name" => "John Doe", "iat" => 1_516_239_022}}
+    assert {:ok, %Assent.JWTAdapter.JWT{} = jwt} = Strategy.decode_jwt("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE1MTYyMzkwMjIsIm5hbWUiOiJKb2huIERvZSIsInN1YiI6IjEyMzQ1Njc4OTAifQ.fdOPQ05ZfRhkST2-rIWgUpbqUsVhkkNVNcuG7Ki0s-8", [])
+    assert jwt.payload == %{"iat" => 1_516_239_022, "name" => "John Doe", "sub" => "1234567890"}
+    assert jwt.header
+
+    assert Strategy.decode_jwt("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE1MTYyMzkwMjIsIm5hbWUiOiJKb2huIERvZSIsInN1YiI6IjEyMzQ1Njc4OTAifQ.fdOPQ05ZfRhkST2-rIWgUpbqUsVhkkNVNcuG7Ki0s-8", [jwt_adapter: CustomJWTAdapter]) == :decoded
+
+    assert {:ok, %Assent.JWTAdapter.JWT{} = jwt} = Strategy.decode_jwt("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE1MTYyMzkwMjIsIm5hbWUiOiJKb2huIERvZSIsInN1YiI6IjEyMzQ1Njc4OTAifQ.fdOPQ05ZfRhkST2-rIWgUpbqUsVhkkNVNcuG7Ki0s-8", [json_library: CustomJSONLibrary])
+    assert jwt.payload == :decoded
   end
 end
