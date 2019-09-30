@@ -23,13 +23,22 @@ defmodule Assent.Strategy.OAuth2 do
 
       - `:client_secret_basic` - Authenticate with basic authorization header
       - `:client_secret_post` - Authenticate with post params
-      - `:client_secret_jwt` - Authenticate with JWT using `:client_secret` as secret
-      - `:private_key_jwt` - Authenticate with JWT using `:private_key_path` or :private_key` as secret
-    - `:client_secret` - The OAuth2 client secret, required if `:auth_method` is `:client_secret_basic`, `:client_secret_post`, or `:client_secret_jwt`
-    - `:private_key_id` - The private key ID, required if `:auth_method` is `:private_key_jwt`
-    - `:private_key_path` - The path for the private key, required if `:auth_method` is `:private_key_jwt` and `:private_key` hasn't been set
+      - `:client_secret_jwt` - Authenticate with JWT using `:client_secret` as
+        secret
+      - `:private_key_jwt` - Authenticate with JWT using `:private_key_path` or
+        `:private_key` as secret
+    - `:client_secret` - The OAuth2 client secret, required if `:auth_method`
+      is `:client_secret_basic`, `:client_secret_post`, or `:client_secret_jwt`
+    - `:private_key_id` - The private key ID, required if `:auth_method` is
+      `:private_key_jwt`
+    - `:private_key_path` - The path for the private key, required if
+      `:auth_method` is `:private_key_jwt` and `:private_key` hasn't been set
     - `:private_key` - The private key content that can be defined instead of
-      `:private_key_path`, required if `:auth_method` is `:private_key_jwt` and `:private_key_path` hasn't been set
+      `:private_key_path`, required if `:auth_method` is `:private_key_jwt` and
+      `:private_key_path` hasn't been set
+    - `:jwt_algorithm` - The algorithm to use for JWT signing, optional,
+      defaults to `HS256` for `:client_secret_jwt` and `RS256` for
+      `:private_key_jwt`
 
   ## Usage
 
@@ -148,8 +157,10 @@ defmodule Assent.Strategy.OAuth2 do
     end
   end
   defp authentication_params(:client_secret_jwt, config) do
+    alg = Config.get(config, :jwt_algorithm, "HS256")
+
     with {:ok, client_secret} <- Config.fetch(config, :client_secret),
-         {:ok, jwt}           <- prepare_jwt("HS256", config),
+         {:ok, jwt}           <- prepare_jwt(%{"alg" => alg}, config),
          {:ok, token}         <- Helpers.sign_jwt(jwt, client_secret, config) do
 
       headers = []
@@ -159,8 +170,10 @@ defmodule Assent.Strategy.OAuth2 do
     end
   end
   defp authentication_params(:private_key_jwt, config) do
+    alg = Config.get(config, :jwt_algorithm, "RS256")
+
     with {:ok, private_key}    <- load_private_key(config),
-         {:ok, jwt}            <- prepare_jwt("RS256", config),
+         {:ok, jwt}            <- prepare_jwt(%{"alg" => alg}, config),
          {:ok, token}          <- Helpers.sign_jwt(jwt, private_key, config) do
 
       headers = []
@@ -180,17 +193,20 @@ defmodule Assent.Strategy.OAuth2 do
     end
   end
 
-  defp prepare_jwt("RS" <> _rest = alg, config) do
+  defp prepare_jwt(%{"alg" => "RS" <> _rest} = header, config) do
     with {:ok, private_key_id} <- Config.fetch(config, :private_key_id) do
-      prepare_jwt(alg, config, %{"kid" => private_key_id})
+      header
+      |> Map.put("kid", private_key_id)
+      |> do_prepare_jwt(config)
     end
   end
-  defp prepare_jwt(alg, config, headers \\ %{}) do
+  defp prepare_jwt(header, config), do: do_prepare_jwt(header, config)
+
+  defp do_prepare_jwt(header, config) do
     with {:ok, site} <- Config.fetch(config, :site),
          {:ok, client_id} <- Config.fetch(config, :client_id) do
       timestamp = DateTime.to_unix(DateTime.utc_now())
 
-      header = Map.put(headers, "alg", alg)
       claims = %{
         "iss" => client_id,
         "sub" => client_id,
