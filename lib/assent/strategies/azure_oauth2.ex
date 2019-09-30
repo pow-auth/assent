@@ -65,7 +65,8 @@ defmodule Assent.Strategy.AzureOAuth2 do
       site: "https://login.microsoftonline.com",
       authorize_url: "/#{tenant_id}/oauth2/authorize",
       token_url: "/#{tenant_id}/oauth2/token",
-      authorization_params: [response_mode: "query", response_type: "code", resource: resource]
+      authorization_params: [response_mode: "query", response_type: "code", resource: resource],
+      auth_method: :client_secret_post
     ]
   end
 

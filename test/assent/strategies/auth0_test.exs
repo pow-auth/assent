@@ -42,7 +42,9 @@ defmodule Assent.Strategy.Auth0Test do
   end
 
   test "callback/2", %{config: config, callback_params: params, bypass: bypass} do
-    expect_oauth2_access_token_request(bypass, uri: "/oauth/token")
+    expect_oauth2_access_token_request(bypass, [uri: "/oauth/token"], fn _conn, params ->
+      assert params["client_secret"] == config[:client_secret]
+    end)
     expect_oauth2_user_request(bypass, @user_response, uri: "/userinfo")
 
     assert {:ok, %{user: user}} = Auth0.callback(config, params)

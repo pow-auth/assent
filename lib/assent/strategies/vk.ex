@@ -33,7 +33,8 @@ defmodule Assent.Strategy.VK do
       token_url: "https://oauth.vk.com/access_token",
       user_url: "/method/users.get",
       authorization_params: [scope: "email"],
-      user_url_params: user_url_params
+      user_url_params: user_url_params,
+      auth_method: :client_secret_post
     ]
   end
 

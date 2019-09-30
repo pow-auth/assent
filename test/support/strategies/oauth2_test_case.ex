@@ -28,7 +28,10 @@ defmodule Assent.Test.OAuth2TestCase do
     status_code  = Keyword.get(opts, :status_code, 200)
 
     Bypass.expect_once(bypass, "POST", uri, fn conn ->
-      if assert_fn, do: assert_fn.(conn)
+      {:ok, body, _conn} = Plug.Conn.read_body(conn, [])
+      params = URI.decode_query(body)
+
+      if assert_fn, do: assert_fn.(conn, params)
 
       send_json_resp(conn, token_params, status_code)
     end)

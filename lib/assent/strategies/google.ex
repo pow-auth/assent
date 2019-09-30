@@ -20,7 +20,8 @@ defmodule Assent.Strategy.Google do
       authorize_url: "https://accounts.google.com/o/oauth2/v2/auth",
       token_url: "/oauth2/v4/token",
       user_url: "/oauth2/v2/userinfo",
-      authorization_params: [scope: "https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile"]
+      authorization_params: [scope: "https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile"],
+      auth_method: :client_secret_post
     ]
   end
 

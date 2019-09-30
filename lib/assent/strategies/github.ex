@@ -27,7 +27,8 @@ defmodule Assent.Strategy.Github do
       token_url: "https://github.com/login/oauth/access_token",
       user_url: "/user",
       user_emails_url: "/user/emails",
-      authorization_params: [scope: "read:user,user:email"]
+      authorization_params: [scope: "read:user,user:email"],
+      auth_method: :client_secret_post
     ]
   end
 

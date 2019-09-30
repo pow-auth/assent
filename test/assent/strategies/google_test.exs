@@ -32,7 +32,9 @@ defmodule Assent.Strategy.GoogleTest do
   end
 
   test "callback/2", %{config: config, callback_params: params, bypass: bypass} do
-    expect_oauth2_access_token_request(bypass, uri: "/oauth2/v4/token")
+    expect_oauth2_access_token_request(bypass, [uri: "/oauth2/v4/token"], fn _conn, params ->
+      assert params["client_secret"] == config[:client_secret]
+    end)
     expect_oauth2_user_request(bypass, @user_response, uri: "/oauth2/v2/userinfo")
 
     assert {:ok, %{user: user}} = Google.callback(config, params)

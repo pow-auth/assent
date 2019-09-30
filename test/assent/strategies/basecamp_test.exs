@@ -52,7 +52,9 @@ defmodule Assent.Strategy.BasecampTest do
   end
 
   test "callback/2", %{config: config, callback_params: params, bypass: bypass} do
-    expect_oauth2_access_token_request(bypass, uri: "/authorization/token")
+    expect_oauth2_access_token_request(bypass, [uri: "/authorization/token"], fn _conn, params ->
+      assert params["client_secret"] == config[:client_secret]
+    end)
     expect_oauth2_user_request(bypass, @user_response, uri: "/authorization.json")
 
     assert {:ok, %{user: user}} = Basecamp.callback(config, params)

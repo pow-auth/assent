@@ -27,7 +27,9 @@ defmodule Assent.Strategy.AzureOAuth2Test do
   end
 
   test "callback/2", %{config: config, callback_params: params, bypass: bypass} do
-    expect_oauth2_access_token_request(bypass, params: %{access_token: "access_token", id_token: @id_token}, uri: "/common/oauth2/token")
+    expect_oauth2_access_token_request(bypass, [params: %{access_token: "access_token", id_token: @id_token}, uri: "/common/oauth2/token"], fn _conn, params ->
+      assert params["client_secret"] == config[:client_secret]
+    end)
 
     assert {:ok, %{user: user}} = AzureOAuth2.callback(config, params)
     assert user == @user

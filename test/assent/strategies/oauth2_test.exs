@@ -60,13 +60,9 @@ defmodule Assent.Strategy.OAuth2Test do
     @user_api_params %{name: "Dan Schultzer", email: "foo@example.com", uid: "1"}
 
     test "with `:client_secret_basic` auth method", %{config: config, callback_params: params, bypass: bypass} do
-      expect_oauth2_access_token_request(bypass, [], fn conn ->
-        {:ok, body, _conn} = Plug.Conn.read_body(conn, [])
-
+      expect_oauth2_access_token_request(bypass, [], fn conn, params ->
         assert [{"authorization", "Basic " <> token} | _rest] = conn.req_headers
         assert Base.url_decode64(token, padding: false) == {:ok, "#{@client_id}:#{@client_secret}"}
-
-        params = URI.decode_query(body)
 
         assert params["grant_type"] == "authorization_code"
         assert params["code"] == "test"
@@ -81,10 +77,7 @@ defmodule Assent.Strategy.OAuth2Test do
     test "with `:client_secret_post` auth method", %{config: config, callback_params: params, bypass: bypass} do
       config = Keyword.put(config, :auth_method, :client_secret_post)
 
-      expect_oauth2_access_token_request(bypass, [], fn conn ->
-        {:ok, body, _conn} = Plug.Conn.read_body(conn, [])
-        params = URI.decode_query(body)
-
+      expect_oauth2_access_token_request(bypass, [], fn _conn, params ->
         assert params["grant_type"] == "authorization_code"
         assert params["code"] == "test"
         assert params["redirect_uri"] == "test"
@@ -100,10 +93,7 @@ defmodule Assent.Strategy.OAuth2Test do
     test "with `:client_secret_jwt` auth method", %{config: config, callback_params: params, bypass: bypass} do
       config = Keyword.put(config, :auth_method, :client_secret_jwt)
 
-      expect_oauth2_access_token_request(bypass, [], fn conn ->
-        {:ok, body, _conn} = Plug.Conn.read_body(conn, [])
-        params = URI.decode_query(body)
-
+      expect_oauth2_access_token_request(bypass, [], fn _conn, params ->
         assert params["grant_type"] == "authorization_code"
         assert params["code"] == "test"
         assert params["redirect_uri"] == "test"
@@ -132,10 +122,7 @@ defmodule Assent.Strategy.OAuth2Test do
         |> Keyword.put(:private_key, @private_key)
         |> Keyword.put(:private_key_id, @private_key_id)
 
-      expect_oauth2_access_token_request(bypass, [], fn conn ->
-        {:ok, body, _conn} = Plug.Conn.read_body(conn, [])
-        params = URI.decode_query(body)
-
+      expect_oauth2_access_token_request(bypass, [], fn _conn, params ->
         assert params["grant_type"] == "authorization_code"
         assert params["code"] == "test"
         assert params["redirect_uri"] == "test"
@@ -168,10 +155,7 @@ defmodule Assent.Strategy.OAuth2Test do
         |> Keyword.put(:private_key_path, "tmp/private-key.pem")
         |> Keyword.put(:private_key_id, @private_key_id)
 
-      expect_oauth2_access_token_request(bypass, [], fn conn ->
-        {:ok, body, _conn} = Plug.Conn.read_body(conn, [])
-        params = URI.decode_query(body)
-
+      expect_oauth2_access_token_request(bypass, [], fn _conn, params ->
         assert {:ok, jwt} = Assent.JWTAdapter.AssentJWT.decode(params["client_assertion"], json_library: Jason)
         assert Assent.JWTAdapter.AssentJWT.verify(jwt, @private_key, json_library: Jason)
         assert jwt.header["kid"] == @private_key_id

@@ -17,7 +17,8 @@ defmodule Assent.Strategy.Instagram do
   def default_config(_config) do
     [
       site: "https://api.instagram.com",
-      authorization_params: [scope: "basic"]
+      authorization_params: [scope: "basic"],
+      auth_method: :client_secret_post
     ]
   end
 

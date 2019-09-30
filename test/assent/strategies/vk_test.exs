@@ -37,7 +37,9 @@ defmodule Assent.Strategy.VKTest do
     end
 
     test "normalizes data", %{config: config, callback_params: params, bypass: bypass} do
-      expect_oauth2_access_token_request(bypass, [uri: "/access_token", params: %{"access_token" => "access_token", "email" => "lindsay.stirling@example.com"}])
+      expect_oauth2_access_token_request(bypass, [uri: "/access_token", params: %{"access_token" => "access_token", "email" => "lindsay.stirling@example.com"}], fn _conn, params ->
+        assert params["client_secret"] == config[:client_secret]
+      end)
 
       expect_oauth2_user_request(bypass, %{"response" => @users_response}, [uri: "/method/users.get"], fn conn ->
         conn = Plug.Conn.fetch_query_params(conn)

@@ -20,7 +20,8 @@ defmodule Assent.Strategy.Auth0 do
       authorize_url: "/authorize",
       token_url: "/oauth/token",
       user_url: "/userinfo",
-      authorization_params: [scope: "openid profile email"]
+      authorization_params: [scope: "openid profile email"],
+      auth_method: :client_secret_post
     ])
   end
 

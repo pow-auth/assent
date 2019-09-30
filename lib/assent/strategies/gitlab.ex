@@ -20,7 +20,8 @@ defmodule Assent.Strategy.Gitlab do
       authorize_url: "/oauth/authorize",
       token_url: "/oauth/token",
       user_url: "/api/v4/user",
-      authorization_params: [scope: "api read_user read_registry"]
+      authorization_params: [scope: "api read_user read_registry"],
+      auth_method: :client_secret_post
     ]
   end
 

@@ -35,7 +35,9 @@ defmodule Assent.Strategy.SlackTest do
   end
 
   test "callback/2", %{config: config, callback_params: params, bypass: bypass} do
-    expect_oauth2_access_token_request(bypass, uri: "/api/oauth.access")
+    expect_oauth2_access_token_request(bypass, [uri: "/api/oauth.access"], fn _conn, params ->
+      assert params["client_secret"] == config[:client_secret]
+    end)
     expect_oauth2_user_request(bypass, @user_response, uri: "/api/users.identity")
 
     assert {:ok, %{user: user}} = Slack.callback(config, params)

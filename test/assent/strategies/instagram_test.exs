@@ -23,7 +23,9 @@ defmodule Assent.Strategy.InstagramTest do
 
   describe "callback/2" do
     test "normalizes data", %{config: config, callback_params: params, bypass: bypass} do
-      expect_oauth2_access_token_request(bypass, uri: "/oauth/token", params: %{access_token: "access_token", user: @user_response})
+      expect_oauth2_access_token_request(bypass, [uri: "/oauth/token", params: %{access_token: "access_token", user: @user_response}], fn _conn, params ->
+        assert params["client_secret"] == config[:client_secret]
+      end)
 
       assert {:ok, %{user: user}} = Instagram.callback(config, params)
       assert user == @user

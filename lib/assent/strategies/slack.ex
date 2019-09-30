@@ -40,7 +40,8 @@ defmodule Assent.Strategy.Slack do
       token_url: "/api/oauth.access",
       user_url: "/api/users.identity",
       team_url: "/api/team.info",
-      authorization_params: authorization_params(config)
+      authorization_params: authorization_params(config),
+      auth_method: :client_secret_post
     ]
   end
 

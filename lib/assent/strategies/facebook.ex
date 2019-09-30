@@ -29,7 +29,8 @@ defmodule Assent.Strategy.Facebook do
       token_url: "/oauth/access_token",
       user_url: "/me",
       authorization_params: [scope: "email"],
-      user_url_request_fields: "name,email"
+      user_url_request_fields: "name,email",
+      auth_method: :client_secret_post
     ]
   end
 

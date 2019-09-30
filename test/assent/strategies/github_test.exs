@@ -65,7 +65,9 @@ defmodule Assent.Strategy.GithubTest do
     end
 
     test "normalizes data", %{config: config, callback_params: params, bypass: bypass} do
-      expect_oauth2_access_token_request(bypass, uri: "/login/oauth/access_token")
+      expect_oauth2_access_token_request(bypass, [uri: "/login/oauth/access_token"], fn _conn, params ->
+        assert params["client_secret"] == config[:client_secret]
+      end)
       expect_oauth2_user_request(bypass, @user_response, uri: "/user")
       expect_oauth2_api_request(bypass, "/user/emails", @emails_response)
 
