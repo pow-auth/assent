@@ -5,7 +5,7 @@ jobs:
   include:
     - stage: test
       elixir: 1.6
-      otp_release: 20.0
+      otp_release: 20.3
       script: &test_scripts
         - mix test
         - MIX_ENV=test mix credo --ignore design.tagtodo
