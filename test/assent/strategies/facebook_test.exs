@@ -18,13 +18,7 @@ defmodule Assent.Strategy.FacebookTest do
 
   describe "callback/2" do
     test "normalizes data", %{config: config, callback_params: params, bypass: bypass} do
-      expect_oauth2_access_token_request(bypass, [uri: "/oauth/access_token"], fn conn ->
-        {:ok, body, _conn} = Plug.Conn.read_body(conn, [])
-        params = URI.decode_query(body)
-
-        assert params["scope"] == "email"
-        assert params["redirect_uri"] == "test"
-      end)
+      expect_oauth2_access_token_request(bypass, [uri: "/oauth/access_token"])
 
       expect_oauth2_user_request(bypass, @user_response, [uri: "/me"], fn conn ->
         conn = Plug.Conn.fetch_query_params(conn)

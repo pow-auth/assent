@@ -103,8 +103,22 @@ defmodule Assent.Strategy do
   @doc """
   Decodes a JSON Web Token
   """
-  @spec decode_jwt(binary(), Config.t()) :: {:ok, %Assent.JWTAdapter.JWT{}} | {:error, term()}
-  def decode_jwt(token, config), do: Assent.JWTAdapter.decode(token, Keyword.take(config, [:json_library, :jwt_adapter]))
+  @spec decode_jwt(binary(), Config.t()) :: {:ok, Assent.JWTAdapter.JWT.t()} | {:error, term()}
+  def decode_jwt(token, config), do: Assent.JWTAdapter.decode(token, jwt_adapter_pts(config))
+
+  defp jwt_adapter_pts(config), do: Keyword.take(config, [:json_library, :jwt_adapter])
+
+  @doc """
+  Verifies a JWT
+  """
+  @spec verify_jwt(Assent.JWTAdapter.JWT.t(), binary()) :: boolean()
+  def verify_jwt(jwt, secret), do: Assent.JWTAdapter.verify(jwt, secret)
+
+  @doc """
+  Signs a JWT
+  """
+  @spec sign_jwt(Assent.JWTAdapter.JWT.t(), binary() | {binary(), binary()}, Config.t()) :: {:ok, binary()} | {:error, term()}
+  def sign_jwt(jwt, secret, config), do: Assent.JWTAdapter.sign(jwt, secret, jwt_adapter_pts(config))
 
   @doc """
   Generates a URL
