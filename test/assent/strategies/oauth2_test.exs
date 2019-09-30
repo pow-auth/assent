@@ -5,6 +5,7 @@ defmodule Assent.Strategy.OAuth2Test do
 
   @client_id "id"
   @client_secret "secret"
+  @private_key_id "key_id"
   @private_key """
     -----BEGIN RSA PRIVATE KEY-----
     MIIEogIBAAKCAQEAnzyis1ZjfNB0bBgKFMSvvkTtwlvBsaJq7S5wA+kzeVOVpVWw
@@ -129,7 +130,7 @@ defmodule Assent.Strategy.OAuth2Test do
         |> Keyword.delete(:client_secret)
         |> Keyword.put(:auth_method, :private_key_jwt)
         |> Keyword.put(:private_key, @private_key)
-        |> Keyword.put(:private_key_id, "key_id")
+        |> Keyword.put(:private_key_id, @private_key_id)
 
       expect_oauth2_access_token_request(bypass, [], fn conn ->
         {:ok, body, _conn} = Plug.Conn.read_body(conn, [])
@@ -144,7 +145,7 @@ defmodule Assent.Strategy.OAuth2Test do
         assert Assent.JWTAdapter.AssentJWT.verify(jwt, @private_key, json_library: Jason)
         assert jwt.header["alg"] == "RS256"
         assert jwt.header["typ"] == "JWT"
-        assert jwt.header["kid"] == "key_id"
+        assert jwt.header["kid"] == @private_key_id
         assert jwt.payload["iss"] == @client_id
         assert jwt.payload["sub"] == @client_id
         assert jwt.payload["aud"] == "http://localhost:#{bypass.port}"
@@ -165,7 +166,7 @@ defmodule Assent.Strategy.OAuth2Test do
         |> Keyword.delete(:client_secret)
         |> Keyword.put(:auth_method, :private_key_jwt)
         |> Keyword.put(:private_key_path, "tmp/private-key.pem")
-        |> Keyword.put(:private_key_id, "key_id")
+        |> Keyword.put(:private_key_id, @private_key_id)
 
       expect_oauth2_access_token_request(bypass, [], fn conn ->
         {:ok, body, _conn} = Plug.Conn.read_body(conn, [])
@@ -173,7 +174,7 @@ defmodule Assent.Strategy.OAuth2Test do
 
         assert {:ok, jwt} = Assent.JWTAdapter.AssentJWT.decode(params["client_assertion"], json_library: Jason)
         assert Assent.JWTAdapter.AssentJWT.verify(jwt, @private_key, json_library: Jason)
-        assert jwt.header["kid"] == "key_id"
+        assert jwt.header["kid"] == @private_key_id
       end)
 
       expect_oauth2_user_request(bypass, @user_api_params)

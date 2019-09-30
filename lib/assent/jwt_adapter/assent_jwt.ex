@@ -8,42 +8,43 @@ defmodule Assent.JWTAdapter.AssentJWT do
 
   @impl JWTAdapter
   def sign(%JWT{header: header, payload: payload}, secret, opts) do
-    with {:ok, encoded_header}  <- encode_json(Map.put(header, "typ", "JWT"), opts),
-         {:ok, encoded_payload} <- encode_json(payload, opts),
-         {:ok, signature}       <- encode(header, "#{encoded_header}.#{encoded_payload}", secret) do
+    with {:ok, encoded_header}  <- encode_json_base64(Map.put(header, "typ", "JWT"), opts),
+         {:ok, encoded_payload} <- encode_json_base64(payload, opts),
+         {:ok, signature}       <- sign_message(header, "#{encoded_header}.#{encoded_payload}", secret) do
 
-      {:ok, "#{encoded_header}.#{encoded_payload}.#{signature}"}
+      encoded_signature = Base.url_encode64(signature, padding: false)
+
+      {:ok, "#{encoded_header}.#{encoded_payload}.#{encoded_signature}"}
     end
   end
 
-  defp encode_json(map, opts) do
+  defp encode_json_base64(map, opts) do
     with {:ok, json_library} <- Config.fetch(opts, :json_library),
          {:ok, json} <- json_library.encode(map) do
       {:ok, Base.url_encode64(json, padding: false)}
     end
   end
 
-  defp encode(%{"alg" => "HS256"}, message, secret) do
-    encoded =
-      :sha256
-      |> :crypto.hmac(secret, message)
-      |> Base.url_encode64(padding: false)
-
-    {:ok, encoded}
-  end
-  defp encode(%{"alg" => "RS256"}, message, raw_private_key) do
-    with {:ok, private_key} <- decode_raw_key(raw_private_key) do
-      encoded =
-        message
-        |> :public_key.sign(:sha256, private_key)
-        |> Base.url_encode64(padding: false)
-
-        {:ok, encoded}
+  defp sign_message(%{"alg" => "HS" <> sha_bit_size}, message, secret) do
+    with {:ok, sha_alg} <- sha2_alg(sha_bit_size) do
+      {:ok, :crypto.hmac(sha_alg, secret, message)}
     end
   end
-  defp encode(%{"alg" => alg}, _message, _secret), do: {:error, "Unsupported JWT alg #{alg}"}
+  defp sign_message(%{"alg" => <<_, "S", sha_bit_size :: binary>>}, message, raw_private_key) do
+    with {:ok, sha_alg} <- sha2_alg(sha_bit_size),
+         {:ok, private_key} <- decode_raw_key(raw_private_key) do
 
-  defp decode_raw_key(private_key) do
+      {:ok, :public_key.sign(message, sha_alg, private_key)}
+    end
+  end
+  defp sign_message(%{"alg" => alg}, _message, _secret), do: {:error, "Unsupported JWT alg #{alg}"}
+
+  defp sha2_alg("256"), do: {:ok, :sha256}
+  defp sha2_alg("384"), do: {:ok, :sha384}
+  defp sha2_alg("512"), do: {:ok, :sha512}
+  defp sha2_alg(bit_size), do: {:error, "Invalid SHA-2 algorithm bit size: #{bit_size}"}
+
+   defp decode_raw_key(private_key) do
     case :public_key.pem_decode(private_key) do
       [entry] -> {:ok, :public_key.pem_entry_decode(entry)}
       _any    -> {:error, "Private key should only have one entry"}
@@ -51,11 +52,23 @@ defmodule Assent.JWTAdapter.AssentJWT do
   end
 
   @impl JWTAdapter
-  def verify(jwt, secret, opts) do
-    with {:ok, token_1} <- sign(jwt, secret, opts),
-         {:ok, token_2} <- Map.fetch(jwt.encoded, :jwt) do
+  def verify(%JWT{header: header, encoded: %{header: header_json, payload: payload_json, signature: signature}}, secret, _opts) do
+    encoded_header  = Base.url_encode64(header_json, padding: false)
+    encoded_payload = Base.url_encode64(payload_json, padding: false)
 
-      constant_time_compare(token_1, token_2)
+    verify_message(header, "#{encoded_header}.#{encoded_payload}", signature, secret)
+  end
+
+  defp verify_message(%{"alg" => "HS" <> _rest} = header, message, signature, secret) do
+    case sign_message(header, message, secret) do
+      {:ok, signature_2} -> constant_time_compare(signature_2, signature)
+      _any               -> false
+    end
+  end
+  defp verify_message(%{"alg" => <<_, "S", sha_bit_size :: binary>>}, message, signature, secret) do
+    with {:ok, sha_alg} <- sha2_alg(sha_bit_size),
+         {:ok, public_key} <- decode_raw_key(secret) do
+      :public_key.verify(message, sha_alg, signature, public_key)
     end
   end
 
@@ -71,6 +84,7 @@ defmodule Assent.JWTAdapter.AssentJWT do
     with [header, payload, signature] <- String.split(token, "."),
          {:ok, header_json} <- Base.url_decode64(header, padding: false),
          {:ok, payload_json} <- Base.url_decode64(payload, padding: false),
+         {:ok, signature} <- Base.url_decode64(signature, padding: false),
          {:ok, header} <- json_library.decode(header_json),
          {:ok, payload} <- json_library.decode(payload_json) do
       {:ok, %JWT{

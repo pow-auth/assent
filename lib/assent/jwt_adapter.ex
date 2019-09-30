@@ -24,7 +24,6 @@ defmodule Assent.JWTAdapter do
   @callback verify(JWT.t(), binary(), Keyword.t()) :: boolean()
   @callback decode(binary(), Keyword.t()) :: {:ok, JWT.t()} | {:error, any()}
 
-
   @doc """
   Generates a signed JSON Web Token signature
   """

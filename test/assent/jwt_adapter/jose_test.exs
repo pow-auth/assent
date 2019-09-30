@@ -9,7 +9,6 @@ defmodule Assent.JWTAdapter.JOSETest do
   @payload %{"iat" => 1_516_239_022, "name" => "John Doe", "sub" => "1234567890"}
   @secret "your-256-bit-secret"
 
-
   test "sign/2" do
     assert {:ok, @jwt} = JOSE.sign(%JWT{header: @header, payload: @payload}, @secret, json_library: Jason)
   end
