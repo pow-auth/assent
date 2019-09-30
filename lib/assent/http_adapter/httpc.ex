@@ -15,9 +15,12 @@ defmodule Assent.HTTPAdapter.Httpc do
   def request(method, url, body, headers, httpc_opts \\ nil) do
     headers = headers ++ [HTTPAdapter.user_agent_header()]
     request = httpc_request(url, body, headers)
+    opts    = parse_httpc_opts(httpc_opts, url)
+
+    warn_missing_ssl(opts)
 
     method
-    |> :httpc.request(request, parse_httpc_opts(httpc_opts, url), [])
+    |> :httpc.request(request, opts, [])
     |> format_response()
   end
 
@@ -86,5 +89,15 @@ defmodule Assent.HTTPAdapter.Httpc do
       cacerts: :certifi.cacerts(),
       verify_fun: {&:ssl_verify_hostname.verify_fun/3, check_hostname: to_charlist(host)}
     ]
+  end
+
+  defp warn_missing_ssl(opts) do
+    opts
+    |> Keyword.get(:ssl, [])
+    |> Keyword.get(:verify_fun)
+    |> case do
+      nil -> IO.warn("This request will NOT be verified for valid SSL certificate")
+      _   -> :ok
+    end
   end
 end
