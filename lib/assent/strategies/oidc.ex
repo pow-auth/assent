@@ -233,6 +233,7 @@ defmodule Assent.Strategy.OIDC do
     end
   end
 
+  defp fetch_secret(%{"alg" => "none"}, _openid_config, _config), do: {:ok, nil}
   defp fetch_secret(%{"alg" => "HS" <> _rest}, _openid_config, config) do
     Config.fetch(config, :client_secret)
   end

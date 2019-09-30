@@ -12,7 +12,7 @@ Multi-provider authentication framework.
   * OpenID Connect - `Assent.Strategy.OIDC`
 * Includes the following provider strategies:
   * Auth0 - `Assent.Strategy.Auth0`
-  * Azure AD - `Assent.Strategy.AzureOauth2`
+  * Azure AD - `Assent.Strategy.AzureAD`
   * Basecamp - `Assent.Strategy.Basecamp`
   * Discord - `Assent.Strategy.Discord`
   * Facebook - `Assent.Strategy.Facebook`

@@ -104,19 +104,24 @@ defmodule Assent.Test.OIDCTestCase do
 
   @spec expect_oidc_jwks_uri_request(Bypass.t(), Keyword.t()) :: :ok
   def expect_oidc_jwks_uri_request(bypass, opts \\ []) do
-    {_, jwk_rsa} = JOSE.JWK.to_map(JOSE.JWK.from_pem(@public_key))
+    uri  = Keyword.get(opts, :uri, "/jwks_uri.json")
+    keys = opts[:keys] || gen_keys(opts)
 
-    keys = case Keyword.get(opts, :count, 2) do
-      0 -> []
-      1 -> [jwk_rsa]
-      c -> Enum.map(1..c, &Map.put(jwk_rsa, "kid", "key-#{&1}"))
-    end
-
-    Bypass.expect_once(bypass, "GET", "/jwks_uri.json", fn conn ->
+    Bypass.expect_once(bypass, "GET", uri, fn conn ->
       conn
       |> Plug.Conn.put_resp_content_type("application/json")
       |> Plug.Conn.send_resp(200, Jason.encode!(%{"keys" => keys}))
     end)
+  end
+
+  defp gen_keys(opts) do
+    {_, jwk_rsa} = JOSE.JWK.to_map(JOSE.JWK.from_pem(@public_key))
+
+    case Keyword.get(opts, :count, 2) do
+      0 -> []
+      1 -> [jwk_rsa]
+      c -> Enum.map(1..c, &Map.put(jwk_rsa, "kid", "key-#{&1}"))
+    end
   end
 
   @spec gen_id_token(Bypass.t(), Keyword.t()) :: binary()
