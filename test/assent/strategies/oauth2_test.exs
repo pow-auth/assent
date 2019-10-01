@@ -35,6 +35,17 @@ defmodule Assent.Strategy.OAuth2Test do
     jg/3747WSsf/zBTcHihTRBdAv6OmdhV4/dD5YBfLAkLrd+mX7iE=
     -----END RSA PRIVATE KEY-----
     """
+  @public_key """
+    -----BEGIN PUBLIC KEY-----
+    MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnzyis1ZjfNB0bBgKFMSv
+    vkTtwlvBsaJq7S5wA+kzeVOVpVWwkWdVha4s38XM/pa/yr47av7+z3VTmvDRyAHc
+    aT92whREFpLv9cj5lTeJSibyr/Mrm/YtjCZVWgaOYIhwrXwKLqPr/11inWsAkfIy
+    tvHWTxZYEcXLgAXFuUuaS3uF9gEiNQwzGTU1v0FqkqTBr4B8nW3HCN47XUu0t8Y0
+    e+lf4s4OxQawWD79J9/5d3Ry0vbV3Am1FtGJiJvOwRsIfVChDpYStTcHTCMqtvWb
+    V6L11BWkpzGXSW4Hv43qa+GSYOD2QU68Mb59oSk2OB+BtOLpJofmbGEGgvmwyCI9
+    MwIDAQAB
+    -----END PUBLIC KEY-----
+    """
 
   test "authorize_url/2", %{config: config, bypass: bypass} do
     assert {:ok, %{url: url, session_params: %{state: state}}} =
@@ -129,7 +140,7 @@ defmodule Assent.Strategy.OAuth2Test do
         assert params["client_assertion_type"] == "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
 
         assert {:ok, jwt} = Assent.JWTAdapter.AssentJWT.decode(params["client_assertion"], json_library: Jason)
-        assert Assent.JWTAdapter.AssentJWT.verify(jwt, @private_key, json_library: Jason)
+        assert Assent.JWTAdapter.AssentJWT.verify(jwt, @public_key, json_library: Jason)
         assert jwt.header["alg"] == "RS256"
         assert jwt.header["typ"] == "JWT"
         assert jwt.header["kid"] == @private_key_id
@@ -157,7 +168,7 @@ defmodule Assent.Strategy.OAuth2Test do
 
       expect_oauth2_access_token_request(bypass, [], fn _conn, params ->
         assert {:ok, jwt} = Assent.JWTAdapter.AssentJWT.decode(params["client_assertion"], json_library: Jason)
-        assert Assent.JWTAdapter.AssentJWT.verify(jwt, @private_key, json_library: Jason)
+        assert Assent.JWTAdapter.AssentJWT.verify(jwt, @public_key, json_library: Jason)
         assert jwt.header["kid"] == @private_key_id
       end)
 

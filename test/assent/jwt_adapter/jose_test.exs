@@ -55,6 +55,17 @@ defmodule Assent.JWTAdapter.JOSETest do
       jg/3747WSsf/zBTcHihTRBdAv6OmdhV4/dD5YBfLAkLrd+mX7iE=
       -----END RSA PRIVATE KEY-----
       """
+    @public_key """
+      -----BEGIN PUBLIC KEY-----
+      MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnzyis1ZjfNB0bBgKFMSv
+      vkTtwlvBsaJq7S5wA+kzeVOVpVWwkWdVha4s38XM/pa/yr47av7+z3VTmvDRyAHc
+      aT92whREFpLv9cj5lTeJSibyr/Mrm/YtjCZVWgaOYIhwrXwKLqPr/11inWsAkfIy
+      tvHWTxZYEcXLgAXFuUuaS3uF9gEiNQwzGTU1v0FqkqTBr4B8nW3HCN47XUu0t8Y0
+      e+lf4s4OxQawWD79J9/5d3Ry0vbV3Am1FtGJiJvOwRsIfVChDpYStTcHTCMqtvWb
+      V6L11BWkpzGXSW4Hv43qa+GSYOD2QU68Mb59oSk2OB+BtOLpJofmbGEGgvmwyCI9
+      MwIDAQAB
+      -----END PUBLIC KEY-----
+      """
 
     test "sign/2" do
       assert {:ok, @jwt} = JOSE.sign(%JWT{header: @header, payload: @payload}, @private_key, json_library: Jason)
@@ -63,7 +74,7 @@ defmodule Assent.JWTAdapter.JOSETest do
     test "verify/3" do
       {:ok, jwt} = JOSE.decode(@jwt, json_library: Jason)
 
-      assert JOSE.verify(jwt, @private_key, [])
+      assert JOSE.verify(jwt, @public_key, [])
     end
   end
 end
