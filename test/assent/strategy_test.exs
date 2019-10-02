@@ -51,24 +51,43 @@ defmodule Assent.StrategyTest do
     assert Strategy.request(:get, "https://localhost:4000/", nil, [], http_adapter: {HTTPMock, a: 1}) == {:ok, %{status: 200, opts: [a: 1]}}
   end
 
-  defmodule CustomJSONLibrary do
-    @doc false
-    def decode(_binary), do: {:ok, :decoded}
-  end
-
   defmodule CustomJWTAdapter do
-    @doc false
-    def decode(_binary, _opts), do: :decoded
+    @moduledoc false
+
+    def sign(_claims, _alg, _secret, _opts), do: :signed
+
+    def verify(_binary, _secret, _opts), do: :verified
   end
 
-  test "decode_jwt/2" do
-    assert {:ok, %Assent.JWTAdapter.JWT{} = jwt} = Strategy.decode_jwt("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE1MTYyMzkwMjIsIm5hbWUiOiJKb2huIERvZSIsInN1YiI6IjEyMzQ1Njc4OTAifQ.fdOPQ05ZfRhkST2-rIWgUpbqUsVhkkNVNcuG7Ki0s-8", [])
-    assert jwt.payload == %{"iat" => 1_516_239_022, "name" => "John Doe", "sub" => "1234567890"}
-    assert jwt.header
+  defmodule CustomJSONLibrary do
+    @moduledoc false
 
-    assert Strategy.decode_jwt("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE1MTYyMzkwMjIsIm5hbWUiOiJKb2huIERvZSIsInN1YiI6IjEyMzQ1Njc4OTAifQ.fdOPQ05ZfRhkST2-rIWgUpbqUsVhkkNVNcuG7Ki0s-8", [jwt_adapter: CustomJWTAdapter]) == :decoded
+    def decode(_binary), do: {:ok, :decoded}
 
-    assert {:ok, %Assent.JWTAdapter.JWT{} = jwt} = Strategy.decode_jwt("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE1MTYyMzkwMjIsIm5hbWUiOiJKb2huIERvZSIsInN1YiI6IjEyMzQ1Njc4OTAifQ.fdOPQ05ZfRhkST2-rIWgUpbqUsVhkkNVNcuG7Ki0s-8", [json_library: CustomJSONLibrary])
-    assert jwt.payload == :decoded
+    def encode(_binary), do: {:ok, ""}
+  end
+
+  @claims %{"iat" => 1_516_239_022, "name" => "John Doe", "sub" => "1234567890"}
+  @alg "HS256"
+  @secret "your-256-bit-secret"
+  @token "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE1MTYyMzkwMjIsIm5hbWUiOiJKb2huIERvZSIsInN1YiI6IjEyMzQ1Njc4OTAifQ.fdOPQ05ZfRhkST2-rIWgUpbqUsVhkkNVNcuG7Ki0s-8"
+
+  @empty_encoding Base.url_encode64("", padding: false)
+
+  test "sign_jwt/2" do
+    assert Strategy.sign_jwt(@claims, @alg, @secret, []) == {:ok, @token}
+
+    assert Strategy.sign_jwt(@token, @alg, @secret, jwt_adapter: CustomJWTAdapter) == :signed
+
+    assert {:ok, @empty_encoding <> "." <> _rest} = Strategy.sign_jwt(@token, @alg, @secret, json_library: CustomJSONLibrary)
+  end
+
+  test "verify_jwt/2" do
+    assert {:ok, jwt} = Strategy.verify_jwt(@token, @secret, [])
+    assert jwt.verified?
+
+    assert Strategy.verify_jwt(@token, @secret, jwt_adapter: CustomJWTAdapter) == :verified
+
+    assert Strategy.verify_jwt(@token, @secret, json_library: CustomJSONLibrary) == {:ok, :decoded}
   end
 end

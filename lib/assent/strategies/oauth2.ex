@@ -63,7 +63,7 @@ defmodule Assent.Strategy.OAuth2 do
   @behaviour Assent.Strategy
 
   alias Assent.Strategy, as: Helpers
-  alias Assent.{CallbackCSRFError, CallbackError, Config, HTTPAdapter.HTTPResponse, JWTAdapter.JWT, RequestError}
+  alias Assent.{CallbackCSRFError, CallbackError, Config, HTTPAdapter.HTTPResponse, RequestError}
 
   @doc """
   Generate authorization URL for request phase.
@@ -159,22 +159,25 @@ defmodule Assent.Strategy.OAuth2 do
   defp authentication_params(:client_secret_jwt, config) do
     alg = Config.get(config, :jwt_algorithm, "HS256")
 
-    with {:ok, client_secret} <- Config.fetch(config, :client_secret),
-         {:ok, jwt}           <- prepare_jwt(%{"alg" => alg}, config),
-         {:ok, token}         <- Helpers.sign_jwt(jwt, client_secret, config) do
-
-      headers = []
-      body    = [client_assertion: token, client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"]
-
-      {:ok, headers, body}
+    with {:ok, client_secret} <- Config.fetch(config, :client_secret) do
+      jwt_authentication_params(alg, client_secret, config)
     end
   end
   defp authentication_params(:private_key_jwt, config) do
     alg = Config.get(config, :jwt_algorithm, "RS256")
 
-    with {:ok, private_key}    <- load_private_key(config),
-         {:ok, jwt}            <- prepare_jwt(%{"alg" => alg}, config),
-         {:ok, token}          <- Helpers.sign_jwt(jwt, private_key, config) do
+    with {:ok, pem}             <- load_private_key(config),
+         {:ok, _private_key_id} <- Config.fetch(config, :private_key_id) do
+      jwt_authentication_params(alg, pem, config)
+    end
+  end
+  defp authentication_params(method, _config) do
+    {:error, "Invalid `:auth_method` #{method}"}
+  end
+
+  defp jwt_authentication_params(alg, secret, config) do
+    with {:ok, claims}    <- jwt_claims(config),
+         {:ok, token}     <- Helpers.sign_jwt(claims, alg, secret, config) do
 
       headers = []
       body    = [client_assertion: token, client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"]
@@ -182,40 +185,27 @@ defmodule Assent.Strategy.OAuth2 do
       {:ok, headers, body}
     end
   end
-  defp authentication_params(method, _config) do
-    {:error, "Invalid `:auth_method` #{method}`"}
+
+  defp jwt_claims(config) do
+    timestamp = DateTime.to_unix(DateTime.utc_now())
+
+    with {:ok, site}      <- Config.fetch(config, :site),
+         {:ok, client_id} <- Config.fetch(config, :client_id) do
+
+      {:ok, %{
+        "iss" => client_id,
+        "sub" => client_id,
+        "aud" => site,
+        "iat" => timestamp,
+        "exp" => timestamp + 60
+      }}
+    end
   end
 
   defp load_private_key(config) do
     case Config.fetch(config, :private_key_path) do
       {:ok, path}    -> File.read(path)
       {:error, _any} -> Config.fetch(config, :private_key)
-    end
-  end
-
-  defp prepare_jwt(%{"alg" => "RS" <> _rest} = header, config) do
-    with {:ok, private_key_id} <- Config.fetch(config, :private_key_id) do
-      header
-      |> Map.put("kid", private_key_id)
-      |> do_prepare_jwt(config)
-    end
-  end
-  defp prepare_jwt(header, config), do: do_prepare_jwt(header, config)
-
-  defp do_prepare_jwt(header, config) do
-    with {:ok, site} <- Config.fetch(config, :site),
-         {:ok, client_id} <- Config.fetch(config, :client_id) do
-      timestamp = DateTime.to_unix(DateTime.utc_now())
-
-      claims = %{
-        "iss" => client_id,
-        "sub" => client_id,
-        "aud" => site,
-        "iat" => timestamp,
-        "exp" => timestamp + 60
-      }
-
-      {:ok, %JWT{header: header, payload: claims}}
     end
   end
 

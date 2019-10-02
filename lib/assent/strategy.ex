@@ -101,24 +101,18 @@ defmodule Assent.Strategy do
   def decode_json(response, config), do: Config.json_library(config).decode(response)
 
   @doc """
-  Decodes a JSON Web Token
-  """
-  @spec decode_jwt(binary(), Config.t()) :: {:ok, Assent.JWTAdapter.JWT.t()} | {:error, term()}
-  def decode_jwt(token, config), do: Assent.JWTAdapter.decode(token, jwt_adapter_pts(config))
-
-  defp jwt_adapter_pts(config), do: Keyword.take(config, [:json_library, :jwt_adapter])
-
-  @doc """
   Verifies a JWT
   """
-  @spec verify_jwt(Assent.JWTAdapter.JWT.t(), binary()) :: boolean()
-  def verify_jwt(jwt, secret), do: Assent.JWTAdapter.verify(jwt, secret)
+  @spec verify_jwt(binary(), binary() | nil, Config.t()) :: {:ok, map()} | {:error, any()}
+  def verify_jwt(token, secret, config), do: Assent.JWTAdapter.verify(token, secret, jwt_adapter_opts(config))
+
+  defp jwt_adapter_opts(config), do: Keyword.take(config, [:json_library, :jwt_adapter, :private_key_id])
 
   @doc """
   Signs a JWT
   """
-  @spec sign_jwt(Assent.JWTAdapter.JWT.t(), binary() | {binary(), binary()}, Config.t()) :: {:ok, binary()} | {:error, term()}
-  def sign_jwt(jwt, secret, config), do: Assent.JWTAdapter.sign(jwt, secret, jwt_adapter_pts(config))
+  @spec sign_jwt(map(), binary(), binary(), Config.t()) :: {:ok, binary()} | {:error, term()}
+  def sign_jwt(claims, alg, secret, config), do: Assent.JWTAdapter.sign(claims, alg, secret, jwt_adapter_opts(config))
 
   @doc """
   Generates a URL

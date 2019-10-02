@@ -110,14 +110,14 @@ defmodule Assent.Strategy.OAuth2Test do
         assert params["redirect_uri"] == "test"
         assert params["client_assertion_type"] == "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
 
-        assert {:ok, jwt} = Assent.JWTAdapter.AssentJWT.decode(params["client_assertion"], json_library: Jason)
-        assert Assent.JWTAdapter.AssentJWT.verify(jwt, @client_secret, json_library: Jason)
+        assert {:ok, jwt} = Assent.JWTAdapter.AssentJWT.verify(params["client_assertion"], @client_secret, json_library: Jason)
+        assert jwt.verified?
         assert jwt.header["alg"] == "HS256"
         assert jwt.header["typ"] == "JWT"
-        assert jwt.payload["iss"] == @client_id
-        assert jwt.payload["sub"] == @client_id
-        assert jwt.payload["aud"] == "http://localhost:#{bypass.port}"
-        assert jwt.payload["exp"] > DateTime.to_unix(DateTime.utc_now())
+        assert jwt.claims["iss"] == @client_id
+        assert jwt.claims["sub"] == @client_id
+        assert jwt.claims["aud"] == "http://localhost:#{bypass.port}"
+        assert jwt.claims["exp"] > DateTime.to_unix(DateTime.utc_now())
       end)
 
       expect_oauth2_user_request(bypass, @user_api_params)
@@ -139,15 +139,15 @@ defmodule Assent.Strategy.OAuth2Test do
         assert params["redirect_uri"] == "test"
         assert params["client_assertion_type"] == "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
 
-        assert {:ok, jwt} = Assent.JWTAdapter.AssentJWT.decode(params["client_assertion"], json_library: Jason)
-        assert Assent.JWTAdapter.AssentJWT.verify(jwt, @public_key, json_library: Jason)
+        assert {:ok, jwt} = Assent.JWTAdapter.AssentJWT.verify(params["client_assertion"], @public_key, json_library: Jason)
+        assert jwt.verified?
         assert jwt.header["alg"] == "RS256"
         assert jwt.header["typ"] == "JWT"
         assert jwt.header["kid"] == @private_key_id
-        assert jwt.payload["iss"] == @client_id
-        assert jwt.payload["sub"] == @client_id
-        assert jwt.payload["aud"] == "http://localhost:#{bypass.port}"
-        assert jwt.payload["exp"] > DateTime.to_unix(DateTime.utc_now())
+        assert jwt.claims["iss"] == @client_id
+        assert jwt.claims["sub"] == @client_id
+        assert jwt.claims["aud"] == "http://localhost:#{bypass.port}"
+        assert jwt.claims["exp"] > DateTime.to_unix(DateTime.utc_now())
       end)
 
       expect_oauth2_user_request(bypass, @user_api_params)
@@ -167,8 +167,8 @@ defmodule Assent.Strategy.OAuth2Test do
         |> Keyword.put(:private_key_id, @private_key_id)
 
       expect_oauth2_access_token_request(bypass, [], fn _conn, params ->
-        assert {:ok, jwt} = Assent.JWTAdapter.AssentJWT.decode(params["client_assertion"], json_library: Jason)
-        assert Assent.JWTAdapter.AssentJWT.verify(jwt, @public_key, json_library: Jason)
+        assert {:ok, jwt} = Assent.JWTAdapter.AssentJWT.verify(params["client_assertion"], @public_key, json_library: Jason)
+        assert jwt.verified?
         assert jwt.header["kid"] == @private_key_id
       end)
 

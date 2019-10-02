@@ -2,55 +2,54 @@ defmodule Assent.JWTAdapter.JOSE do
   @moduledoc """
   JWT adapter module for parsing JWT tokens with JOSE.
   """
-  alias Assent.{JWTAdapter, JWTAdapter.JWT}
+  alias Assent.JWTAdapter
 
   @behaviour Assent.JWTAdapter
 
-
   @impl JWTAdapter
-  def sign(%JWT{header: header, payload: payload} = jwt, secret, _opts) do
+  def sign(claims, alg, secret, opts) do
+    jwk = jwk(alg, secret)
+    jws = jws(alg, opts)
+
     {_, token} =
-      jwt
-      |> jwk(secret)
-      |> JOSE.JWT.sign(header, payload)
+      jwk
+      |> JOSE.JWT.sign(jws, claims)
       |> JOSE.JWS.compact()
 
     {:ok, token}
   end
 
-  defp jwk(%{header: %{"alg" => "HS" <> _rest}}, secret), do: JOSE.JWK.from_oct(secret)
-  defp jwk(_jwt, secret), do: JOSE.JWK.from_pem(secret)
+  defp jwk("HS" <> _rest, secret), do: JOSE.JWK.from_oct(secret)
+  defp jwk(_alg, key), do: JOSE.JWK.from_pem(key)
 
-  @impl JWTAdapter
-  def verify(jwt, secret, _opts) do
-    {verified, _, _} =
-      jwt
-      |> jwk(secret)
-      |> JOSE.JWT.verify(jwt.encoded[:jwt])
+  defp jws(alg, opts) do
+    jws = %{"alg" => alg}
 
-    verified
+    case Keyword.get(opts, :private_key_id) do
+      nil -> jws
+      kid -> Map.put(jws, "kid", kid)
+    end
   end
 
   @impl JWTAdapter
-  def decode(token, json_library: json_library) do
-    JOSE.json_module(json_library)
+  def verify(token, secret_or_public_key, _opts) do
+    {_, %{"alg" => alg} = header} =
+      token
+      |> JOSE.JWT.peek_protected()
+      |> JOSE.JWS.to_map()
 
-    header_json  = JOSE.JWS.peek_protected(token)
-    payload_json = JOSE.JWS.peek_payload(token)
-    signature    = JOSE.JWS.peek_signature(token)
+    {verified, %{fields: claims}, _} =
+      alg
+      |> jwk(secret_or_public_key)
+      |> JOSE.JWT.verify(token)
 
-    with {:ok, header}  <- json_library.decode(header_json),
-         {:ok, payload} <- json_library.decode(payload_json) do
-      {:ok, %JWT{
-        header: header,
-        payload: payload,
-        encoded: %{
-          header: header_json,
-          payload: payload_json,
-          signature: signature,
-          jwt: token
-        }
-      }}
-    end
+    {%{}, %{"signature" => signature}} = JOSE.JWS.expand(token)
+
+    {:ok, %{
+      header: header,
+      claims: claims,
+      signature: signature,
+      verified?: verified
+    }}
   end
 end

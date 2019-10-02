@@ -2,19 +2,30 @@ defmodule Assent.JWTAdapter.AssentJWT do
   @moduledoc """
   JWT adapter module for parsing JWT tokens.
   """
-  alias Assent.{Config, JWTAdapter, JWTAdapter.JWT}
+  alias Assent.{Config, JWTAdapter}
 
   @behaviour Assent.JWTAdapter
 
   @impl JWTAdapter
-  def sign(%JWT{header: header, payload: payload}, secret, opts) do
-    with {:ok, encoded_header}  <- encode_json_base64(Map.put(header, "typ", "JWT"), opts),
-         {:ok, encoded_payload} <- encode_json_base64(payload, opts),
-         {:ok, signature}       <- sign_message(header, "#{encoded_header}.#{encoded_payload}", secret) do
+  def sign(claims, alg, secret_or_private_key, opts) do
+    header = jws(alg, opts)
+
+    with {:ok, encoded_header} <- encode_json_base64(header, opts),
+         {:ok, encoded_claims} <- encode_json_base64(claims, opts),
+         {:ok, signature}      <- sign_message("#{encoded_header}.#{encoded_claims}", alg, secret_or_private_key) do
 
       encoded_signature = Base.url_encode64(signature, padding: false)
 
-      {:ok, "#{encoded_header}.#{encoded_payload}.#{encoded_signature}"}
+      {:ok, "#{encoded_header}.#{encoded_claims}.#{encoded_signature}"}
+    end
+  end
+
+  defp jws(alg, opts) do
+    jws = %{"typ" => "JWT", "alg" => alg}
+
+    case Keyword.get(opts, :private_key_id) do
+      nil -> jws
+      kid -> Map.put(jws, "kid", kid)
     end
   end
 
@@ -25,80 +36,76 @@ defmodule Assent.JWTAdapter.AssentJWT do
     end
   end
 
-  defp sign_message(%{"alg" => "HS" <> sha_bit_size}, message, secret) do
+  defp sign_message(message, "HS" <> sha_bit_size, secret) do
     with {:ok, sha_alg} <- sha2_alg(sha_bit_size) do
       {:ok, :crypto.hmac(sha_alg, secret, message)}
     end
   end
-  defp sign_message(%{"alg" => <<_, "S", sha_bit_size :: binary>>}, message, raw_private_key) do
+  defp sign_message(message, <<_, "S", sha_bit_size :: binary>>, private_key) do
     with {:ok, sha_alg} <- sha2_alg(sha_bit_size),
-         {:ok, private_key} <- decode_raw_key(raw_private_key) do
+         {:ok, key}     <- decode_pem(private_key) do
 
-      {:ok, :public_key.sign(message, sha_alg, private_key)}
+      {:ok, :public_key.sign(message, sha_alg, key)}
     end
   end
-  defp sign_message(%{"alg" => alg}, _message, _secret), do: {:error, "Unsupported JWT alg #{alg}"}
+  defp sign_message(_message, alg, _jwk), do: {:error, "Unsupported JWT alg #{alg} or invalid JWK"}
 
   defp sha2_alg("256"), do: {:ok, :sha256}
   defp sha2_alg("384"), do: {:ok, :sha384}
   defp sha2_alg("512"), do: {:ok, :sha512}
   defp sha2_alg(bit_size), do: {:error, "Invalid SHA-2 algorithm bit size: #{bit_size}"}
 
-   defp decode_raw_key(private_key) do
-    case :public_key.pem_decode(private_key) do
+   defp decode_pem(pem) do
+    case :public_key.pem_decode(pem) do
       [entry] -> {:ok, :public_key.pem_entry_decode(entry)}
       _any    -> {:error, "Private key should only have one entry"}
     end
   end
 
   @impl JWTAdapter
-  def verify(%JWT{header: header, encoded: %{header: header_json, payload: payload_json, signature: signature}}, secret, _opts) do
-    encoded_header  = Base.url_encode64(header_json, padding: false)
-    encoded_payload = Base.url_encode64(payload_json, padding: false)
+  def verify(token, secret_or_public_key, opts) do
+    with {:ok, encoded_jwt}              <- split(token),
+         {:ok, %{"alg" => alg} = header} <- decode_base64_json(encoded_jwt.header, opts),
+         {:ok, claims}                   <- decode_base64_json(encoded_jwt.claims, opts),
+         {:ok, signature}                <- Base.url_decode64(encoded_jwt.signature, padding: false) do
 
-    verify_message(header, "#{encoded_header}.#{encoded_payload}", signature, secret)
+      verified = verify_message("#{encoded_jwt.header}.#{encoded_jwt.claims}", signature, alg, secret_or_public_key)
+
+      {:ok, %{
+        header: header,
+        claims: claims,
+        signature: signature,
+        verified?: verified
+      }}
+    end
   end
 
-  defp verify_message(%{"alg" => "HS" <> _rest} = header, message, signature, secret) do
-    case sign_message(header, message, secret) do
+  defp split(token) do
+    case String.split(token, ".") do
+      [header, claims, signature] -> {:ok, %{header: header, claims: claims, signature: signature}}
+      _any                        -> {:error, "Invalid JWT"}
+    end
+  end
+
+  defp decode_base64_json(encoded, opts) do
+    with {:ok, json_library} <- Config.fetch(opts, :json_library),
+         {:ok, json}         <- Base.url_decode64(encoded, padding: false),
+         {:ok, map}          <- json_library.decode(json) do
+      {:ok, map}
+    end
+  end
+
+  defp verify_message(_message, _signature, "none", _secret), do: false
+  defp verify_message(message, signature, "HS" <> _rest = alg, secret) do
+    case sign_message(message, alg, secret) do
       {:ok, signature_2} -> constant_time_compare(signature_2, signature)
       _any               -> false
     end
   end
-  defp verify_message(%{"alg" => <<_, "S", sha_bit_size :: binary>>}, message, signature, secret) do
+  defp verify_message(message, signature, <<_, "S", sha_bit_size :: binary>>, public_key) do
     with {:ok, sha_alg} <- sha2_alg(sha_bit_size),
-         {:ok, public_key} <- decode_raw_key(secret) do
-      :public_key.verify(message, sha_alg, signature, public_key)
-    end
-  end
-
-  @impl JWTAdapter
-  def decode(token, opts) do
-    with {:ok, json_library} <- Config.fetch(opts, :json_library),
-         {:ok, jwt} <- parse(token, json_library) do
-      {:ok, jwt}
-    end
-  end
-
-  defp parse(token, json_library) do
-    with [header, payload, signature] <- String.split(token, "."),
-         {:ok, header_json} <- Base.url_decode64(header, padding: false),
-         {:ok, payload_json} <- Base.url_decode64(payload, padding: false),
-         {:ok, signature} <- Base.url_decode64(signature, padding: false),
-         {:ok, header} <- json_library.decode(header_json),
-         {:ok, payload} <- json_library.decode(payload_json) do
-      {:ok, %JWT{
-        header: header,
-        payload: payload,
-        encoded: %{
-          header: header_json,
-          payload: payload_json,
-          signature: signature,
-          jwt: token}}}
-    else
-      {:error, error} -> {:error, error}
-      :error          -> {:error, "Couldn't decode base64 string"}
-      _any            -> {:error, "The token is not a valid JWT"}
+         {:ok, pem}     <- decode_pem(public_key) do
+      :public_key.verify(message, sha_alg, signature, pem)
     end
   end
 

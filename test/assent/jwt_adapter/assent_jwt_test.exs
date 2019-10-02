@@ -2,30 +2,28 @@ defmodule Assent.JWTAdapter.AssentJWTTest do
   use ExUnit.Case
   doctest Assent.JWTAdapter.AssentJWT
 
-  alias Assent.JWTAdapter.{AssentJWT, JWT}
+  alias Assent.JWTAdapter.AssentJWT
 
-  @jwt "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE1MTYyMzkwMjIsIm5hbWUiOiJKb2huIERvZSIsInN1YiI6IjEyMzQ1Njc4OTAifQ.fdOPQ05ZfRhkST2-rIWgUpbqUsVhkkNVNcuG7Ki0s-8"
-  @header %{"alg" => "HS256", "typ" => "JWT"}
-  @payload %{"iat" => 1_516_239_022, "name" => "John Doe", "sub" => "1234567890"}
+  @token "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE1MTYyMzkwMjIsIm5hbWUiOiJKb2huIERvZSIsInN1YiI6IjEyMzQ1Njc4OTAifQ.fdOPQ05ZfRhkST2-rIWgUpbqUsVhkkNVNcuG7Ki0s-8"
+  @claims %{"iat" => 1_516_239_022, "name" => "John Doe", "sub" => "1234567890"}
   @secret "your-256-bit-secret"
 
   test "sign/2" do
-    assert {:ok, @jwt} = AssentJWT.sign(%JWT{header: @header, payload: @payload}, @secret, json_library: Jason)
+    assert AssentJWT.sign(@claims, "HS256", @secret, json_library: Jason) == {:ok, @token}
   end
 
   test "verify/3" do
-    {:ok, jwt} = AssentJWT.decode(@jwt, json_library: Jason)
+    assert {:ok, jwt} = AssentJWT.verify(@token, "invalid", json_library: Jason)
+    refute jwt.verified?
+    assert jwt.claims == @claims
 
-    assert AssentJWT.verify(jwt, @secret, [])
-  end
-
-  test "decode/2" do
-    assert {:ok, %JWT{header: @header, payload: @payload}} = AssentJWT.decode(@jwt, json_library: Jason)
+    assert {:ok, jwt} = AssentJWT.verify(@token, @secret, json_library: Jason)
+    assert jwt.verified?
+    assert jwt.claims == @claims
   end
 
   describe "with private key" do
-    @header Map.put(@header, "alg", "RS256")
-    @jwt "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE1MTYyMzkwMjIsIm5hbWUiOiJKb2huIERvZSIsInN1YiI6IjEyMzQ1Njc4OTAifQ.Skbmm3dBBdPCt0T1dqgtIYW_xbsmlOMJxC6g4WEgWRbk21tw2r2erDBwPxap4Z1rszWnFrmbULm83YSH-1pcHZ-mdNSqFp4_0mtIR3wHvshLSBhxL_3nuwV0hRYUqjjWOZRsBiZEHi9aZMVTm4dWsQlTJAHqQV1igwayn59d0TKmLSgDMvKxQU59SjBeXjVVia05IK7h6zJQ5GmjpzQmbOVpgig3_fxsuDP5-DXyteXKkLbLU23L_K2Pr8FgiJ_KlG2JpIoUB3DcR_tm-vmtUv-dB6ndqPC4RFgzt_4MCzZdzf-9cE5v0XwDxvKpNvZk-UOvTn6bqFdIChJ_1s8WaA"
+    @token "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE1MTYyMzkwMjIsIm5hbWUiOiJKb2huIERvZSIsInN1YiI6IjEyMzQ1Njc4OTAifQ.Skbmm3dBBdPCt0T1dqgtIYW_xbsmlOMJxC6g4WEgWRbk21tw2r2erDBwPxap4Z1rszWnFrmbULm83YSH-1pcHZ-mdNSqFp4_0mtIR3wHvshLSBhxL_3nuwV0hRYUqjjWOZRsBiZEHi9aZMVTm4dWsQlTJAHqQV1igwayn59d0TKmLSgDMvKxQU59SjBeXjVVia05IK7h6zJQ5GmjpzQmbOVpgig3_fxsuDP5-DXyteXKkLbLU23L_K2Pr8FgiJ_KlG2JpIoUB3DcR_tm-vmtUv-dB6ndqPC4RFgzt_4MCzZdzf-9cE5v0XwDxvKpNvZk-UOvTn6bqFdIChJ_1s8WaA"
     @private_key """
       -----BEGIN RSA PRIVATE KEY-----
       MIIEogIBAAKCAQEAnzyis1ZjfNB0bBgKFMSvvkTtwlvBsaJq7S5wA+kzeVOVpVWw
@@ -68,13 +66,14 @@ defmodule Assent.JWTAdapter.AssentJWTTest do
       """
 
     test "sign/2" do
-      assert {:ok, @jwt} = AssentJWT.sign(%JWT{header: @header, payload: @payload}, @private_key, json_library: Jason)
+      assert AssentJWT.sign(@claims, "RS256", @private_key, json_library: Jason) == {:ok, @token}
+      refute AssentJWT.sign(@claims, "RS256", @private_key, json_library: Jason, private_key_id: "key_id") == {:ok, @token}
     end
 
     test "verify/3" do
-      {:ok, jwt} = AssentJWT.decode(@jwt, json_library: Jason)
-
-      assert AssentJWT.verify(jwt, @public_key, [])
+      assert {:ok, jwt} = AssentJWT.verify(@token, @public_key, json_library: Jason)
+      assert jwt.verified?
+      assert jwt.claims == @claims
     end
   end
 end
