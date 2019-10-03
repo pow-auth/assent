@@ -20,7 +20,7 @@ defmodule Assent.MixProject do
       name: "Assent",
       docs: docs(),
 
-      xref: [exclude: [Mint.HTTP, :certifi, :ssl_verify_hostname]]
+      xref: [exclude: [JOSE.JWT, JOSE.JWK, JOSE.JWS, Mint.HTTP, :certifi, :ssl_verify_hostname]]
     ]
   end
 
