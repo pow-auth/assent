@@ -97,7 +97,7 @@ defmodule Assent.JWTAdapter.AssentJWT do
 
   defp verify_message(_message, _signature, "none", _secret), do: false
   defp verify_message(_message, _signature, _alg, nil), do: false
-  defp verify_message(message, signature, "HS" <> _rest = alg, secret) do
+  defp verify_message(message, signature, "HS" <> _rest = alg, secret) when is_binary(secret) do
     case sign_message(message, alg, secret) do
       {:ok, signature_2} -> constant_time_compare(signature_2, signature)
       _any               -> false
@@ -105,10 +105,19 @@ defmodule Assent.JWTAdapter.AssentJWT do
   end
   defp verify_message(message, signature, <<_, "S", sha_bit_size :: binary>>, public_key) do
     with {:ok, sha_alg} <- sha2_alg(sha_bit_size),
-         {:ok, pem}     <- decode_pem(public_key) do
+         {:ok, pem}     <- decode_key(public_key) do
       :public_key.verify(message, sha_alg, signature, pem)
     end
   end
+
+  defp decode_key(pem) when is_binary(pem), do: decode_pem(pem)
+  defp decode_key(%{"kty" => "RSA", "n" => n, "e" => e}) do
+    with {:ok, n} <- Base.url_decode64(n, padding: false),
+         {:ok, e} <- Base.url_decode64(e, padding: false) do
+      {:ok, {:RSAPublicKey, :crypto.bytes_to_integer(n), :crypto.bytes_to_integer(e)}}
+    end
+  end
+  defp decode_key(jwk) when is_map(jwk), do: {:error, "Can't decode JWK"}
 
   use Bitwise
 

@@ -92,7 +92,7 @@ defmodule Assent.Strategy do
   @doc """
   Verifies a JWT
   """
-  @spec verify_jwt(binary(), binary() | nil, Config.t()) :: {:ok, map()} | {:error, any()}
+  @spec verify_jwt(binary(), binary() | map() | nil, Config.t()) :: {:ok, map()} | {:error, any()}
   def verify_jwt(token, secret, config), do: Assent.JWTAdapter.verify(token, secret, jwt_adapter_opts(config))
 
   defp jwt_adapter_opts(config), do: Keyword.take(config, [:json_library, :jwt_adapter, :private_key_id])

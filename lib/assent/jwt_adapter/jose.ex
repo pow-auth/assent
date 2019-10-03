@@ -20,7 +20,8 @@ defmodule Assent.JWTAdapter.JOSE do
   end
 
   defp jwk("HS" <> _rest, secret), do: JOSE.JWK.from_oct(secret)
-  defp jwk(_alg, key), do: JOSE.JWK.from_pem(key)
+  defp jwk(_alg, key) when is_binary(key), do: JOSE.JWK.from_pem(key)
+  defp jwk(_alg, key) when is_map(key), do: JOSE.JWK.from_map(key)
 
   defp jws(alg, opts) do
     jws = %{"alg" => alg}

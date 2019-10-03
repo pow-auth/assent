@@ -4,7 +4,7 @@ defmodule Assent.JWTAdapter do
   alias Assent.Config
 
   @callback sign(map(), binary(), binary(), Keyword.t()) :: {:ok, binary()} | {:error, any()}
-  @callback verify(binary(), binary() | nil, Keyword.t()) :: {:ok, map()} | {:error, any()}
+  @callback verify(binary(), binary() | map() | nil, Keyword.t()) :: {:ok, map()} | {:error, any()}
 
   @doc """
   Generates a signed JSON Web Token signature
@@ -18,7 +18,7 @@ defmodule Assent.JWTAdapter do
   @doc """
   Verifies the JSON Web Token signature
   """
-  @spec verify(binary(), binary() | nil, Keyword.t()) :: {:ok, map()} | {:error, any()}
+  @spec verify(binary(), binary() | map() | nil, Keyword.t()) :: {:ok, map()} | {:error, any()}
   def verify(token, secret, opts \\ []) do
     {adapter, opts} = fetch_adapter(opts)
     adapter.verify(token, secret, opts)
