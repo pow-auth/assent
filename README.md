@@ -136,7 +136,7 @@ defmodule TestProvider do
 end
 ```
 
-The normalized user map should conform to the [OpenID Connect Core 1.0 standard claims spec](https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.5.1).
+The normalized user map should conform to the [OpenID Connect Core 1.0 Standard Claims spec](https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.5.1).
 
 You can also use `Assent.Strategy`:
 
