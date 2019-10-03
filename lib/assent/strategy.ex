@@ -84,17 +84,6 @@ defmodule Assent.Strategy do
   end
 
   @doc """
-  Recursively prunes map for nil values.
-  """
-  @spec prune(map) :: map
-  def prune(map) do
-    map
-    |> Enum.map(fn {k, v} -> if is_map(v), do: {k, prune(v)}, else: {k, v} end)
-    |> Enum.filter(fn {_, v} -> not is_nil(v) end)
-    |> Enum.into(%{})
-  end
-
-  @doc """
   Decode a JSON response to a map
   """
   @spec decode_json(binary(), Config.t()) :: {:ok, map()} | {:error, term()}
@@ -128,4 +117,47 @@ defmodule Assent.Strategy do
     do: site <> uri
   defp endpoint(_site, url),
     do: url
+
+  @doc """
+  Normalize API user request response into standard claims
+
+  Based on https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.5.1
+  """
+  @spec normalize_userinfo(map(), map()) :: {:ok, map()}
+  def normalize_userinfo(claims, extra \\ %{}) do
+    standard_claims = Map.take(claims,
+      ~w(sub name given_name family_name middle_name nickname
+         preferred_username profile picture website email email_verified
+         gender birthdate zoneinfo locale phone_number phone_number_verified
+         address updated_at))
+
+    {:ok, prune(Map.merge(extra, standard_claims))}
+  end
+
+  @doc """
+  Recursively prunes map for nil values.
+  """
+  @spec prune(map) :: map
+  def prune(map) do
+    map
+    |> Enum.map(fn {k, v} -> if is_map(v), do: {k, prune(v)}, else: {k, v} end)
+    |> Enum.filter(fn {_, v} -> not is_nil(v) end)
+    |> Enum.into(%{})
+  end
+
+  @doc false
+  def __normalize__({:ok, %{user: user} = results}, config, strategy) do
+    config
+    |> strategy.normalize(user)
+    |> case do
+      {:ok, user}        -> normalize_userinfo(user)
+      {:ok, user, extra} -> normalize_userinfo(user, extra)
+      {:error, error}    -> {:error, error}
+    end
+    |> case do
+      {:error, error} -> {:error, error}
+      {:ok, user}     -> {:ok, %{results | user: user}}
+    end
+  end
+  def __normalize__({:error, error}, _config, _strategy), do: {:error, error}
 end

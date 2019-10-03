@@ -3,29 +3,7 @@ defmodule Assent.Strategy.BasecampTest do
 
   alias Assent.Strategy.Basecamp
 
-  @accounts_response [
-    %{
-      "product" => "bc3",
-      "id" => 99_999_999,
-      "name" => "Honcho Design",
-      "href" => "https://3.basecampapi.com/99999999",
-      "app_href" => "https://3.basecamp.com/99999999"
-    },
-    %{
-      "product" => "bcx",
-      "id" => 88_888_888,
-      "name" => "Wayne Enterprises, Ltd.",
-      "href" => "https://basecamp.com/88888888/api/v1",
-      "app_href" => "https://basecamp.com/88888888"
-    },
-    %{
-      "product" => "campfire",
-      "id" => 44_444_444,
-      "name" => "Acme Shipping Co.",
-      "href" => "https://acme4444444.campfirenow.com",
-      "app_href" => "https://acme4444444.campfirenow.com"
-    }
-  ]
+  # From https://github.com/basecamp/api/blob/master/sections/authentication.md#get-authorization
   @user_response %{
     "expires_at" => "2012-03-22T16:56:48-05:00",
     "identity" => %{
@@ -34,15 +12,37 @@ defmodule Assent.Strategy.BasecampTest do
       "last_name" => "Fried",
       "email_address" => "jason@basecamp.com"
     },
-    "accounts" => @accounts_response
+    "accounts" => [
+      %{
+        "product" => "bc3",
+        "id" => 99_999_999,
+        "name" => "Honcho Design",
+        "href" => "https://3.basecampapi.com/99999999",
+        "app_href" => "https://3.basecamp.com/99999999"
+      },
+      %{
+        "product" => "bcx",
+        "id" => 88_888_888,
+        "name" => "Wayne Enterprises, Ltd.",
+        "href" => "https://basecamp.com/88888888/api/v1",
+        "app_href" => "https://basecamp.com/88888888"
+      },
+      %{
+        "product" => "campfire",
+        "id" => 44_444_444,
+        "name" => "Acme Shipping Co.",
+        "href" => "https://acme4444444.campfirenow.com",
+        "app_href" => "https://acme4444444.campfirenow.com"
+      }
+    ]
   }
   @user %{
+    "basecamp_accounts" => @user_response["accounts"],
     "email" => "jason@basecamp.com",
+    "family_name" => "Fried",
+    "given_name" => "Jason",
     "name" => "Jason Fried",
-    "first_name" => "Jason",
-    "last_name" => "Fried",
-    "accounts" => @accounts_response,
-    "uid" => 9_999_999
+    "sub" => 9_999_999
   }
 
   test "authorize_url/2", %{config: config} do

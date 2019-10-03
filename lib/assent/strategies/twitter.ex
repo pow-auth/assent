@@ -11,9 +11,7 @@ defmodule Assent.Strategy.Twitter do
   """
   use Assent.Strategy.OAuth.Base
 
-  alias Assent.Config
-
-  @spec default_config(Config.t()) :: Config.t()
+  @impl true
   def default_config(_config) do
     [
       site: "https://api.twitter.com",
@@ -21,17 +19,16 @@ defmodule Assent.Strategy.Twitter do
     ]
   end
 
-  @spec normalize(Config.t(), map()) :: {:ok, map()}
+  @impl true
   def normalize(_config, user) do
     {:ok, %{
-      "uid"         => user["id"],
-      "nickname"    => user["screen_name"],
-      "email"       => user["email"],
-      "location"    => user["location"],
-      "name"        => user["name"],
-      "image"       => user["profile_image_url_https"],
-      "description" => user["description"],
-      "urls"        => %{"Website" => user["url"],
-                        "Twitter" => "https://twitter.com/#{user["screen_name"]}"}}}
+      "sub"                => user["id"],
+      "name"               => user["name"],
+      "preferred_username" => user["screen_name"],
+      "profile"            => "https://twitter.com/#{user["screen_name"]}",
+      "picture"            => user["profile_image_url_https"],
+      "website"            => user["url"],
+      "email"              => user["email"]
+    }}
   end
 end

@@ -3,25 +3,24 @@ defmodule Assent.Strategy.VKTest do
 
   alias Assent.Strategy.VK
 
+  # From https://vk.com/dev/first_guide
   @users_response [
     %{
       "id" => 210_700_286,
       "first_name" => "Lindsay",
-      "last_name" => "Stirling",
-      "screen_name" => "lindseystirling",
-      "photo_200" => "https://pp.userapi.com/c840637/v840637830/2d20e/wMuAZn-RFak.jpg",
-      "verified" => 1
+      "last_name" => "Stirling"
     }
   ]
+  @token_response %{
+    "access_token" => "access_token",
+    "id" => 66_748,
+    "email" => "lindsay.stirling@example.com"
+  }
   @user %{
-    "email" => "lindsay.stirling@example.com",
-    "first_name" => "Lindsay",
-    "last_name" => "Stirling",
-    "name" => "Lindsay Stirling",
-    "nickname" => "lindseystirling",
-    "uid" => "210700286",
-    "image" => "https://pp.userapi.com/c840637/v840637830/2d20e/wMuAZn-RFak.jpg",
-    "verified" => true
+    "given_name" => "Lindsay",
+    "family_name" => "Stirling",
+    "sub" => 210_700_286,
+    "email" => "lindsay.stirling@example.com"
   }
 
   test "authorize_url/2", %{config: config} do
@@ -37,15 +36,13 @@ defmodule Assent.Strategy.VKTest do
     end
 
     test "normalizes data", %{config: config, callback_params: params, bypass: bypass} do
-      expect_oauth2_access_token_request(bypass, [uri: "/access_token", params: %{"access_token" => "access_token", "email" => "lindsay.stirling@example.com"}], fn _conn, params ->
-        assert params["client_secret"] == config[:client_secret]
-      end)
+      expect_oauth2_access_token_request(bypass, uri: "/access_token", params: @token_response)
 
       expect_oauth2_user_request(bypass, %{"response" => @users_response}, [uri: "/method/users.get"], fn conn ->
         conn = Plug.Conn.fetch_query_params(conn)
 
         assert conn.params["access_token"] == "access_token"
-        assert conn.params["fields"] == "uid,first_name,last_name,photo_200,screen_name,verified"
+        assert conn.params["fields"] == "uid,first_name,last_name,photo_200,screen_name"
         assert conn.params["v"] == "5.69"
         assert conn.params["access_token"] == "access_token"
       end)

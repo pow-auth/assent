@@ -4,13 +4,6 @@ defmodule Assent.StrategyTest do
 
   alias Assent.Strategy
 
-  test "prune/1" do
-    map      = %{a: :ok, b: nil, c: "", d: %{a: :ok, b: nil}}
-    expected = %{a: :ok, c: "", d: %{a: :ok}}
-
-    assert Strategy.prune(map) == expected
-  end
-
   test "decode_response/1" do
     expected = %{"a" => "1", "b" => "2"}
 
@@ -89,5 +82,20 @@ defmodule Assent.StrategyTest do
     assert Strategy.verify_jwt(@token, @secret, jwt_adapter: CustomJWTAdapter) == :verified
 
     assert Strategy.verify_jwt(@token, @secret, json_library: CustomJSONLibrary) == {:ok, :decoded}
+  end
+
+  test "normalize_userinfo/2" do
+    user  = %{"email" => "foo@example.com", "name" => nil, "nickname" => "foo"}
+    extra = %{"a" => "1"}
+    expected = %{"email" => "foo@example.com", "nickname" => "foo", "a" => "1"}
+
+    assert Strategy.normalize_userinfo(user, extra) == {:ok, expected}
+  end
+
+  test "prune/1" do
+    map      = %{a: :ok, b: nil, c: "", d: %{a: :ok, b: nil}}
+    expected = %{a: :ok, c: "", d: %{a: :ok}}
+
+    assert Strategy.prune(map) == expected
   end
 end

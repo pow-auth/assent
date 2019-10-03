@@ -96,6 +96,7 @@ defmodule Assent.JWTAdapter.AssentJWT do
   end
 
   defp verify_message(_message, _signature, "none", _secret), do: false
+  defp verify_message(_message, _signature, _alg, nil), do: false
   defp verify_message(message, signature, "HS" <> _rest = alg, secret) do
     case sign_message(message, alg, secret) do
       {:ok, signature_2} -> constant_time_compare(signature_2, signature)

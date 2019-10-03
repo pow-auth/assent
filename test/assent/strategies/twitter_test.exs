@@ -3,98 +3,125 @@ defmodule Assent.Strategy.TwitterTest do
 
   alias Assent.Strategy.Twitter
 
+  # From ttps://developer.twitter.com/en/docs/accounts-and-users/manage-account-settings/api-reference/get-account-verify_credentials
   @user_response %{
-    email: nil,
-    contributors_enabled: true,
-    created_at: "Sat May 09 17:58:22 +0000 2009",
-    default_profile: false,
-    default_profile_image: false,
-    description: "I taught your phone that thing you like.  The Mobile Partner Engineer @Twitter. ",
-    favourites_count: 588,
-    follow_request_sent: nil,
-    followers_count: 10_625,
-    following: nil,
-    friends_count: 1181,
-    geo_enabled: true,
-    id: 38_895_958,
-    id_str: "38895958",
-    is_translator: false,
-    lang: "en",
-    listed_count: 190,
-    location: "San Francisco",
-    name: "Sean Cook",
-    notifications: nil,
-    profile_background_color: "1A1B1F",
-    profile_background_image_url: "http://a0.twimg.com/profile_background_images/495742332/purty_wood.png",
-    profile_background_image_url_https: "https://si0.twimg.com/profile_background_images/495742332/purty_wood.png",
-    profile_background_tile: true,
-    profile_image_url: "http://a0.twimg.com/profile_images/1751506047/dead_sexy_normal.JPG",
-    profile_image_url_https: "https://si0.twimg.com/profile_images/1751506047/dead_sexy_normal.JPG",
-    profile_link_color: "2FC2EF",
-    profile_sidebar_border_color: "181A1E",
-    profile_sidebar_fill_color: "252429",
-    profile_text_color: "666666",
-    profile_use_background_image: true,
-    protected: false,
-    screen_name: "theSeanCook",
-    show_all_inline_media: true,
-    status: %{
-      contributors: nil,
-      coordinates: %{
-        coordinates: [
-          -122.45037293,
-          37.76484123
-        ],
-        type: "Point"
-      },
-      created_at: "Tue Aug 28 05:44:24 +0000 2012",
-      favorited: false,
-      geo: %{
-        coordinates: [
-          37.76484123,
-          -122.45037293
-        ],
-        type: "Point"
-      },
-      id: 240_323_931_419_062_272,
-      id_str: "240323931419062272",
-      in_reply_to_screen_name: "messl",
-      in_reply_to_status_id: 240_316_959_173_009_410,
-      in_reply_to_status_id_str: "240316959173009410",
-      in_reply_to_user_id: 18_707_866,
-      in_reply_to_user_id_str: "18707866",
-      place: %{
-        attributes: %{},
-        bounding_box: %{
-          coordinates: [
-            [
-              [-122.45778216, 37.75932999],
-              [-122.44248216, 37.75932999],
-              [-122.44248216, 37.76752899],
-              [-122.45778216, 37.76752899]
+    "id" => 2_244_994_945,
+    "id_str" => "2244994945",
+    "name" => "Twitter Dev",
+    "screen_name" => "TwitterDev",
+    "location" => "Internet",
+    "description" => "Your official source for Twitter Platform news, updates & events. Need technical help? Visit https://t.co/mGHnxZU8c1 ⌨️ #TapIntoTwitter",
+    "url" => "https://t.co/FGl7VOULyL",
+    "entities" => %{
+      "url" => %{
+        "urls" => [
+          %{
+            "url" => "https://t.co/FGl7VOULyL",
+            "expanded_url" => "https://developer.twitter.com/",
+            "display_url" => "developer.twitter.com",
+            "indices" => [
+              0,
+              23
             ]
-          ],
-          type: "Polygon"
-        },
-        country: "United States",
-        country_code: "US",
-        full_name: "Ashbury Heights, San Francisco",
-        id: "866269c983527d5a",
-        name: "Ashbury Heights",
-        place_type: "neighborhood",
-        url: "http://api.twitter.com/1/geo/id/866269c983527d5a.json"
+          }
+        ]
       },
-      retweet_count: 0,
-      retweeted: false,
-      source: "Twitter for  iPhone",
-      text: "@messl congrats! So happy for all 3 of you.",
-      truncated: false
+      "description" => %{
+        "urls" => [
+          %{
+            "url" => "https://t.co/mGHnxZU8c1",
+            "expanded_url" => "https://twittercommunity.com/",
+            "display_url" => "twittercommunity.com",
+            "indices" => [
+              93,
+              116
+            ]
+          }
+        ]
+      }
     },
-    statuses_count: 2609,
-    time_zone: "Pacific Time (US & Canada)",
-    url: nil,
-    utc_offset: -28_800,
-    verified: false
+    "protected" => false,
+    "followers_count" => 502_017,
+    "friends_count" => 1_472,
+    "listed_count" => 1_513,
+    "created_at" => "Sat Dec 14 04:35:55 +0000 2013",
+    "favourites_count" => 2_203,
+    "utc_offset" => nil,
+    "time_zone" => nil,
+    "geo_enabled" => true,
+    "verified" => true,
+    "statuses_count" => 3_393,
+    "lang" => "en",
+    "status" => %{
+      "created_at" => "Tue May 14 17:54:29 +0000 2019",
+      "id" => 1_128_357_932_238_823_424,
+      "id_str" => "1128357932238823424",
+      "text" => "We’ll release the first Labs endpoints to all eligible developers in the coming weeks. If you want to participate,… https://t.co/8q8sj87D5a",
+      "truncated" => true,
+      "entities" => %{
+        "hashtags" => [],
+        "symbols" => [],
+        "user_mentions" => [],
+        "urls" => [
+          %{
+            "url" => "https://t.co/8q8sj87D5a",
+            "expanded_url" => "https://twitter.com/i/web/status/1128357932238823424",
+            "display_url" => "twitter.com/i/web/status/1…",
+            "indices" => [
+              116,
+              139
+            ]
+          }
+        ]
+      },
+      "source" => "<a href=\"https://mobile.twitter.com\" rel=\"nofollow\">Twitter Web App</a>",
+      "in_reply_to_status_id" => 1_128_357_931_026_501_633,
+      "in_reply_to_status_id_str" => "1128357931026501633",
+      "in_reply_to_user_id" => 2_244_994_945,
+      "in_reply_to_user_id_str" => "2244994945",
+      "in_reply_to_screen_name" => "TwitterDev",
+      "geo" => nil,
+      "coordinates" => nil,
+      "place" => nil,
+      "contributors" => nil,
+      "is_quote_status" => false,
+      "retweet_count" => 12,
+      "favorite_count" => 37,
+      "favorited" => false,
+      "retweeted" => false,
+      "possibly_sensitive" => false,
+      "lang" => "en"
+    },
+    "contributors_enabled" => false,
+    "is_translator" => false,
+    "is_translation_enabled" => nil,
+    "profile_background_color" => "null",
+    "profile_background_image_url" => "null",
+    "profile_background_image_url_https" => "null",
+    "profile_background_tile" => nil,
+    "profile_image_url" => "null",
+    "profile_image_url_https" => "https://pbs.twimg.com/profile_images/880136122604507136/xHrnqf1T_normal.jpg",
+    "profile_banner_url" => "https://pbs.twimg.com/profile_banners/2244994945/1498675817",
+    "profile_link_color" => "null",
+    "profile_sidebar_border_color" => "null",
+    "profile_sidebar_fill_color" => "null",
+    "profile_text_color" => "null",
+    "profile_use_background_image" => nil,
+    "has_extended_profile" => nil,
+    "default_profile" => false,
+    "default_profile_image" => false,
+    "following" => false,
+    "follow_request_sent" => false,
+    "notifications" => false,
+    "translator_type" => "regular"
+  }
+  @user %{
+    "name" => "Twitter Dev",
+    "picture" => "https://pbs.twimg.com/profile_images/880136122604507136/xHrnqf1T_normal.jpg",
+    "preferred_username" => "TwitterDev",
+    "profile" => "https://twitter.com/TwitterDev",
+    "sub" => 2_244_994_945,
+    "website" => "https://t.co/FGl7VOULyL"
   }
 
   test "authorize_url/2", %{config: config, bypass: bypass} do
@@ -110,15 +137,6 @@ defmodule Assent.Strategy.TwitterTest do
     expect_oauth_user_request(bypass, @user_response, uri: "/1.1/account/verify_credentials.json")
 
     assert {:ok, %{user: user}} = Twitter.callback(config, params)
-    assert user == %{
-      "description" =>
-        "I taught your phone that thing you like.  The Mobile Partner Engineer @Twitter. ",
-      "image" => "https://si0.twimg.com/profile_images/1751506047/dead_sexy_normal.JPG",
-      "location" => "San Francisco",
-      "name" => "Sean Cook",
-      "nickname" => "theSeanCook",
-      "uid" => 38_895_958,
-      "urls" => %{"Twitter" => "https://twitter.com/theSeanCook"}
-    }
+    assert user == @user
   end
 end

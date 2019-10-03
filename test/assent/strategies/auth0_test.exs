@@ -3,26 +3,32 @@ defmodule Assent.Strategy.Auth0Test do
 
   alias Assent.{Config.MissingKeyError, Strategy.Auth0}
 
+  # From https://auth0.com/docs/api/authentication#user-profile
   @user_response %{
-    "sub" => 9_999_999,
-    "given_name" => "Jason",
-    "family_name" => "Fried",
-    "name" => "Jason Fried",
-    "preferred_username" => "jfried",
-    "email" => "jason@auth0.com",
-    "picture" => "...",
-    "email_verified" => true
+    "sub" => "248289761001",
+    "name" => "Jane Josephine Doe",
+    "given_name" => "Jane",
+    "family_name" => "Doe",
+    "middle_name" => "Josephine",
+    "nickname" => "JJ",
+    "preferred_username" => "j.doe",
+    "profile" => "http://exampleco.com/janedoe",
+    "picture" => "http://exampleco.com/janedoe/me.jpg",
+    "website" => "http://exampleco.com",
+    "email" => "janedoe@exampleco.com",
+    "email_verified" => true,
+    "gender" => "female",
+    "birthdate" => "1972-03-31",
+    "zoneinfo" => "America/Los_Angeles",
+    "locale" => "en-US",
+    "phone_number" => "+1 (111) 222-3434",
+    "phone_number_verified" => false,
+    "address" => %{
+      "country" => "us"
+    },
+    "updated_at" => "1556845729"
   }
-  @user %{
-    "uid" => 9_999_999,
-    "nickname" => "jfried",
-    "email" => "jason@auth0.com",
-    "first_name" => "Jason",
-    "last_name" => "Fried",
-    "name" => "Jason Fried",
-    "image" => "...",
-    "verified" => true
-  }
+  @user @user_response
 
   describe "authorize_url/2" do
     test "requires domain or site configuration", %{config: config} do

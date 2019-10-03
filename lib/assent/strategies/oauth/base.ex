@@ -7,6 +7,7 @@ defmodule Assent.Strategy.OAuth.Base do
       defmodule MyApp.MyOAuthStratey do
         use Assent.Strategy.OAuth
 
+        @impl true
         def default_config(_config) do
           [
             site: "https://api.example.com",
@@ -18,9 +19,10 @@ defmodule Assent.Strategy.OAuth.Base do
           ]
         end
 
+        @impl true
         def normalize(_config, user) do
           {:ok, %{
-            "uid"   => user["id"],
+            "sub"   => user["id"],
             "name"  => user["name"],
             "email" => user["email"]
           }}
@@ -31,7 +33,7 @@ defmodule Assent.Strategy.OAuth.Base do
   alias Assent.Strategy.OAuth
 
   @callback default_config(Keyword.t()) :: Keyword.t()
-  @callback normalize(Keyword.t(), map()) :: {:ok, map()} | {:error, term()}
+  @callback normalize(Keyword.t(), map()) :: {:ok, map()} | {:ok, map(), map()} | {:error, term()}
   @callback get_user(Keyword.t(), map()) :: {:ok, map()} | {:error, term()}
 
   @doc false
@@ -65,16 +67,8 @@ defmodule Assent.Strategy.OAuth.Base do
 
     config
     |> OAuth.callback(params, strategy)
-    |> normalize(config, strategy)
+    |> Helpers.__normalize__(config, strategy)
   end
-
-  defp normalize({:ok, %{user: user} = results}, config, strategy) do
-    case strategy.normalize(config, user) do
-      {:ok, user}     -> {:ok, %{results | user: Helpers.prune(user)}}
-      {:error, error} -> normalize({:error, error}, config, strategy)
-    end
-  end
-  defp normalize({:error, error}, _config, _strategy), do: {:error, error}
 
   defp set_config(config, strategy) do
     config

@@ -3,19 +3,23 @@ defmodule Assent.Strategy.DiscordTest do
 
   alias Assent.Strategy.Discord
 
+  # From https://discordapp.com/developers/docs/resources/user#user-object-example-user
   @user_response %{
     "id" => "80351110224678912",
     "username" => "Nelly",
     "discriminator" => "1337",
     "avatar" => "8342729096ea3675442027381ff50dfe",
     "verified" => true,
-    "email" => "nelly@discordapp.com"
+    "email" => "nelly@discordapp.com",
+    "flags" => 64,
+    "premium_type" => 1
   }
   @user %{
     "email" => "nelly@discordapp.com",
-    "name" => "Nelly",
-    "uid" => "80351110224678912",
-    "image" => "https://cdn.discordapp.com/avatars/80351110224678912/8342729096ea3675442027381ff50dfe"
+    "email_verified" => true,
+    "picture" => "https://cdn.discordapp.com/avatars/80351110224678912/8342729096ea3675442027381ff50dfe",
+    "preferred_username" => "Nelly",
+    "sub" => "80351110224678912"
   }
 
   test "authorize_url/2", %{config: config} do

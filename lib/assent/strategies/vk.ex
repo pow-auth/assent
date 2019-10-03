@@ -19,10 +19,10 @@ defmodule Assent.Strategy.VK do
 
   alias Assent.{Config, Strategy.OAuth2}
 
-  @profile_fields ["uid", "first_name", "last_name", "photo_200", "screen_name", "verified"]
+  @profile_fields ["uid", "first_name", "last_name", "photo_200", "screen_name"]
   @url_params     [fields: Enum.join(@profile_fields, ","), v: "5.69", https: "1"]
 
-  @spec default_config(Config.t()) :: Config.t()
+  @impl true
   def default_config(config) do
     params          = Config.get(config, :user_url_params, [])
     user_url_params = Config.merge(@url_params, params)
@@ -38,20 +38,18 @@ defmodule Assent.Strategy.VK do
     ]
   end
 
-  @spec normalize(Config.t(), map()) :: {:ok, map()}
+  @impl true
   def normalize(_config, user) do
     {:ok, %{
-      "uid"        => to_string(user["id"]),
-      "nickname"   => user["screen_name"],
-      "first_name" => user["first_name"],
-      "last_name"  => user["last_name"],
-      "name"       => Enum.join([user["first_name"], user["last_name"]], " "),
-      "email"      => user["email"],
-      "image"      => user["photo_200"],
-      "verified"   => user["verified"] > 0}}
+      "sub"                => user["id"],
+      "given_name"         => user["first_name"],
+      "family_name"        => user["last_name"],
+      "picture"            => user["photo_200"],
+      "email"              => user["email"]
+    }}
   end
 
-  @spec get_user(Config.t(), map()) :: {:ok, map()} | {:error, term()}
+  @impl true
   def get_user(config, token) do
     params =
       config
@@ -64,7 +62,10 @@ defmodule Assent.Strategy.VK do
   end
 
   defp handle_user_response({:ok, %{"response" => [user]}}, token) do
-    user  = Map.put_new(user, "email", get_email(token))
+    user =
+      user
+      |> Map.put_new("id", token["user_id"])
+      |> Map.put_new("email", token["email"])
 
     {:ok, user}
   end
@@ -72,7 +73,4 @@ defmodule Assent.Strategy.VK do
     do: {:error, %Assent.RequestError{message: "Retrieved invalid response: #{inspect user}"}}
   defp handle_user_response({:error, error}, _token),
     do: {:error, error}
-
-  defp get_email(%{"email" => email}), do: email
-  defp get_email(_any), do: nil
 end
