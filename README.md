@@ -114,6 +114,7 @@ Here's an example of an OAuth 2.0 implementation using `Assent.Strategy.OAuth2.B
 defmodule TestProvider do
   use Assent.Strategy.OAuth2.Base
 
+  @impl true
   def default_config(_config) do
     [
       site: "http://localhost:4000/",
@@ -124,15 +125,18 @@ defmodule TestProvider do
     ]
   end
 
+  @impl true
   def normalize(_config, user) do
-    %{
-      "uid"   => user["sub"],
+    {:ok, %{
+      "sub"   => user["sub"],
       "name"  => user["name"],
       "email" => user["email"]
-    }
+    }}
   end
 end
 ```
+
+The normalized user map should conform to the [OpenID Connect Core 1.0 standard claims spec](https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.5.1).
 
 You can also use `Assent.Strategy`:
 

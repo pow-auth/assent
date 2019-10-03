@@ -11,9 +11,7 @@ defmodule Assent.Strategy.Instagram do
   """
   use Assent.Strategy.OAuth2.Base
 
-  alias Assent.Config
-
-  @spec default_config(Config.t()) :: Keyword.t()
+  @impl true
   def default_config(_config) do
     [
       site: "https://api.instagram.com",
@@ -22,16 +20,17 @@ defmodule Assent.Strategy.Instagram do
     ]
   end
 
-  @spec normalize(Config.t(), map()) :: {:ok, map()}
+  @impl true
   def normalize(_config, user) do
     {:ok, %{
-      "uid"      => user["id"],
-      "name"     => user["full_name"],
-      "image"    => user["profile_picture"],
-      "nickname" => user["username"]}}
+      "sub"                => user["id"],
+      "name"               => user["full_name"],
+      "preferred_username" => user["username"],
+      "picture"            => user["profile_picture"]
+    }}
   end
 
-  @spec get_user(Config.t(), map()) :: {:ok, map()}
+  @impl true
   def get_user(_config, token) do
     {:ok, token["user"]}
   end

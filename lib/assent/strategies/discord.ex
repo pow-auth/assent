@@ -11,9 +11,7 @@ defmodule Assent.Strategy.Discord do
   """
   use Assent.Strategy.OAuth2.Base
 
-  alias Assent.Config
-
-  @spec default_config(Config.t()) :: Config.t()
+  @impl true
   def default_config(_config) do
     [
       site: "https://discordapp.com/api",
@@ -25,15 +23,18 @@ defmodule Assent.Strategy.Discord do
     ]
   end
 
-  @spec normalize(Config.t(), map()) :: {:ok, map()}
+  @impl true
   def normalize(_config, user) do
     {:ok, %{
-      "uid"   => user["id"],
-      "name"  => user["username"],
-      "email" => verified_email(user),
-      "image" => "https://cdn.discordapp.com/avatars/#{user["id"]}/#{user["avatar"]}"}}
+      "sub"                => user["id"],
+      "preferred_username" => user["username"],
+      "email"              => user["email"],
+      "email_verified"     => user["verified"],
+      "picture"            => picture_url(user),
+    }}
   end
 
-  defp verified_email(%{"verified" => true} = user), do: user["email"]
-  defp verified_email(_), do: nil
+  defp picture_url(user) do
+    "https://cdn.discordapp.com/avatars/#{user["id"]}/#{user["avatar"]}"
+  end
 end

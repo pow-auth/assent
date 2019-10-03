@@ -3,6 +3,7 @@ defmodule Assent.Strategy.InstagramTest do
 
   alias Assent.Strategy.Instagram
 
+  # From https://www.instagram.com/developer/authentication/
   @user_response %{
     "id" => "1574083",
     "username" => "snoopdogg",
@@ -10,10 +11,10 @@ defmodule Assent.Strategy.InstagramTest do
     "profile_picture" => "..."
   }
   @user %{
-    "image" => "...",
     "name" => "Snoop Dogg",
-    "nickname" => "snoopdogg",
-    "uid" => "1574083"
+    "picture" => "...",
+    "preferred_username" => "snoopdogg",
+    "sub" => "1574083"
   }
 
   test "authorize_url/2", %{config: config} do

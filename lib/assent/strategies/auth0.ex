@@ -14,7 +14,7 @@ defmodule Assent.Strategy.Auth0 do
 
   alias Assent.Config
 
-  @spec default_config(Config.t()) :: Keyword.t()
+  @impl true
   def default_config(config) do
     append_domain_config(config, [
       authorize_url: "/authorize",
@@ -35,17 +35,6 @@ defmodule Assent.Strategy.Auth0 do
   defp prepend_scheme("http" <> _ = domain), do: domain
   defp prepend_scheme(domain), do: "https://" <> domain
 
-  @spec normalize(Config.t(), map()) :: {:ok, map()} | {:error, term()}
-  def normalize(_config, user) do
-    {:ok, %{
-      "uid"        => user["sub"],
-      "nickname"   => user["preferred_username"],
-      "email"      => user["email"],
-      "first_name" => user["given_name"],
-      "last_name"  => user["family_name"],
-      "name"       => user["name"],
-      "image"      => user["picture"],
-      "verified"   => user["email_verified"]
-    }}
-  end
+  @impl true
+  def normalize(_config, user), do: {:ok, user}
 end

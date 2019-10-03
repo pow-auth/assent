@@ -19,9 +19,9 @@ defmodule Assent.Strategy.Facebook do
 
   alias Assent.{Config, Strategy.OAuth2}
 
-  @api_version "2.12"
+  @api_version "4.0"
 
-  @spec default_config(Config.t()) :: Config.t()
+  @impl true
   def default_config(_config) do
     [
       site: "https://graph.facebook.com/v#{@api_version}",
@@ -29,33 +29,32 @@ defmodule Assent.Strategy.Facebook do
       token_url: "/oauth/access_token",
       user_url: "/me",
       authorization_params: [scope: "email"],
-      user_url_request_fields: "name,email",
+      user_url_request_fields: "email,name,first_name,last_name,middle_name,link",
       auth_method: :client_secret_post
     ]
   end
 
-  @spec normalize(Config.t(), map()) :: {:ok, map()}
+  @impl true
   def normalize(config, user) do
     with {:ok, site} <- Config.fetch(config, :site) do
       {:ok, %{
-        "uid"         => user["id"],
-        "nickname"    => user["username"],
-        "email"       => user["email"],
-        "name"        => user["name"],
-        "first_name"  => user["first_name"],
-        "last_name"   => user["last_name"],
-        "location"    => (user["location"] || %{})["name"],
-        "image"       => "#{site}/#{user["id"]}/picture",
-        "description" => user["bio"],
-        "urls"        => %{
-          "Facebook"  => user["link"],
-          "Website"   => user["website"]},
-        "verified"    => user["verified"]
+        "sub"                => user["id"],
+        "name"               => user["name"],
+        "given_name"         => user["first_name"],
+        "middle_name"        => user["middle_name"],
+        "family_name"        => user["last_name"],
+        "profile"            => user["link"],
+        "picture"            => picture_url(site, user),
+        "email"              => user["email"]
       }}
-        end
+    end
   end
 
-  @spec get_user(Config.t(), map()) :: {:ok, map()} | {:error, term()}
+  defp picture_url(site, user) do
+    "#{site}/#{user["id"]}/picture"
+  end
+
+  @impl true
   def get_user(config, access_token) do
     with {:ok, fields} <- Config.fetch(config, :user_url_request_fields),
          {:ok, client_secret} <- Config.fetch(config, :client_secret) do

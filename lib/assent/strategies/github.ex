@@ -19,7 +19,7 @@ defmodule Assent.Strategy.Github do
 
   alias Assent.{Config, Strategy.OAuth2}
 
-  @spec default_config(Config.t()) :: Config.t()
+  @impl true
   def default_config(_config) do
     [
       site: "https://api.github.com",
@@ -32,20 +32,19 @@ defmodule Assent.Strategy.Github do
     ]
   end
 
-  @spec normalize(Config.t(), map()) :: {:ok, map()} | {:error, term()}
+  @impl true
   def normalize(_config, user) do
     {:ok, %{
-      "uid"      => user["id"],
-      "nickname" => user["login"],
-      "email"    => user["email"],
-      "name"     => user["name"],
-      "image"    => user["avatar_url"],
-      "urls"     => %{
-        "GitHub" => user["html_url"],
-        "Blog"   => user["blog"]}}}
+      "sub"                => user["id"],
+      "name"               => user["name"],
+      "preferred_username" => user["login"],
+      "profile"            => user["html_url"],
+      "picture"            => user["avatar_url"],
+      "email"              => user["email"]
+    }}
   end
 
-  @spec get_user(Config.t(), map()) :: {:ok, map()} | {:error, term()}
+  @impl true
   def get_user(config, access_token) do
     case Config.fetch(config, :user_emails_url) do
       {:ok, user_emails_url} -> get_user(config, access_token, user_emails_url)

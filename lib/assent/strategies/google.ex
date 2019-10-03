@@ -2,6 +2,9 @@ defmodule Assent.Strategy.Google do
   @moduledoc """
   Google OAuth 2.0 strategy.
 
+  `google_hd` ("Hosted Domain") field is included in user parameters and can be
+  used to limit access to users belonging to a particular hosted domain.
+
   ## Usage
 
       config = [
@@ -11,33 +14,32 @@ defmodule Assent.Strategy.Google do
   """
   use Assent.Strategy.OAuth2.Base
 
-  alias Assent.Config
-
-  @spec default_config(Config.t()) :: Keyword.t()
+  @impl true
   def default_config(_config) do
     [
       site: "https://www.googleapis.com",
       authorize_url: "https://accounts.google.com/o/oauth2/v2/auth",
       token_url: "/oauth2/v4/token",
-      user_url: "/oauth2/v2/userinfo",
+      user_url: "/oauth2/v3/userinfo",
       authorization_params: [scope: "https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile"],
       auth_method: :client_secret_post
     ]
   end
 
-  @spec normalize(Config.t(), map()) :: {:ok, map()}
+  @impl true
   def normalize(_config, user) do
     {:ok, %{
-      "uid"        => user["id"],
-      "name"       => user["name"],
-      "email"      => verified_email(user),
-      "first_name" => user["given_name"],
-      "last_name"  => user["family_name"],
-      "image"      => user["picture"],
-      "domain"     => user["hd"],
-      "urls"       => %{"Google" => user["link"]}}}
+      "sub"            => user["sub"],
+      "name"           => user["name"],
+      "given_name"     => user["given_name"],
+      "family_name"    => user["family_name"],
+      "picture"        => user["picture"],
+      "email"          => user["email"],
+      "email_verified" => user["verified_email"],
+      "locale"         => user["locale"]
+    },
+    %{
+      "google_hd" => user["hd"]
+    }}
   end
-
-  defp verified_email(%{"verified_email" => true} = user), do: user["email"]
-  defp verified_email(_), do: nil
 end

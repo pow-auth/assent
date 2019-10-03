@@ -56,7 +56,7 @@ defmodule Assent.Strategy.AzureOAuth2 do
 
   alias Assent.Config
 
-  @spec default_config(Config.t()) :: Config.t()
+  @impl true
   def default_config(config) do
     tenant_id = Config.get(config, :tenant_id, "common")
     resource  = Config.get(config, :resource, "https://graph.microsoft.com/")
@@ -70,17 +70,10 @@ defmodule Assent.Strategy.AzureOAuth2 do
     ]
   end
 
-  @spec normalize(Config.t(), map()) :: {:ok, map()}
-  def normalize(_config, user) do
-    {:ok, %{
-      "uid"        => user["sub"],
-      "name"       => "#{user["given_name"]} #{user["family_name"]}",
-      "email"      => user["email"] || user["upn"],
-      "first_name" => user["given_name"],
-      "last_name"  => user["family_name"]}}
-  end
+  @impl true
+  def normalize(_config, user), do: {:ok, user}
 
-  @spec get_user(Config.t(), map()) :: {:ok, map()} | {:error, term()}
+  @impl true
   def get_user(config, token) do
     case Helpers.verify_jwt(token["id_token"], nil, config) do
       {:ok, jwt}      -> {:ok, jwt.claims}

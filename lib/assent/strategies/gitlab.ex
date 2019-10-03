@@ -11,9 +11,7 @@ defmodule Assent.Strategy.Gitlab do
   """
   use Assent.Strategy.OAuth2.Base
 
-  alias Assent.Config
-
-  @spec default_config(Config.t()) :: Config.t()
+  @impl true
   def default_config(_config) do
     [
       site: "https://gitlab.com",
@@ -25,19 +23,14 @@ defmodule Assent.Strategy.Gitlab do
     ]
   end
 
-  @spec normalize(Config.t(), map()) :: {:ok, map()}
+  @impl true
   def normalize(_config, user) do
     {:ok, %{
-      "uid"        => user["id"],
-      "name"       => user["name"],
-      "nickname"   => user["username"],
-      "email"      => user["email"],
-      "location"   => user["location"],
-      "image"      => user["avatar_url"],
-      "urls"       => %{
-        "web_url"     => user["web_url"],
-        "website_url" => user["website_url"]
-      }
+      "sub"                => user["id"],
+      "name"               => user["name"],
+      "preferred_username" => user["username"],
+      "picture"            => user["avatar_url"],
+      "email"              => user["email"]
     }}
   end
 end

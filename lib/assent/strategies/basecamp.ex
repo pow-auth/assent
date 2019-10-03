@@ -2,6 +2,9 @@ defmodule Assent.Strategy.Basecamp do
   @moduledoc """
   Basecamp OAuth 2.0 strategy.
 
+  `basecamp_accounts` field is included in user parameters and can be
+  used to limit access to users belonging to a particular account.
+
   ## Usage
 
       config = [
@@ -11,9 +14,7 @@ defmodule Assent.Strategy.Basecamp do
   """
   use Assent.Strategy.OAuth2.Base
 
-  alias Assent.Config
-
-  @spec default_config(Config.t()) :: Config.t()
+  @impl true
   def default_config(_config) do
     [
       site: "https://launchpad.37signals.com",
@@ -25,15 +26,17 @@ defmodule Assent.Strategy.Basecamp do
     ]
   end
 
-  @spec normalize(Config.t(), map()) :: {:ok, map()}
+  @impl true
   def normalize(_config, user) do
     {:ok, %{
-      "uid"        => user["identity"]["id"],
-      "name"       => "#{user["identity"]["first_name"]} #{user["identity"]["last_name"]}",
-      "first_name" => user["identity"]["first_name"],
-      "last_name"  => user["identity"]["last_name"],
-      "email"      => user["identity"]["email_address"],
-      "accounts"   => user["accounts"]
+      "sub"         => user["identity"]["id"],
+      "name"        => "#{user["identity"]["first_name"]} #{user["identity"]["last_name"]}",
+      "given_name"  => user["identity"]["first_name"],
+      "family_name" => user["identity"]["last_name"],
+      "email"       => user["identity"]["email_address"]
+    },
+    %{
+      "basecamp_accounts" => user["accounts"]
     }}
   end
 end

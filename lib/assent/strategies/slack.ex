@@ -33,34 +33,35 @@ defmodule Assent.Strategy.Slack do
 
   alias Assent.Config
 
-  @spec default_config(Config.t()) :: Config.t()
+  @impl true
   def default_config(config) do
     [
       site: "https://slack.com",
       token_url: "/api/oauth.access",
       user_url: "/api/users.identity",
-      team_url: "/api/team.info",
       authorization_params: authorization_params(config),
       auth_method: :client_secret_post
     ]
   end
 
   defp authorization_params(config) do
-    default = [scope: "identity.basic identity.email identity.avatar"]
+    default = [scope: "identity.basic identity.email identity.avatar identity.team"]
     case Config.fetch(config, :team_id) do
       {:ok, team_id} -> Config.put(default, :team, team_id)
       _error         -> default
     end
   end
 
-  @spec normalize(Config.t(), map()) :: {:ok, map()}
+  @impl true
   def normalize(_config, identity) do
     {:ok, %{
-      "uid"       => uid(identity),
-      "name"      => identity["user"]["name"],
-      "email"     => identity["user"]["email"],
-      "image"     => identity["user"]["image_48"],
-      "team_name" => identity["team"]["name"]}}
+      "sub"                => uid(identity),
+      "name"               => identity["user"]["name"],
+      "picture"            => identity["user"]["image_48"],
+      "email"              => identity["user"]["email"]
+    }, %{
+      "slack_team" => identity["team"]
+    }}
   end
 
   defp uid(%{"user" => %{"id" => id}, "team" => %{"id" => team_id}}), do: "#{id}-#{team_id}"

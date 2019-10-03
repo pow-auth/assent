@@ -3,27 +3,27 @@ defmodule Assent.Strategy.GoogleTest do
 
   alias Assent.Strategy.Google
 
+  # From https://www.oauth.com/oauth2-servers/signing-in-with-google/verifying-the-user-info/
   @user_response %{
-    "id" => "1",
-    "email" => "foo@example.com",
-    "verified_email" => true,
-    "name" => "Dan Schultzer",
-    "given_name" => "Dan",
-    "family_name" => "Schultzer",
-    "link" => "https://example.com/profile",
-    "picture" => "https://example.com/images/profile.jpg",
-    "locale" => "en-US",
-    "hd" => "example.com"
-  }
+    "sub" => "110248495921238986420",
+    "name" => "Aaron Parecki",
+    "given_name" => "Aaron",
+    "family_name" => "Parecki",
+    "picture" => "https://lh4.googleusercontent.com/-kw-iMgD_j34/AAAAAAAAAAI/AAAAAAAAAAc/P1YY91tzesU/photo.jpg",
+    "email" => "aaron.parecki@okta.com",
+    "email_verified" => true,
+    "locale" => "en",
+    "hd" => "okta.com"
+   }
   @user  %{
-    "email" => "foo@example.com",
-    "image" => "https://example.com/images/profile.jpg",
-    "name" => "Dan Schultzer",
-    "first_name" => "Dan",
-    "last_name" => "Schultzer",
-    "domain" => "example.com",
-    "uid" => "1",
-    "urls" => %{"Google" => "https://example.com/profile"}
+    "email" => "aaron.parecki@okta.com",
+    "family_name" => "Parecki",
+    "given_name" => "Aaron",
+    "google_hd" => "okta.com",
+    "name" => "Aaron Parecki",
+    "locale" => "en",
+    "picture" => "https://lh4.googleusercontent.com/-kw-iMgD_j34/AAAAAAAAAAI/AAAAAAAAAAc/P1YY91tzesU/photo.jpg",
+    "sub" => "110248495921238986420"
   }
 
   test "authorize_url/2", %{config: config} do
@@ -35,7 +35,7 @@ defmodule Assent.Strategy.GoogleTest do
     expect_oauth2_access_token_request(bypass, [uri: "/oauth2/v4/token"], fn _conn, params ->
       assert params["client_secret"] == config[:client_secret]
     end)
-    expect_oauth2_user_request(bypass, @user_response, uri: "/oauth2/v2/userinfo")
+    expect_oauth2_user_request(bypass, @user_response, uri: "/oauth2/v3/userinfo")
 
     assert {:ok, %{user: user}} = Google.callback(config, params)
     assert user == @user
