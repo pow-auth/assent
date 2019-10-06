@@ -108,7 +108,7 @@ defmodule Assent.Strategy.OIDCTest do
     end
 
     test "with expired id_token", %{config: config, callback_params: params, bypass: bypass} do
-      expect_oidc_access_token_request(bypass, id_token_claims: %{"exp" => DateTime.to_unix(DateTime.utc_now())})
+      expect_oidc_access_token_request(bypass, id_token_claims: %{"exp" => :os.system_time(:second)})
 
       assert OIDC.callback(config, params) == {:error, "The ID Token has expired"}
     end
@@ -116,7 +116,7 @@ defmodule Assent.Strategy.OIDCTest do
     test "with TTL reached for id_token", %{config: config, callback_params: params, bypass: bypass} do
       config = Keyword.put(config, :id_token_ttl_seconds, 60)
 
-      expect_oidc_access_token_request(bypass, id_token_claims: %{"iat" => DateTime.to_unix(DateTime.utc_now()) - 60})
+      expect_oidc_access_token_request(bypass, id_token_claims: %{"iat" => :os.system_time(:second) - 60})
 
       assert OIDC.callback(config, params) == {:error, "The ID Token was issued too long ago"}
     end

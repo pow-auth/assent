@@ -129,8 +129,8 @@ defmodule Assent.Test.OIDCTestCase do
     claims =
       @claims
       |> Map.put("iss", "http://localhost:#{bypass.port}")
-      |> Map.put("exp", DateTime.to_unix(DateTime.utc_now()) + 600)
-      |> Map.put("iat", DateTime.to_unix(DateTime.utc_now()))
+      |> Map.put("exp", :os.system_time(:second) + 600)
+      |> Map.put("iat", :os.system_time(:second))
       |> Map.merge(Keyword.get(opts, :id_token_claims, %{}))
 
     [jwk, jws] = signing_alg(opts)

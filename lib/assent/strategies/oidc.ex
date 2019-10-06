@@ -286,7 +286,7 @@ defmodule Assent.Strategy.OIDC do
   defp validate_verified(%{verified?: false}), do: {:error, "Invalid JWT signature for ID Token"}
 
   defp validate_expiration(%{claims: %{"exp" => exp}}) do
-    now = DateTime.to_unix(DateTime.utc_now())
+    now = :os.system_time(:second)
 
     case exp > now do
       true  -> :ok
@@ -302,7 +302,7 @@ defmodule Assent.Strategy.OIDC do
   end
 
   defp validate_ttl_reached(iat, ttl) do
-    now = DateTime.to_unix(DateTime.utc_now())
+    now = :os.system_time(:second)
 
     case iat + ttl > now do
       true  -> :ok
