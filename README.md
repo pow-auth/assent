@@ -133,12 +133,15 @@ defmodule TestProvider do
       "sub"   => user["sub"],
       "name"  => user["name"],
       "email" => user["email"]
+    },
+    %{
+      "test_provider_bio" => user["bio"]
     }}
   end
 end
 ```
 
-The normalized user map should conform to the [OpenID Connect Core 1.0 Standard Claims spec](https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.5.1).
+The normalized user map should conform to the [OpenID Connect Core 1.0 Standard Claims spec](https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.5.1), and should return either `{:ok, userinfo_claims}` or `{:ok, userinfo_claims, additional}`.
 
 You can also use `Assent.Strategy`:
 
