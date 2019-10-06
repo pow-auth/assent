@@ -1,6 +1,8 @@
 defmodule Assent.JWTAdapter.AssentJWT do
   @moduledoc """
-  JWT adapter module for parsing JWT tokens.
+  JWT adapter module for parsing JSON Web Tokens natively.
+
+  See `Assent.JWTAdapter` for more.
   """
   alias Assent.{Config, JWTAdapter}
 

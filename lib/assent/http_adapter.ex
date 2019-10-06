@@ -1,5 +1,18 @@
 defmodule Assent.HTTPAdapter do
-  @moduledoc false
+  @moduledoc """
+  HTTP adapter helper module
+
+  ## Usage
+
+      defmodule MyApp.MyHTTPAdapter do
+        @behaviour Assent.HTTPAdapter
+
+        @impl true
+        def request(method, url, body, haders, opts) do
+          # ...
+        end
+      end
+  """
 
   defmodule HTTPResponse do
     @moduledoc false
@@ -20,6 +33,12 @@ defmodule Assent.HTTPAdapter do
 
   @callback request(method(), binary(), body(), headers(), Keyword.t()) :: {:ok, map()} | {:error, any()}
 
+  @doc """
+  Sets a user agent header
+
+  The header value will be `Assent-VERSION` with VERSION being the `:vsn` of
+  `Assent`.
+  """
   @spec user_agent_header() :: {binary(), binary()}
   def user_agent_header() do
     version = Application.spec(:assent, :vsn) || "0.0.0"

@@ -9,6 +9,8 @@ defmodule Assent.Strategy do
       defmodule MyStrategy do
         @behaviour Assent.Strategy
 
+        alias Assent.Strategy, as: Helpers
+
         def authorize_url(config) do
           # Generate redirect URL
 
@@ -17,6 +19,8 @@ defmodule Assent.Strategy do
 
         def callback(config, params) do
           # Fetch user data
+
+          user = Helpers.normalize_userinfo(userinfo)
 
           {:ok, %{user: user, ...}}
         end

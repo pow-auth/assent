@@ -9,7 +9,9 @@ defmodule Assent.Config do
 
   @type t :: Keyword.t()
 
-  @doc false
+  @doc """
+  Fetches the key value from the configuration.
+  """
   @spec fetch(t(), atom()) :: {:ok, any()} | {:error, %MissingKeyError{}}
   def fetch(config, key) do
     case Keyword.fetch(config, key) do
@@ -18,16 +20,19 @@ defmodule Assent.Config do
     end
   end
 
-  @doc false
   defdelegate get(config, key, default), to: Keyword
 
-  @doc false
   defdelegate put(config, key, value), to: Keyword
 
-  @doc false
   defdelegate merge(config_a, config_b), to: Keyword
 
-  @doc false
+  @doc """
+  Fetches the JSON library in config.
+
+  If not found in provided config, this will attempt to load the json library
+  from global application environment for `:assent` or `:phoenix`. Defaults to
+  `Poison`.
+  """
   @spec json_library(t()) :: module()
   def json_library(config) do
     config

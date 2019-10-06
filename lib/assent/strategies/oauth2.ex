@@ -70,8 +70,10 @@ defmodule Assent.Strategy.OAuth2 do
 
   ## Configuration
 
-    - `:redirect_uri` - The URI that the server redirects the user to after authentication, required
-    - `:authorize_url` - The path or URL for the OAuth2 server to redirect users to, defaults to "/oauth/authorize"
+    - `:redirect_uri` - The URI that the server redirects the user to after
+      authentication, required
+    - `:authorize_url` - The path or URL for the OAuth2 server to redirect
+      users to, defaults to `/oauth/authorize`
     - `:authorization_params` - The authorization parameters, defaults to `[]`
   """
   @spec authorize_url(Config.t()) :: {:ok, %{session_params: %{state: binary()}, url: binary()}} | {:error, term()}
@@ -105,9 +107,11 @@ defmodule Assent.Strategy.OAuth2 do
 
   ## Configuration
 
-    - `:token_url` - The path or URL to fetch the token from, optional, defaults to "/oauth/token"
+    - `:token_url` - The path or URL to fetch the token from, optional,
+      defaults to `/oauth/token`
     - `:user_url` - The path or URL to fetch user data, required
-    - `:session_params` - The session parameters that was returned from `authorize_url/1`, optional
+    - `:session_params` - The session parameters that was returned from
+      `authorize_url/1`, optional
   """
   @spec callback(Config.t(), map(), atom()) :: {:ok, %{user: map(), token: map()}} | {:error, term()}
   def callback(config, params, strategy \\ __MODULE__) do

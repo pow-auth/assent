@@ -6,6 +6,8 @@ defmodule Assent.HTTPAdapter.Httpc do
   `:ssl_verify_fun` libraries exists in your project. You can also override
   the httpc options by updating the configuration to
   `http_adapter: {Assent.HTTPAdapter.Httpc, [...]}`.
+
+  See `Assent.HTTPAdapter` for more.
   """
   alias Assent.{HTTPAdapter, HTTPAdapter.HTTPResponse}
 

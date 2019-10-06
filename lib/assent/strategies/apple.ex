@@ -45,7 +45,7 @@ defmodule Assent.Strategy.Apple do
 
   alias Assent.{Config, JWTAdapter, Strategy.OAuth2.Base}
 
-  @spec default_config(Config.t()) :: Config.t()
+  @impl true
   def default_config(_config) do
     [
       site: "https://appleid.apple.com",
@@ -56,6 +56,7 @@ defmodule Assent.Strategy.Apple do
     ]
   end
 
+  @doc false
   @spec callback(Keyword.t(), map()) :: {:ok, %{user: map()}} | {:error, term()}
   def callback(config, params) do
     with {:ok, client_secret} <- gen_client_secret(config) do
@@ -67,7 +68,7 @@ defmodule Assent.Strategy.Apple do
 
   @jwt_expiration_seconds 600
 
-  def gen_client_secret(config) do
+  defp gen_client_secret(config) do
     timestamp = :os.system_time(:second)
     config    =
       config
@@ -98,10 +99,10 @@ defmodule Assent.Strategy.Apple do
     end
   end
 
-  @spec normalize(Config.t(), map()) :: {:ok, map()}
+  @impl true
   def normalize(_config, user), do: {:ok, user}
 
-  @spec get_user(Config.t(), map()) :: {:ok, map()}
+  @impl true
   def get_user(config, token) do
     with {:ok, jwt} <- Helpers.verify_jwt(token["id_token"], nil, config) do
       {:ok, jwt.claims}

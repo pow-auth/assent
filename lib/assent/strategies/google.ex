@@ -2,8 +2,9 @@ defmodule Assent.Strategy.Google do
   @moduledoc """
   Google OAuth 2.0 strategy.
 
-  `google_hd` ("Hosted Domain") field is included in user parameters and can be
-  used to limit access to users belonging to a particular hosted domain.
+  In the normalized user response a `google_hd` ("Hosted Domain") field is
+  included in user parameters and can be used to limit access to users
+  belonging to a particular hosted domain.
 
   ## Usage
 

@@ -2,8 +2,8 @@ defmodule Assent.Strategy.Basecamp do
   @moduledoc """
   Basecamp OAuth 2.0 strategy.
 
-  `basecamp_accounts` field is included in user parameters and can be
-  used to limit access to users belonging to a particular account.
+  In the normalized user response a `basecamp_accounts` field is included that
+  can be used to limit access to users belonging to a particular account.
 
   ## Usage
 

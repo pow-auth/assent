@@ -4,7 +4,8 @@ defmodule Assent.Strategy.Facebook do
 
   ## Configuration
 
-  - `:user_url_request_fields` - The fields for the resource, defaults to "name,email"
+  - `:user_url_request_fields` - The fields for the resource, defaults to
+    `email,name,first_name,last_name,middle_name,link`
 
   See `Assent.Strategy.OAuth2` for more.
 

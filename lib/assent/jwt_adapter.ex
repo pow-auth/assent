@@ -1,5 +1,23 @@
 defmodule Assent.JWTAdapter do
-  @moduledoc false
+  @moduledoc """
+  JWT adapter helper module
+
+  ## Usage
+
+      defmodule MyApp.MyJWTAdapter do
+        @behaviour Assent.JWTAdapter
+
+        @impl true
+        def sign(claims, alg, secret, opts) do
+          # ...
+        end
+
+        @impl true
+        def verify(token, secret, opts) do
+          # ...
+        end
+      end
+  """
 
   alias Assent.Config
 

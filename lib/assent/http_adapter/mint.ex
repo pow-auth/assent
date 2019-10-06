@@ -4,6 +4,8 @@ defmodule Assent.HTTPAdapter.Mint do
 
   Mint can be configured by updating the configuration to
   `http_adapter: {HTTPAdapter.Mint, [...]}`.
+
+  See `Assent.HTTPAdapter` for more.
   """
   alias Assent.{HTTPAdapter, HTTPAdapter.HTTPResponse}
 

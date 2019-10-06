@@ -191,7 +191,7 @@ config = [
 
 ## JWT Adapter
 
-By default the built-in `Assent.JWTAdapter.AssentJWT` is used for JWT parsing, but you can change it to any third-party library with a custom `Assent.JWTAdapter`. A [JOSE](https://github.com/potatosalad/erlang-jose) adapter is included.
+By default the built-in `Assent.JWTAdapter.AssentJWT` is used for JWT parsing, but you can change it to any third-party library with a custom `Assent.JWTAdapter`. A [JOSE](https://github.com/potatosalad/erlang-jose) adapter `Assent.JWTAdapter.JOSE` is included.
 
 To use JOSE, update `mix.exs`:
 

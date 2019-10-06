@@ -4,7 +4,8 @@ defmodule Assent.Strategy.VK do
 
   ## Configuration
 
-  - `:user_url_params` - Parameters to send along with the user fetch request, optional, defaults to `[]`
+  - `:user_url_params` - Parameters to send along with the user fetch request,
+    optional, defaults to `[]`
 
   See `Assent.Strategy.OAuth2` for more.
 

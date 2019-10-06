@@ -1,6 +1,8 @@
 defmodule Assent.JWTAdapter.JOSE do
   @moduledoc """
-  JWT adapter module for parsing JWT tokens with JOSE.
+  JWT adapter module for parsing JSON Web Tokens with JOSE.
+
+  See `Assent.JWTAdapter` for more.
   """
   alias Assent.JWTAdapter
 
