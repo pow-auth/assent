@@ -58,7 +58,7 @@ defmodule Assent.MixProject do
     [
       maintainers: ["Dan Shultzer"],
       licenses: ["MIT"],
-      links: %{github: "https://github.com/danschultzer/assent"},
+      links: %{github: "https://github.com/pow-auth/assent"},
       files: ~w(lib LICENSE mix.exs README.md)
     ]
   end
