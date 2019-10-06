@@ -39,14 +39,18 @@ defmodule Assent.Strategy.OAuth.Base do
   @doc false
   defmacro __using__(_opts) do
     quote do
+      @behaviour Assent.Strategy
       @behaviour unquote(__MODULE__)
 
       alias Assent.Strategy, as: Helpers
 
+      @impl Assent.Strategy
       def authorize_url(config), do: unquote(__MODULE__).authorize_url(config, __MODULE__)
 
+      @impl Assent.Strategy
       def callback(config, params), do: unquote(__MODULE__).callback(config, params, __MODULE__)
 
+      @impl unquote(__MODULE__)
       def get_user(config, token), do: OAuth.get_user(config, token)
 
       defoverridable unquote(__MODULE__)
