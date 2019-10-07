@@ -40,7 +40,7 @@ defmodule Assent.HTTPAdapter.Mint do
 
   defp await_response({:ok, conn, request_ref}), do: await_response(conn, request_ref)
   defp await_response(conn, request_ref, timeout \\ 5_000, responses \\ []) do
-    start_time = timestamp()
+    start_time = monotonic_timestamp()
 
     receive do
       {:tcp, _, _} = message -> handle_response(conn, request_ref, message, timeout, start_time, responses)
@@ -50,7 +50,7 @@ defmodule Assent.HTTPAdapter.Mint do
     end
   end
 
-  defp timestamp(), do: :os.system_time(:millisecond)
+  defp monotonic_timestamp(), do: :erlang.monotonic_time(:millisecond)
 
   defp handle_response(conn, request_ref, message, timeout, start_time, prev_responses) do
     case Mint.HTTP.stream(conn, message) do
@@ -59,7 +59,7 @@ defmodule Assent.HTTPAdapter.Mint do
           true ->
             {:ok, prev_responses ++ responses}
           false ->
-            new_timeout = max(timeout - (timestamp() - start_time), 0)
+            new_timeout = max(timeout - (monotonic_timestamp() - start_time), 0)
 
             await_response(conn, request_ref, new_timeout, prev_responses ++ responses)
         end
