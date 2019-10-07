@@ -173,7 +173,7 @@ Update `mix.exs`:
 defp deps do
   [
     # ...
-    {:mint, "~> 0.1.0"},
+    {:mint, "~> 0.4.0"},
     {:castore, "~> 0.1.0"} # Required for SSL validation
   ]
 end
