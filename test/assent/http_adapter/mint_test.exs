@@ -21,5 +21,13 @@ defmodule Assent.HTTPAdapter.MintTest do
 
       assert {:error, %TransportError{reason: :econnrefused}} = Mint.request(:get, @unreachable_http_url, nil, [])
     end
+
+    if :crypto.supports()[:curves] do
+      test "handles http/2" do
+        assert {:ok, %HTTPResponse{status: 200}} = Mint.request(:get, "https://http2.golang.org/", nil, [])
+      end
+    else
+      IO.warn("No support curve algorithms, can't test in #{__MODULE__}")
+    end
   end
 end
