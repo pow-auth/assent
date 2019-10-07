@@ -39,20 +39,37 @@ defmodule Assent.HTTPAdapter.Mint do
   defp mint_request({:error, error}, _method, _path, _headers, _body), do: {:error, error}
 
   defp await_response({:ok, conn, request_ref}), do: await_response(conn, request_ref)
-  defp await_response(conn, request_ref, timeout \\ 5_000) do
+  defp await_response(conn, request_ref, timeout \\ 5_000, responses \\ []) do
+    start_time = timestamp()
+
     receive do
-      message -> mint_stream(conn, request_ref, message)
-    after timeout ->
-      {:error, :timeout}
+      {:tcp, _, _} = message -> handle_response(conn, request_ref, message, timeout, start_time, responses)
+      {:ssl, _, _} = message -> handle_response(conn, request_ref, message, timeout, start_time, responses)
+    after
+      timeout -> {:error, :timeout}
     end
   end
 
-  defp mint_stream(conn, _request_ref, message) do
+  defp timestamp(), do: :os.system_time(:millisecond)
+
+  defp handle_response(conn, request_ref, message, timeout, start_time, prev_responses) do
     case Mint.HTTP.stream(conn, message) do
-      {:ok, _conn, responses} -> {:ok, responses}
-      :unknown -> {:error, :unknown}
+      {:ok, conn, responses} ->
+        case completed?(responses) do
+          true ->
+            {:ok, prev_responses ++ responses}
+          false ->
+            new_timeout = max(timeout - (timestamp() - start_time), 0)
+
+            await_response(conn, request_ref, new_timeout, prev_responses ++ responses)
+        end
+      :unknown                -> {:error, :unknown}
     end
   end
+
+  defp completed?([{:done, _request_ref} | _rest]), do: true
+  defp completed?([_resp | responses]), do: completed?(responses)
+  defp completed?([]), do: false
 
   defp format_response({:ok, responses}) do
     [{:status, _, status}, {:headers, _, headers} | responses] = responses
