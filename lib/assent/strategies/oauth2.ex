@@ -206,12 +206,13 @@ defmodule Assent.Strategy.OAuth2 do
     end
   end
 
-  defp get_access_token(config, %{"code" => code, "redirect_uri" => redirect_uri}) do
-    auth_method = Config.get(config, :auth_method, :client_secret_basic)
-    token_url = Config.get(config, :token_url, "/oauth/token")
+  defp get_access_token(config, %{"code" => code}) do
+    auth_method  = Config.get(config, :auth_method, :client_secret_basic)
+    token_url    = Config.get(config, :token_url, "/oauth/token")
 
-    with {:ok, site} <- Config.fetch(config, :site),
-         {:ok, auth_headers, auth_body} <- authentication_params(auth_method, config) do
+    with {:ok, site}                    <- Config.fetch(config, :site),
+         {:ok, auth_headers, auth_body} <- authentication_params(auth_method, config),
+         {:ok, redirect_uri}            <- Config.fetch(config, :redirect_uri) do
       headers = [{"content-type", "application/x-www-form-urlencoded"}] ++ auth_headers
       params  = Keyword.merge(auth_body, code: code, redirect_uri: redirect_uri, grant_type: "authorization_code")
       url     = Helpers.to_url(site, token_url)
