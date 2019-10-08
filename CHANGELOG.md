@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.1.1 (TBA)
+## v0.1.1 (2019-10-07)
 
 * Relax mint requirement
 * Fix bug in `Assent.HTTPAdapter.Mint` where HTTP/2 responses wasn't parsed correctly
