@@ -77,7 +77,7 @@ defmodule Assent.Strategy.OAuth2Test do
 
         assert params["grant_type"] == "authorization_code"
         assert params["code"] == "test"
-        assert params["redirect_uri"] == "test"
+        assert params["redirect_uri"] == "http://localhost:4000/auth/callback"
       end)
 
       expect_oauth2_user_request(bypass, @user_api_params)
@@ -91,7 +91,7 @@ defmodule Assent.Strategy.OAuth2Test do
       expect_oauth2_access_token_request(bypass, [], fn _conn, params ->
         assert params["grant_type"] == "authorization_code"
         assert params["code"] == "test"
-        assert params["redirect_uri"] == "test"
+        assert params["redirect_uri"] == "http://localhost:4000/auth/callback"
         assert params["client_id"] == @client_id
         assert params["client_secret"] == @client_secret
       end)
@@ -107,7 +107,7 @@ defmodule Assent.Strategy.OAuth2Test do
       expect_oauth2_access_token_request(bypass, [], fn _conn, params ->
         assert params["grant_type"] == "authorization_code"
         assert params["code"] == "test"
-        assert params["redirect_uri"] == "test"
+        assert params["redirect_uri"] == "http://localhost:4000/auth/callback"
         assert params["client_assertion_type"] == "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
 
         assert {:ok, jwt} = Assent.JWTAdapter.AssentJWT.verify(params["client_assertion"], @client_secret, json_library: Jason)
@@ -136,7 +136,7 @@ defmodule Assent.Strategy.OAuth2Test do
       expect_oauth2_access_token_request(bypass, [], fn _conn, params ->
         assert params["grant_type"] == "authorization_code"
         assert params["code"] == "test"
-        assert params["redirect_uri"] == "test"
+        assert params["redirect_uri"] == "http://localhost:4000/auth/callback"
         assert params["client_assertion_type"] == "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
 
         assert {:ok, jwt} = Assent.JWTAdapter.AssentJWT.verify(params["client_assertion"], @public_key, json_library: Jason)

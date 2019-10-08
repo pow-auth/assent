@@ -55,7 +55,7 @@ defmodule Assent.Test.OIDCTestCase do
   }
 
   setup _tags do
-    params = %{"code" => "test", "redirect_uri" => "test", "state" => "test"}
+    params = %{"code" => "test", "state" => "test"}
     bypass = Bypass.open()
     config = [
       client_id: @client_id,
