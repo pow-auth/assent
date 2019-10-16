@@ -40,7 +40,7 @@ defmodule Assent.Strategy.GithubTest do
   # From https://developer.github.com/v3/users/emails/
   @emails_response [
     %{
-      "email" => "unverifed@github.com",
+      "email" => "support@github.com",
       "verified" => false,
       "primary" => false,
       "visibility" => "public"
@@ -52,7 +52,7 @@ defmodule Assent.Strategy.GithubTest do
       "visibility" => "public"
     },
     %{
-      "email" => "octocat2@github.com",
+      "email" => "octocat@octocat.org",
       "verified" => true,
       "primary" => false,
       "visibility" => "public"
