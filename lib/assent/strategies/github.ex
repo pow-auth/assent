@@ -82,5 +82,6 @@ defmodule Assent.Strategy.Github do
 
   defp get_primary_email([%{"verified" => true, "primary" => true, "email" => email} | _rest]),
     do: email
+  defp get_primary_email([_ | rest]), do: get_primary_email(rest)
   defp get_primary_email(_any), do: nil
 end
