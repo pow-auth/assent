@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.4 (TBA)
+
+* Support mint up to `v1.0.x`
+
 ## v0.1.3 (2019-10-27)
 
 * Fixed bug in `Assent.Strategy.Github` where multiple emails for account resulted in the verified primary e-mail not being returned
