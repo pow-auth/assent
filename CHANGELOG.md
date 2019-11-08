@@ -3,6 +3,7 @@
 ## v0.1.4 (TBA)
 
 * Support mint up to `v1.0.x`
+* Fixed bug in `Assent.JWTAdapter.JOSE` where `nil` secret value raised an exception
 
 ## v0.1.3 (2019-10-27)
 
