@@ -87,5 +87,11 @@ defmodule Assent.JWTAdapter.JOSETest do
       assert jwt.verified?
       assert jwt.claims == @claims
     end
+
+    test "verify/3 with nil secret" do
+      assert {:ok, jwt} = JOSE.verify(@token, nil, json_library: Jason)
+      refute jwt.verified?
+      assert jwt.claims == @claims
+    end
   end
 end

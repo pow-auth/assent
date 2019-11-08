@@ -41,10 +41,7 @@ defmodule Assent.JWTAdapter.JOSE do
       |> JOSE.JWT.peek_protected()
       |> JOSE.JWS.to_map()
 
-    {verified, %{fields: claims}, _} =
-      alg
-      |> jwk(secret_or_public_key)
-      |> JOSE.JWT.verify(token)
+    {verified, %{fields: claims}} = verify_message(token, alg, secret_or_public_key)
 
     {%{}, %{"signature" => signature}} = JOSE.JWS.expand(token)
 
@@ -54,5 +51,17 @@ defmodule Assent.JWTAdapter.JOSE do
       signature: signature,
       verified?: verified
     }}
+  end
+
+  defp verify_message(token, _alg, nil) do
+    {false, JOSE.JWT.peek_payload(token)}
+  end
+  defp verify_message(token, alg, secret_or_public_key) do
+    {verified, payload, _} =
+      alg
+      |> jwk(secret_or_public_key)
+      |> JOSE.JWT.verify(token)
+
+    {verified, payload}
   end
 end
