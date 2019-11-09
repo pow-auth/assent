@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.1.4 (TBA)
+## v0.1.4 (2019-11-09)
 
 * Support mint up to `v1.0.x`
 * Fixed bug in `Assent.JWTAdapter.JOSE` where `nil` secret value raised an exception
