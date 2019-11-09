@@ -94,4 +94,39 @@ defmodule Assent.JWTAdapter.AssentJWTTest do
       assert jwt.claims == @claims
     end
   end
+
+  if :crypto.supports()[:curves] do
+    describe "with private key using ES256" do
+      @token "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.tyh-VfuzIxCyGYDlkBA7DfyjrqmSHu6pQ2hoZuFqUSLPNY2N0mpHb3nk5K17HWP_3cYHBw7AhHale5wky6-sVA"
+      @private_key """
+        -----BEGIN PRIVATE KEY-----
+        MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgevZzL1gdAFr88hb2
+        OF/2NxApJCzGCEDdfSp6VQO30hyhRANCAAQRWz+jn65BtOMvdyHKcvjBeBSDZH2r
+        1RTwjmYSi9R/zpBnuQ4EiMnCqfMPWiZqB4QdbAd0E7oH50VpuZ1P087G
+        -----END PRIVATE KEY-----
+        """
+      @public_key """
+        -----BEGIN PUBLIC KEY-----
+        MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEEVs/o5+uQbTjL3chynL4wXgUg2R9
+        q9UU8I5mEovUf86QZ7kOBIjJwqnzD1omageEHWwHdBO6B+dFabmdT9POxg==
+        -----END PUBLIC KEY-----
+        """
+      @claims %{
+        "sub" => "1234567890",
+        "name" => "John Doe",
+        "admin" => true,
+        "iat" => 1_516_239_022
+      }
+
+      test "signs and verifies" do
+        assert {:ok, token} = AssentJWT.sign(@claims, "ES256", @private_key, json_library: Jason)
+
+        assert {:ok, jwt} = AssentJWT.verify(token, @public_key, json_library: Jason)
+        assert jwt.verified?
+
+        assert {:ok, jwt} = AssentJWT.verify(@token, @public_key, json_library: Jason)
+        assert jwt.verified?
+      end
+    end
+  end
 end

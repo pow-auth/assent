@@ -49,6 +49,7 @@ defmodule Assent.Strategy.AppleTest do
     test "callback/2", %{config: config, callback_params: params, bypass: bypass} do
       expect_oauth2_access_token_request(bypass, [params: %{access_token: "access_token", id_token: @id_token}, uri: "/auth/token"], fn _conn, params ->
         assert {:ok, jwt} = Assent.JWTAdapter.AssentJWT.verify(params["client_secret"], @public_key, json_library: Jason)
+        assert jwt.verified?
         assert jwt.header["alg"] == "ES256"
         assert jwt.header["typ"] == "JWT"
         assert jwt.header["kid"] == @private_key_id
