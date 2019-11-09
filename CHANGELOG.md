@@ -4,6 +4,7 @@
 
 * Support mint up to `v1.0.x`
 * Fixed bug in `Assent.JWTAdapter.JOSE` where `nil` secret value raised an exception
+* Fixed bug in `Assent.JWTAdapter.AssentJWT` where ECDSA algorithms didn't generate or verify valid signatures
 
 ## v0.1.3 (2019-10-27)
 

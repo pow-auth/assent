@@ -43,6 +43,22 @@ defmodule Assent.JWTAdapter.AssentJWT do
       {:ok, :crypto.hmac(sha_alg, secret, message)}
     end
   end
+
+  defp sign_message(message, "ES" <> sha_bit_size, private_key) do
+    # Per https://tools.ietf.org/html/rfc7515#appendix-A.3.1
+
+    with {:ok, sha_alg} <- sha2_alg(sha_bit_size),
+         {:ok, key}     <- decode_pem(private_key),
+         der_signature  <- :public_key.sign(message, sha_alg, key) do
+
+      {:'ECDSA-Sig-Value', r, s} = :public_key.der_decode(:'ECDSA-Sig-Value', der_signature)
+
+      r_bin = sha_bit_pad(int_to_bin(r), sha_bit_size)
+      s_bin = sha_bit_pad(int_to_bin(s), sha_bit_size)
+
+      {:ok, r_bin <> s_bin}
+    end
+  end
   defp sign_message(message, <<_, "S", sha_bit_size :: binary>>, private_key) do
     with {:ok, sha_alg} <- sha2_alg(sha_bit_size),
          {:ok, key}     <- decode_pem(private_key) do
@@ -63,6 +79,25 @@ defmodule Assent.JWTAdapter.AssentJWT do
       _any    -> {:error, "Private key should only have one entry"}
     end
   end
+
+  # From erlang crypto lib
+  defp int_to_bin(x) when x < 0, do: int_to_bin_neg(x, [])
+  defp int_to_bin(x), do: int_to_bin_pos(x, [])
+
+  defp int_to_bin_pos(0, [_ | _] = ds), do: :erlang.list_to_binary(ds)
+  defp int_to_bin_pos(x, ds), do: int_to_bin_pos(:erlang.bsr(x, 8), [:erlang.band(x, 255) | ds])
+
+  defp int_to_bin_neg(-1, [msb | _] = ds) when msb >= 128, do: :erlang.list_to_binary(ds)
+  defp int_to_bin_neg(x, ds), do: int_to_bin_neg(:erlang.bsr(x, 8), [:erlang.band(x, 255) | ds])
+
+  defp sha_bit_pad(binary, "256"), do: lpad_binary(binary, byte_size(binary) - 32)
+  defp sha_bit_pad(binary, "384"), do: lpad_binary(binary, byte_size(binary) - 48)
+  defp sha_bit_pad(binary, "512"), do: lpad_binary(binary, byte_size(binary) - 66)
+
+  defp lpad_binary(binary, length) when length > 0 do
+    :binary.copy(<<0>>, length - byte_size(binary)) <> binary
+  end
+  defp lpad_binary(binary, _length), do: binary
 
   @impl JWTAdapter
   def verify(token, secret_or_public_key, opts) do
@@ -103,6 +138,21 @@ defmodule Assent.JWTAdapter.AssentJWT do
     case sign_message(message, alg, secret) do
       {:ok, signature_2} -> constant_time_compare(signature_2, signature)
       _any               -> false
+    end
+  end
+  defp verify_message(message, signature, "ES" <> sha_bit_size, public_key) do
+    with {:ok, sha_alg} <- sha2_alg(sha_bit_size),
+         {:ok, pem}     <- decode_key(public_key) do
+
+      # Per https://tools.ietf.org/html/rfc7515#appendix-A.3.1
+
+      size           = :erlang.byte_size(signature)
+      {r_bin, s_bin} = :erlang.split_binary(signature, Integer.floor_div(size, 2))
+      r              = :crypto.bytes_to_integer(r_bin)
+      s              = :crypto.bytes_to_integer(s_bin)
+      der_signature  = :public_key.der_encode(:'ECDSA-Sig-Value', {:'ECDSA-Sig-Value', r, s})
+
+      :public_key.verify(message, sha_alg, der_signature, pem)
     end
   end
   defp verify_message(message, signature, <<_, "S", sha_bit_size :: binary>>, public_key) do
