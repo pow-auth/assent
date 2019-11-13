@@ -70,7 +70,23 @@ defmodule Assent.Strategy.OAuth2Test do
 
     @user_api_params %{name: "Dan Schultzer", email: "foo@example.com", uid: "1"}
 
+    test "with no auth method", %{config: config, callback_params: params, bypass: bypass} do
+      expect_oauth2_access_token_request(bypass, [], fn _conn, params ->
+        assert params["grant_type"] == "authorization_code"
+        assert params["code"] == "test"
+        assert params["redirect_uri"] == "http://localhost:4000/auth/callback"
+        assert params["client_id"] == @client_id
+        refute params["client_secret"]
+      end)
+
+      expect_oauth2_user_request(bypass, @user_api_params)
+
+      assert {:ok, _any} = OAuth2.callback(config, params)
+    end
+
     test "with `:client_secret_basic` auth method", %{config: config, callback_params: params, bypass: bypass} do
+      config = Keyword.put(config, :auth_method, :client_secret_basic)
+
       expect_oauth2_access_token_request(bypass, [], fn conn, params ->
         assert [{"authorization", "Basic " <> token} | _rest] = conn.req_headers
         assert Base.url_decode64(token, padding: false) == {:ok, "#{@client_id}:#{@client_secret}"}

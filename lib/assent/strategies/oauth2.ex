@@ -18,8 +18,9 @@ defmodule Assent.Strategy.OAuth2 do
 
     - `:client_id` - The OAuth2 client id, required
     - `:site` - The domain of the OAuth2 server, required
-    - `:auth_method` - The authentication strategy used, optional, defaults to
-      `:client_secret_basic`. The value may be one of the following:
+    - `:auth_method` - The authentication strategy used, optional. If not set,
+      no authentication will be used during the access token request. The value
+      may be one of the following:
 
       - `:client_secret_basic` - Authenticate with basic authorization header
       - `:client_secret_post` - Authenticate with post params
@@ -139,6 +140,15 @@ defmodule Assent.Strategy.OAuth2 do
     do: {:error, %CallbackCSRFError{}}
   defp do_check_state(_state, _params), do: :ok
 
+  defp authentication_params(nil, config) do
+    with {:ok, client_id}     <- Config.fetch(config, :client_id) do
+
+      headers = []
+      body    = [client_id: client_id]
+
+      {:ok, headers, body}
+    end
+  end
   defp authentication_params(:client_secret_basic, config) do
     with {:ok, client_id}     <- Config.fetch(config, :client_id),
          {:ok, client_secret} <- Config.fetch(config, :client_secret) do
@@ -207,7 +217,7 @@ defmodule Assent.Strategy.OAuth2 do
   end
 
   defp get_access_token(config, %{"code" => code}) do
-    auth_method  = Config.get(config, :auth_method, :client_secret_basic)
+    auth_method  = Config.get(config, :auth_method, nil)
     token_url    = Config.get(config, :token_url, "/oauth/token")
 
     with {:ok, site}                    <- Config.fetch(config, :site),
