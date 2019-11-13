@@ -28,6 +28,8 @@ defmodule Assent.Strategy.AzureADTest do
   test "authorize_url/2", %{config: config} do
     assert {:ok, %{url: url}} = AzureAD.authorize_url(config)
     assert url =~ "/oauth/authorize?client_id=id"
+    assert url =~ "scope=openid+email+profile"
+    assert url =~ "response_mode=form_post"
   end
 
   test "callback/2", %{config: config, callback_params: params, bypass: bypass} do
