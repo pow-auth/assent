@@ -4,6 +4,7 @@
 
 * Removed unused `:resource` param in `Assent.Strategy.AzureAD`
 * Added "email profile" to scope in `Assent.Strategy.AzureAD`
+* Use `response_mode=form_post` for `Assent.Strategy.AzureAD`
 
 ## v0.1.4 (2019-11-09)
 
