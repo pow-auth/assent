@@ -46,6 +46,7 @@ defmodule Assent.Strategy.OAuth2 do
       config =  [
         client_id: "REPLACE_WITH_CLIENT_ID",
         client_secret: "REPLACE_WITH_CLIENT_SECRET",
+        auth_method: :client_secret_post,
         site: "https://auth.example.com",
         authorization_params: [scope: "user:read user:write"],
         user_url: "https://example.com/api/user"

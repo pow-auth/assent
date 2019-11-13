@@ -123,7 +123,8 @@ defmodule TestProvider do
       authorize_url: "http://localhost:4000/oauth/authorize",
       token_url: "http://localhost:4000/oauth/access_token",
       user_url: "/user",
-      authorization_params: [scope: "email profile"]
+      authorization_params: [scope: "email profile"],
+      auth_method: :client_secret_post
     ]
   end
 
