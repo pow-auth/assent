@@ -59,7 +59,6 @@ defmodule Assent.Test.OIDCTestCase do
     bypass = Bypass.open()
     config = [
       client_id: @client_id,
-      client_authentication_method: "client_secret_basic",
       openid_configuration: %{
         "issuer" => "http://localhost:#{bypass.port}",
         "id_token_signed_response_alg" => ["HS256"],

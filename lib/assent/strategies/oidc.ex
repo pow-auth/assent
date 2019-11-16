@@ -49,7 +49,8 @@ defmodule Assent.Strategy.OIDC do
 
   The authorization url will be fetched from the OpenID configuration URI.
 
-  `openid` will automatically be added to the `:scope` in `:authorization_params`.
+  `openid` will automatically be added to the `:scope` in
+  `:authorization_params`, unless `:openid_default_scope` has been set.
 
   Add `:nonce` to the config to pass it with the authorization request. The
   nonce will be returned in `:session_params`. The nonce MUST be session based
@@ -107,15 +108,16 @@ defmodule Assent.Strategy.OIDC do
     new_params =
       config
       |> Config.get(:authorization_params, [])
-      |> add_scope_param()
+      |> add_default_scope_param(config)
       |> add_nonce_param(config)
 
     {:ok, new_params}
   end
 
-  defp add_scope_param(params) do
+  defp add_default_scope_param(params, config) do
     scope     = Config.get(params, :scope, "")
-    new_scope = String.trim("openid #{scope}")
+    default   = Config.get(config, :openid_default_scope, "openid")
+    new_scope = String.trim(default <> " " <> scope)
 
     Config.put(params, :scope, new_scope)
   end
