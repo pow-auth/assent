@@ -41,6 +41,7 @@ defmodule Assent.Strategy.OIDC.Base do
       def get_user(config, token), do: OIDC.get_user(config, token)
 
       defoverridable unquote(__MODULE__)
+      defoverridable Assent.Strategy
     end
   end
 

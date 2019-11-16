@@ -49,8 +49,6 @@ defmodule Assent.Strategy.OAuth2.Base do
       def get_user(config, token), do: OAuth2.get_user(config, token)
 
       defoverridable unquote(__MODULE__)
-
-      defoverridable callback: 2
     end
   end
 

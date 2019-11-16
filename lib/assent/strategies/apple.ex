@@ -41,18 +41,27 @@ defmodule Assent.Strategy.Apple do
   See https://developer.apple.com/documentation/signinwithapplejs/configuring_your_webpage_for_sign_in_with_apple
   for more.
   """
-  use Assent.Strategy.OAuth2.Base
+  use Assent.Strategy.OIDC.Base
 
-  alias Assent.{Config, JWTAdapter, Strategy.OAuth2.Base}
+  alias Assent.{Config, JWTAdapter, Strategy.OIDC.Base}
 
   @impl true
-  def default_config(_config) do
+  def default_config(config) do
+    site = Config.get(config, :site, "https://appleid.apple.com")
+
     [
-      site: "https://appleid.apple.com",
-      authorize_url: "/auth/authorize",
-      token_url: "/auth/token",
+      site: site,
+      openid_configuration: %{
+        "issuer" => "https://appleid.apple.com",
+        "id_token_signed_response_alg" => ["RS256"],
+        "authorization_endpoint" => site <> "/auth/authorize",
+        "token_endpoint" => site <> "/auth/token",
+        "jwks_uri" => site <> "/auth/keys",
+        "token_endpoint_auth_methods_supported" => ["client_secret_post"]
+      },
       authorization_params: [scope: "email", response_mode: "form_post"],
-      auth_method: :client_secret_post
+      client_authentication_method: "client_secret_post",
+      openid_default_scope: ""
     ]
   end
 
