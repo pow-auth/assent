@@ -29,5 +29,17 @@ defmodule Assent.HTTPAdapter.MintTest do
     else
       IO.warn("No support curve algorithms, can't test in #{__MODULE__}")
     end
+
+    test "handles query in URL" do
+      bypass = Bypass.open()
+
+      Bypass.expect_once(bypass, "GET", "/get", fn conn ->
+        assert conn.query_string == "a=1"
+
+        Plug.Conn.send_resp(conn, 200, "")
+      end)
+
+      assert {:ok, %HTTPResponse{status: 200}} = Mint.request(:get, "http://localhost:#{bypass.port}/get?a=1", nil, [])
+    end
   end
 end

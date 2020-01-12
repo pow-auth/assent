@@ -22,6 +22,18 @@ defmodule Assent.HTTPAdapter.HttpcTest do
       assert {:error, {:failed_connect, error}} = Httpc.request(:get, @unreachable_http_url, nil, [])
       assert fetch_inet_error(error) == @unreachable_http_error
     end
+
+    test "handles query in URL" do
+      bypass = Bypass.open()
+
+      Bypass.expect_once(bypass, "GET", "/get", fn conn ->
+        assert conn.query_string == "a=1"
+
+        Plug.Conn.send_resp(conn, 200, "")
+      end)
+
+      assert {:ok, %HTTPResponse{status: 200}} = Httpc.request(:get, "http://localhost:#{bypass.port}/get?a=1", nil, [])
+    end
   end
 
   defp fetch_inet_error([_, {:inet, [:inet], error}]), do: error
