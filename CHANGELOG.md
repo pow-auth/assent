@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.1.5 (TBA)
+## v0.1.5 (2020-01-13)
 
 * Removed unused `:resource` param in `Assent.Strategy.AzureAD`
 * Added "email profile" to scope in `Assent.Strategy.AzureAD`
