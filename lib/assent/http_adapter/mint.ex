@@ -15,13 +15,18 @@ defmodule Assent.HTTPAdapter.Mint do
   def request(method, url, body, headers, mint_opts \\ nil) do
     headers = headers ++ [HTTPAdapter.user_agent_header()]
 
-    %{scheme: scheme, port: port, host: host, path: path} = URI.parse(url)
+    %{scheme: scheme, port: port, host: host, path: path, query: query} = URI.parse(url)
+
+    path = add_query_to_path(path, query)
 
     scheme
     |> open_mint_conn(host, port, mint_opts)
     |> mint_request(method, path, headers, body)
     |> format_response()
   end
+
+  defp add_query_to_path(path, query) when is_binary(query), do: path <> "?" <> query
+  defp add_query_to_path(path, _any), do: path
 
   defp open_mint_conn(scheme, host, port, nil), do: open_mint_conn(scheme, host, port, [])
   defp open_mint_conn("http", host, port, opts), do: open_mint_conn(:http, host, port, opts)
@@ -81,5 +86,5 @@ defmodule Assent.HTTPAdapter.Mint do
 
   defp merge_body([{:data, _request, new_body} | rest], body), do: merge_body(rest, body <> new_body)
   defp merge_body(_rest, body), do: body
-  defp merge_body([{:data, _request, _body} | _rest] = responses), do: merge_body(responses, "")
+  defp merge_body(responses), do: merge_body(responses, "")
 end
