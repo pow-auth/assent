@@ -203,7 +203,7 @@ defmodule Assent.Strategy.OIDC do
          {:ok, jwt}           <- validate_id_token(token["id_token"], openid_config, config) do
       case strategy do
         __MODULE__ -> fetch_and_normalize_userinfo(openid_config, config, token, jwt.claims)
-        strategy   -> strategy.get_user(config, token)
+        strategy   -> strategy.get_user(config, Map.put(token, "id_token", jwt))
       end
     end
   end

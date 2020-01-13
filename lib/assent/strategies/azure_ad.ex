@@ -69,10 +69,6 @@ defmodule Assent.Strategy.AzureAD do
   def normalize(_config, user), do: {:ok, user}
 
   @impl true
-  def get_user(config, token) do
-    case Helpers.verify_jwt(token["id_token"], nil, config) do
-      {:ok, jwt}      -> {:ok, jwt.claims}
-      {:error, error} -> {:error, error}
-    end
-  end
+  def get_user(_config, %{"id_token" => %{claims: claims}}),
+    do: {:ok, claims}
 end

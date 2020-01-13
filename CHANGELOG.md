@@ -7,6 +7,7 @@
 * Use `response_mode=form_post` for `Assent.Strategy.AzureAD`
 * Updated `Assent.Strategy.OAuth2` to handle access token request correctly when `:auth_method` is `nil` per RFC specs
 * Changed `Assent.Strategy.Apple` to use OIDC strategy and verify the JWT
+* Changed `Assent.Strategy.OIDC` to update token with the expanded JWT as the `id_token`
 * Fixed bug in `Assent.HTTPAdapter.Mint` with query params not being included in request
 
 ## v0.1.4 (2019-11-09)
