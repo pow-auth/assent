@@ -112,9 +112,6 @@ defmodule Assent.Strategy.Apple do
   def normalize(_config, user), do: {:ok, user}
 
   @impl true
-  def get_user(config, token) do
-    with {:ok, jwt} <- Helpers.verify_jwt(token["id_token"], nil, config) do
-      {:ok, jwt.claims}
-    end
-  end
+  def get_user(_config, %{"id_token" => %{claims: claims}}),
+    do: {:ok, claims}
 end

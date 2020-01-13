@@ -247,7 +247,7 @@ defmodule Assent.Strategy.OAuth2 do
     config
     |> strategy.get_user(token)
     |> case do
-      {:ok, user} -> {:ok, %{token: token, user: user}}
+      {:ok, user}     -> {:ok, %{token: token, user: user}}
       {:error, error} -> {:error, error}
     end
   end
