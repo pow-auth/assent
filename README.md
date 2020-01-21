@@ -46,7 +46,7 @@ Run `mix deps.get` to install it.
 
 ## Getting started
 
-A strategy consists of two phases; request and callback. In the request phase the user would normally be redirected to the provider for authentication. After authentication, the provider will be redirect the user back to the callback phase.
+A strategy consists of two phases; request and callback. In the request phase the user would normally be redirected to the provider for authentication, and then returned back to initiate the callback phase.
 
 ### Single provider example
 
