@@ -9,6 +9,8 @@ defmodule Assent.Strategy.Auth0 do
         client_secret: "REPLACE_WITH_CLIENT_SECRET",
         domain: "REPLACE_WITH_DOMAIN"
       ]
+
+  See `Assent.Strategy.OAuth2` for more.
   """
   use Assent.Strategy.OAuth2.Base
 
