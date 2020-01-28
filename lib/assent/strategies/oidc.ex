@@ -18,6 +18,9 @@ defmodule Assent.Strategy.OIDC do
       not defined
     - `:id_token_ttl_seconds` - The number of seconds from `iat` that an ID
       Token will be considered valid, optional, defaults to nil
+    - `:nonce` - The nonce to use for authorization request, optional, MUST be
+      session based and unguessable. PowAssent will dynamically generate one
+      for the session if set to `true`.
 
   See `Assent.Strategy.OAuth2` for more configuration options.
 

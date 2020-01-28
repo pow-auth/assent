@@ -8,6 +8,8 @@ defmodule Assent.Strategy.Twitter do
         consumer_key: "REPLACE_WITH_CONSUMER_KEY",
         consumer_secret: "REPLACE_WITH_CONSUMER_SECRET"
       ]
+
+  See `Assent.Strategy.OAuth` for more.
   """
   use Assent.Strategy.OAuth.Base
 

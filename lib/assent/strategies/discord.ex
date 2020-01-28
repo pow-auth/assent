@@ -8,6 +8,8 @@ defmodule Assent.Strategy.Discord do
         client_id: "REPLACE_WITH_CLIENT_ID",
         client_secret: "REPLACE_WITH_CLIENT_SECRET"
       ]
+
+  See `Assent.Strategy.OAuth2` for more.
   """
   use Assent.Strategy.OAuth2.Base
 
