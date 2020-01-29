@@ -7,6 +7,7 @@ defmodule Assent.Strategy.AzureAD do
   - `:client_id` - The OAuth2 client id, required
   - `:tenant_id` - The Azure tenant ID, optional, defaults to `common`
   - `:nonce` - The session based nonce, required
+  - `:response_type` - The response type to request, defaults to `id_token code`
 
   See `Assent.Strategy.OIDC` for more.
 
@@ -42,6 +43,17 @@ defmodule Assent.Strategy.AzureAD do
         tenant_id: "REPLACE_WITH_TENANT_ID"
       ]
 
+  The response type can be overridden in the configuration. If the value is set to `code` 
+  the `id_token` value is still returned but the configuration for implicit flow is not required 
+  in the Azure portal. 
+
+      config = [
+        client_id: "REPLACE_WITH_CLIENT_ID",
+        nonce: "DYNAMICALLY_REPLACE_WITH_SESSION_NONCE",
+        tenant_id: "REPLACE_WITH_TENANT_ID",
+        response_type: "code"
+      ]
+
   ## Setting up Azure AD
 
   Login to Azure, and set up a new application:
@@ -57,10 +69,11 @@ defmodule Assent.Strategy.AzureAD do
   @impl true
   def default_config(config) do
     tenant_id = Config.get(config, :tenant_id, "common")
+    response_type = Config.get(config, :response_type, "id_token code")
 
     [
       site: "https://login.microsoftonline.com/#{tenant_id}/v2.0",
-      authorization_params: [response_type: "id_token code", scope: "email profile", response_mode: "form_post"],
+      authorization_params: [response_type: response_type, scope: "email profile", response_mode: "form_post"],
       client_auth_method: :client_secret_post,
     ]
   end
