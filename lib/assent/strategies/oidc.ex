@@ -13,14 +13,16 @@ defmodule Assent.Strategy.OIDC do
       defaults to `/.well-known/openid-configuration`
     - `:client_authentication_method` - The Client Authentication method to
       use, optional, defaults to `client_secret_basic`
+    - `:client_secret` - The client secret, required if
+      `:client_authentication_method` is `:client_secret_basic`,
+      `:client_secret_post`, or `:client_secret_jwt`
     - `:openid_configuration` - The OpenID configuration, optional, the
       configuration will be fetched from `:openid_configuration_uri` if this is
       not defined
     - `:id_token_ttl_seconds` - The number of seconds from `iat` that an ID
       Token will be considered valid, optional, defaults to nil
     - `:nonce` - The nonce to use for authorization request, optional, MUST be
-      session based and unguessable. PowAssent will dynamically generate one
-      for the session if set to `true`.
+      session based and unguessable
 
   See `Assent.Strategy.OAuth2` for more configuration options.
 
@@ -41,6 +43,23 @@ defmodule Assent.Strategy.OIDC do
         config
         |> Assent.Config.put(:session_params, session_params)
         |> Assent.Strategy.OIDC.callback(params)
+
+  ## Nonce
+
+  `:nonce` can be set in the provider config. The `:nonce` will be returned in
+  the `:session_params` along with `:state`. You can use this to store the value
+  in the current session e.g. a httpOnly session cookie.
+
+  A random value generator can look like this:
+
+      16
+      |> :crypto.strong_rand_bytes()
+      |> Base.encode64(padding: false)
+
+  PowAssent will dynamically generate one for the session if `:nonce` is set to
+  `true`.
+
+  See `Assent.Strategy.OIDC.authorize_url/1` for more.
   """
   @behaviour Assent.Strategy
 
@@ -58,7 +77,7 @@ defmodule Assent.Strategy.OIDC do
   Add `:nonce` to the config to pass it with the authorization request. The
   nonce will be returned in `:session_params`. The nonce MUST be session based
   and unguessable. A cryptographic hash of a cryptographically random value
-  could be stored in a HttpOnly session cookie.
+  could be stored in a httpOnly session cookie.
 
   See `Assent.Strategy.OAuth2.authorize_url/1` for more.
   """
