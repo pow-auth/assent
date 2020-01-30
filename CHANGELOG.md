@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.1.6 (TBA)
+## v0.1.6 (2020-01-30)
 
 * `Assent.Strategy.AzureAD` now uses auth code flow instead of hybrid flow
 
