@@ -4,33 +4,15 @@ defmodule Assent.Strategy.AzureAD do
 
   ## Configuration
 
-  - `:client_id` - The OAuth2 client id, required
   - `:tenant_id` - The Azure tenant ID, optional, defaults to `common`
-  - `:nonce` - The session based nonce, required
 
   See `Assent.Strategy.OIDC` for more.
-
-  ## Nonce
-
-  You must provide a `:nonce` in your config when calling `authorize_url/1`.
-  `:nonce` will be returned in the `:session_params` along with `:state`. You
-  can use this to store the value in the current session e.g. a HTTPOnly
-  session cookie.
-
-  A random value generator could look like this:
-
-      16
-      |> :crypto.strong_rand_bytes()
-      |> Base.encode64(padding: false)
-
-  The `:session_params` should be fetched before the callback. See
-  `Assent.Strategy.OIDC.authorize_url/1` for more.
 
   ## Usage
 
       config = [
         client_id: "REPLACE_WITH_CLIENT_ID",
-        nonce: "DYNAMICALLY_REPLACE_WITH_SESSION_NONCE"
+        client_secret: "REPLACE_WITH_CLIENT_SECRET"
       ]
 
   A tenant id can be set to limit scope of users who can get access (defaults
@@ -38,7 +20,7 @@ defmodule Assent.Strategy.AzureAD do
 
       config = [
         client_id: "REPLACE_WITH_CLIENT_ID",
-        nonce: "DYNAMICALLY_REPLACE_WITH_SESSION_NONCE",
+        client_secret: "REPLACE_WITH_CLIENT_SECRET",
         tenant_id: "REPLACE_WITH_TENANT_ID"
       ]
 
@@ -60,7 +42,7 @@ defmodule Assent.Strategy.AzureAD do
 
     [
       site: "https://login.microsoftonline.com/#{tenant_id}/v2.0",
-      authorization_params: [response_type: "id_token code", scope: "email profile", response_mode: "form_post"],
+      authorization_params: [scope: "email profile", response_mode: "form_post"],
       client_auth_method: :client_secret_post,
     ]
   end

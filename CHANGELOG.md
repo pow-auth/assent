@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.6 (TBA)
+
+* `Assent.Strategy.AzureAD` now uses auth code flow instead of hybrid flow
+
 ## v0.1.5 (2020-01-13)
 
 * Removed unused `:resource` param in `Assent.Strategy.AzureAD`
