@@ -63,14 +63,24 @@ defmodule Assent.HTTPAdapter.Mint do
         case completed?(responses) do
           true ->
             {:ok, prev_responses ++ responses}
+
           false ->
-            new_timeout = max(timeout - (monotonic_timestamp() - start_time), 0)
+            new_timeout = new_timeout(timeout, start_time)
 
             await_response(conn, request_ref, new_timeout, prev_responses ++ responses)
         end
-      :unknown                -> {:error, :unknown}
+
+      {:error, _, e, _} ->
+        {:error, e}
+
+      :unknown ->
+        new_timeout = new_timeout(timeout, start_time)
+
+        await_response(conn, request_ref, new_timeout, prev_responses)
     end
   end
+
+  defp new_timeout(timeout, start_time), do: max(timeout - (monotonic_timestamp() - start_time), 0)
 
   defp completed?([{:done, _request_ref} | _rest]), do: true
   defp completed?([_resp | responses]), do: completed?(responses)

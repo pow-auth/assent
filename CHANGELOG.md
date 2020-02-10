@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.7 (TBA)
+
+* Fix `Assent.HTTPAdapter.Mint` where `:unknown` responses where not handled correctly
+
 ## v0.1.6 (2020-01-30)
 
 * `Assent.Strategy.AzureAD` now uses auth code flow instead of hybrid flow
