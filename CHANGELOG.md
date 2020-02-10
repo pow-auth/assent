@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.1.7 (TBA)
+## v0.1.7 (2020-02-10)
 
 * Fix `Assent.HTTPAdapter.Mint` where `:unknown` responses where not handled correctly
 
