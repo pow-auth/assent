@@ -2,6 +2,9 @@ defmodule Assent.Strategy.Instagram do
   @moduledoc """
   Instagram OAuth 2.0 strategy.
 
+  The Instagram user object does not provide data on email verification, email
+  is considered unverified.
+
   ## Usage
 
       config = [

@@ -2,6 +2,10 @@ defmodule Assent.Strategy.Facebook do
   @moduledoc """
   Facebook OAuth 2.0 strategy.
 
+  The Facebook user endpoint does not provide data on email verification, email
+  is considered unverified. More here:
+  https://developers.facebook.com/docs/facebook-login/multiple-providers#postfb1
+
   ## Configuration
 
   - `:user_url_request_fields` - The fields for the resource, defaults to
@@ -41,14 +45,14 @@ defmodule Assent.Strategy.Facebook do
   def normalize(config, user) do
     with {:ok, site} <- Config.fetch(config, :site) do
       {:ok, %{
-        "sub"                => user["id"],
-        "name"               => user["name"],
-        "given_name"         => user["first_name"],
-        "middle_name"        => user["middle_name"],
-        "family_name"        => user["last_name"],
-        "profile"            => user["link"],
-        "picture"            => picture_url(site, user),
-        "email"              => user["email"]
+        "sub"         => user["id"],
+        "name"        => user["name"],
+        "given_name"  => user["first_name"],
+        "middle_name" => user["middle_name"],
+        "family_name" => user["last_name"],
+        "profile"     => user["link"],
+        "picture"     => picture_url(site, user),
+        "email"       => user["email"]
       }}
     end
   end

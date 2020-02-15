@@ -17,6 +17,7 @@ defmodule Assent.Strategy.GoogleTest do
    }
   @user  %{
     "email" => "aaron.parecki@okta.com",
+    "email_verified" => true,
     "family_name" => "Parecki",
     "given_name" => "Aaron",
     "google_hd" => "okta.com",

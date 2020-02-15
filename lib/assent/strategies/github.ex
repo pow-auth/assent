@@ -42,7 +42,8 @@ defmodule Assent.Strategy.Github do
       "preferred_username" => user["login"],
       "profile"            => user["html_url"],
       "picture"            => user["avatar_url"],
-      "email"              => user["email"]
+      "email"              => user["email"],
+      "email_verified"     => user["email_verified"]
     }}
   end
 
@@ -76,14 +77,14 @@ defmodule Assent.Strategy.Github do
   end
 
   defp process_get_email_response({:ok, %{body: emails}}, user) do
-    email = get_primary_email(emails)
+    {email, verified} = get_primary_email(emails)
 
-    {:ok, Map.put(user, "email", email)}
+    {:ok, Map.merge(user, %{"email" => email, "email_verified" => verified})}
   end
   defp process_get_email_response({:error, error}, _user), do: {:error, error}
 
-  defp get_primary_email([%{"verified" => true, "primary" => true, "email" => email} | _rest]),
-    do: email
+  defp get_primary_email([%{"verified" => verified, "primary" => true, "email" => email} | _rest]),
+    do: {email, verified}
   defp get_primary_email([_ | rest]), do: get_primary_email(rest)
-  defp get_primary_email(_any), do: nil
+  defp get_primary_email(_any), do: {nil, false}
 end

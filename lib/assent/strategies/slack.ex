@@ -2,6 +2,9 @@ defmodule Assent.Strategy.Slack do
   @moduledoc """
   Slack OAuth 2.0 strategy.
 
+  The Slack user endpoint does not provide data on email verification, email is
+  considered unverified.
+
   ## Configuration
 
   - `:team_id` - The team id to restrict authorization for, optional, defaults to nil
