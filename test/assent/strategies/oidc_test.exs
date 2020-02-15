@@ -5,10 +5,7 @@ defmodule Assent.Strategy.OIDCTest do
 
   describe "authorize_url/2" do
     test "generates url and state", %{config: config, bypass: bypass} do
-      assert {:ok, %{url: url, session_params: %{state: state}}} =
-        config
-        |> Keyword.put(:discovery_domain, "http://localhost:#{bypass.port}")
-        |> OIDC.authorize_url()
+      assert {:ok, %{url: url, session_params: %{state: state}}} = OIDC.authorize_url(config)
 
       refute is_nil(state)
       assert url =~ "http://localhost:#{bypass.port}/oauth/authorize?client_id=id&redirect_uri=http%3A%2F%2Flocalhost%3A4000%2Fauth%2Fcallback&response_type=code&scope=openid&state=#{state}"
@@ -22,6 +19,27 @@ defmodule Assent.Strategy.OIDCTest do
 
       assert nonce == "n-0S6_WzA2Mj"
       assert url =~ "http://localhost:#{bypass.port}/oauth/authorize?client_id=id&nonce=n-0S6_WzA2Mj&redirect_uri=http%3A%2F%2Flocalhost%3A4000%2Fauth%2Fcallback&response_type=code&scope=openid&state=#{state}"
+    end
+  end
+
+  describe "authorize_url/2 with dynamic OpenID configuration" do
+    setup %{config: config, bypass: bypass} do
+      config = Keyword.delete(config, :openid_configuration)
+
+      openid_config = %{
+          "authorization_endpoint" => "http://localhost:#{bypass.port}/oauth/authorize"
+        }
+
+      {:ok, config: config, openid_config: openid_config}
+    end
+
+    test "pulls dynamic configuration", %{config: config, openid_config: openid_config, bypass: bypass} do
+      expect_openid_config_request(bypass, openid_config)
+
+      assert {:ok, %{url: url, session_params: %{state: state}}} = OIDC.authorize_url(config)
+
+      refute is_nil(state)
+      assert url =~ "http://localhost:#{bypass.port}/oauth/authorize?client_id=id&redirect_uri=http%3A%2F%2Flocalhost%3A4000%2Fauth%2Fcallback&response_type=code&scope=openid&state=#{state}"
     end
   end
 
