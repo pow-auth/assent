@@ -202,7 +202,7 @@ defmodule Assent.Strategy.OIDCTest do
   end
 
   describe "callback/2 with dynamic OpenID configuration" do
-    setup %{config: config} = context do
+    setup %{config: config} do
       config = Keyword.delete(config, :openid_configuration)
 
       openid_config = %{
@@ -211,12 +211,7 @@ defmodule Assent.Strategy.OIDCTest do
         "id_token_signed_response_alg" => ["HS256"]
       }
 
-      context =
-        context
-        |> Map.put(:config, config)
-        |> Map.put(:openid_config, openid_config)
-
-      {:ok, context}
+      {:ok, config: config, openid_config: openid_config}
     end
 
     test "pulls dynamic configuration", %{config: config, openid_config: openid_config, callback_params: params, bypass: bypass} do

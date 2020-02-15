@@ -75,9 +75,9 @@ defmodule Assent.Strategy.AppleTest do
     "e" => "AQAB"
   }
 
-  setup context do
+  setup %{config: config} do
     config =
-      context[:config]
+      config
       |> Keyword.delete(:openid_configuration)
       |> Keyword.merge([
         client_id: @client_id,
@@ -86,7 +86,7 @@ defmodule Assent.Strategy.AppleTest do
         private_key: @private_key
       ])
 
-    {:ok, %{context | config: config}}
+    {:ok, config: config}
   end
 
   test "authorize_url/2", %{config: config} do
