@@ -3,7 +3,7 @@ defmodule Assent.Strategy.TwitterTest do
 
   alias Assent.Strategy.Twitter
 
-  # From ttps://developer.twitter.com/en/docs/accounts-and-users/manage-account-settings/api-reference/get-account-verify_credentials
+  # From https://developer.twitter.com/en/docs/accounts-and-users/manage-account-settings/api-reference/get-account-verify_credentials
   @user_response %{
     "id" => 2_244_994_945,
     "id_str" => "2244994945",
@@ -117,6 +117,7 @@ defmodule Assent.Strategy.TwitterTest do
   }
   @user %{
     "name" => "Twitter Dev",
+    "email_verified" => true,
     "picture" => "https://pbs.twimg.com/profile_images/880136122604507136/xHrnqf1T_normal.jpg",
     "preferred_username" => "TwitterDev",
     "profile" => "https://twitter.com/TwitterDev",

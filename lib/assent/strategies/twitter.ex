@@ -2,6 +2,9 @@ defmodule Assent.Strategy.Twitter do
   @moduledoc """
   Twitter OAuth strategy.
 
+  The Twitter user endpoint only returns verified email, `email_verified` will
+  always be `true`.
+
   ## Usage
 
       config = [
@@ -30,7 +33,8 @@ defmodule Assent.Strategy.Twitter do
       "profile"            => "https://twitter.com/#{user["screen_name"]}",
       "picture"            => user["profile_image_url_https"],
       "website"            => user["url"],
-      "email"              => user["email"]
+      "email"              => user["email"],
+      "email_verified"     => true
     }}
   end
 end

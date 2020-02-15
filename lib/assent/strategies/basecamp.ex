@@ -5,6 +5,9 @@ defmodule Assent.Strategy.Basecamp do
   In the normalized user response a `basecamp_accounts` field is included that
   can be used to limit access to users belonging to a particular account.
 
+  The Basecamp user endpoint does not provide data on email verification, email
+  is considered unverified.
+
   ## Usage
 
       config = [

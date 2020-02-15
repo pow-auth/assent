@@ -32,7 +32,8 @@ defmodule Assent.Strategy.Gitlab do
       "name"               => user["name"],
       "preferred_username" => user["username"],
       "picture"            => user["avatar_url"],
-      "email"              => user["email"]
+      "email"              => user["email"],
+      "email_verified"     => not is_nil(user["confirmed_at"])
     }}
   end
 end

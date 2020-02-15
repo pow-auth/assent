@@ -38,7 +38,7 @@ defmodule Assent.Strategy.Google do
       "family_name"    => user["family_name"],
       "picture"        => user["picture"],
       "email"          => user["email"],
-      "email_verified" => user["verified_email"],
+      "email_verified" => user["email_verified"],
       "locale"         => user["locale"]
     },
     %{

@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.1.8 (TBA)
+
+* `Assent.Strategy.Github` now provides `email_verified` value
+* `Assent.Strategy.Gitlab` now provides `email_verified` value
+* `Assent.Strategy.Google` fixed to provide correct `email_verified` value
+* `Assent.Strategy.Twitter` now provides `email_verified` value
+
 ## v0.1.7 (2020-02-10)
 
 * Fix `Assent.HTTPAdapter.Mint` where `:unknown` responses where not handled correctly

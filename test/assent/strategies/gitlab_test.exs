@@ -41,6 +41,7 @@ defmodule Assent.Strategy.GitlabTest do
   }
   @user %{
     "email" => "john@example.com",
+    "email_verified" => true,
     "name" => "John Smith",
     "picture" => "http://localhost:3000/uploads/user/avatar/1/index.jpg",
     "preferred_username" => "john_smith",

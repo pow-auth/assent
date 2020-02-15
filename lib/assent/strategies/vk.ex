@@ -2,6 +2,9 @@ defmodule Assent.Strategy.VK do
   @moduledoc """
   VK.com OAuth 2.0 strategy.
 
+  The VK token endpoint does not provide data on email verification, email is
+  considered unverified.
+
   ## Configuration
 
   - `:user_url_params` - Parameters to send along with the user fetch request,

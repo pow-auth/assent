@@ -60,6 +60,7 @@ defmodule Assent.Strategy.GithubTest do
   ]
   @user %{
     "email" => "octocat@github.com",
+    "email_verified" => true,
     "name" => "monalisa octocat",
     "picture" => "https://github.com/images/error/octocat_happy.gif",
     "preferred_username" => "octocat",
