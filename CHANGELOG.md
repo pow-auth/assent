@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.1.8 (TBA)
+## v0.1.8 (2020-02-15)
 
 * `Assent.Strategy.Github` now provides `email_verified` value
 * `Assent.Strategy.Gitlab` now provides `email_verified` value
