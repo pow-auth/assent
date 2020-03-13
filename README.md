@@ -155,7 +155,7 @@ defmodule TestProvider do
     # Generate authorization url
   end
 
-  @spec callback(Keyword.t(), map()) :: {:ok, %{user: map()}} | {:error, term()}
+  @spec callback(Keyword.t(), map()) :: {:ok, %{user: map(), token: map()}} | {:error, term()}
   def callback(config, params) do
     # Handle callback response
   end

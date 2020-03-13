@@ -78,6 +78,7 @@ defmodule Assent.Strategy.OAuth2 do
       users to, defaults to `/oauth/authorize`
     - `:authorization_params` - The authorization parameters, defaults to `[]`
   """
+  @impl true
   @spec authorize_url(Config.t()) :: {:ok, %{session_params: %{state: binary()}, url: binary()}} | {:error, term()}
   def authorize_url(config) do
     with {:ok, redirect_uri} <- Config.fetch(config, :redirect_uri),
@@ -115,6 +116,7 @@ defmodule Assent.Strategy.OAuth2 do
     - `:session_params` - The session parameters that was returned from
       `authorize_url/1`, optional
   """
+  @impl true
   @spec callback(Config.t(), map(), atom()) :: {:ok, %{user: map(), token: map()}} | {:error, term()}
   def callback(config, params, strategy \\ __MODULE__) do
     with :ok          <- check_state(config, params),
