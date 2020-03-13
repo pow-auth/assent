@@ -59,7 +59,7 @@ defmodule Assent.Strategy.OAuth2.Base do
     |> OAuth2.authorize_url()
   end
 
-  @spec callback(Keyword.t(), map(), module()) :: {:ok, %{user: map()}} | {:error, term()}
+  @spec callback(Keyword.t(), map(), module()) :: {:ok, %{user: map(), token: map()}} | {:error, term()}
   def callback(config, params, strategy) do
     config = set_config(config, strategy)
 

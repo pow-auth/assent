@@ -81,6 +81,7 @@ defmodule Assent.Strategy.OIDC do
 
   See `Assent.Strategy.OAuth2.authorize_url/1` for more.
   """
+  @impl true
   @spec authorize_url(Config.t()) :: {:ok, %{session_params: %{state: binary()} | %{state: binary(), nonce: binary()}, url: binary()}} | {:error, term()}
   def authorize_url(config) do
     with {:ok, openid_config} <- openid_configuration(config),
@@ -186,6 +187,7 @@ defmodule Assent.Strategy.OIDC do
 
   See `Assent.Strategy.OAuth2.callback/3` for more.
   """
+  @impl true
   @spec callback(Config.t(), map(), atom()) :: {:ok, %{user: map(), token: map()}} | {:error, term()}
   def callback(config, params, strategy \\ __MODULE__) do
     with {:ok, openid_config} <- openid_configuration(config),
