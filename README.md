@@ -119,9 +119,9 @@ defmodule TestProvider do
   @impl true
   def default_config(_config) do
     [
-      site: "http://localhost:4000/",
-      authorize_url: "http://localhost:4000/oauth/authorize",
-      token_url: "http://localhost:4000/oauth/access_token",
+      site: "http://localhost:4000/api/v1", # The base URL to use for any paths below
+      authorize_url: "http://localhost:4000/oauth/authorize", # Full URL will not use the `:site` option
+      token_url: "/oauth/access_token",
       user_url: "/user",
       authorization_params: [scope: "email profile"],
       auth_method: :client_secret_post
@@ -130,19 +130,22 @@ defmodule TestProvider do
 
   @impl true
   def normalize(_config, user) do
-    {:ok, %{
-      "sub"   => user["sub"],
-      "name"  => user["name"],
-      "email" => user["email"]
-    },
-    %{
-      "test_provider_bio" => user["bio"]
-    }}
+    {:ok,
+      %{ # Conformed to https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.5.1
+        "sub"   => user["sub"],
+        "name"     => user["name"],
+        "nickname" => user["username],
+        "email"    => user["email"]
+      },
+      %{ # Provider specific data not part of the standard claims spec
+        "test_provider_bio" => user["bio"]
+      }
+    }
   end
 end
 ```
 
-The normalized user map should conform to the [OpenID Connect Core 1.0 Standard Claims spec](https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.5.1), and should return either `{:ok, userinfo_claims}` or `{:ok, userinfo_claims, additional}`.
+The normalized user map should conform to the [OpenID Connect Core 1.0 Standard Claims spec](https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.5.1), and should return either `{:ok, userinfo_claims}` or `{:ok, userinfo_claims, additional}`. Any keys defined in the userinfo claims that isn't part of the specs will not be included in the user map. Instead they should be set in the additional data that will then be merged on top of the userinfo claims excluding any keys that already was set.
 
 You can also use `Assent.Strategy`:
 
