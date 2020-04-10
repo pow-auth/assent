@@ -131,14 +131,16 @@ defmodule TestProvider do
   @impl true
   def normalize(_config, user) do
     {:ok,
-      %{ # Conformed to https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.5.1
+      # Conformed to https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.5.1
+      %{
         "sub"   => user["sub"],
         "name"     => user["name"],
         "nickname" => user["username],
         "email"    => user["email"]
-      },
-      %{ # Provider specific data not part of the standard claims spec
-        "test_provider_bio" => user["bio"]
+      # },
+      # # Provider specific data not part of the standard claims spec
+      # %{
+      #   "test_provider_bio" => user["bio"]
       }
     }
   end
