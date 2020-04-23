@@ -338,19 +338,18 @@ defmodule Assent.Strategy.OIDC do
 
   defp validate_nonce(jwt, config) do
     config
-    |> Config.get(:session_params, [])
-    |> Map.get(:nonce, nil)
+    |> Config.get(:session_params, nil)
     |> validate_for_nonce(jwt)
   end
 
-  defp validate_for_nonce(nil, %{claims: %{"nonce" => _nonce}}),
-    do: {:error, "`nonce` included in ID Token but doesn't exist in session params"}
-  defp validate_for_nonce(nil, _jwt), do: :ok
-  defp validate_for_nonce(nonce, %{claims: %{"nonce" => nonce}}), do: :ok
-  defp validate_for_nonce(_nonce_1, %{claims: %{"nonce" => _nonce_2}}),
+  defp validate_for_nonce(%{nonce: nonce}, %{claims: %{"nonce" => nonce}}), do: :ok
+  defp validate_for_nonce(%{nonce: _nonce_1}, %{claims: %{"nonce" => _nonce_2}}),
     do: {:error, "Invalid `nonce` included in ID Token"}
-  defp validate_for_nonce(_nonce, _jwt),
+  defp validate_for_nonce(%{nonce: _nonce}, _jwt),
     do: {:error, "`nonce` is not included in ID Token"}
+    defp validate_for_nonce(_any, %{claims: %{"nonce" => _nonce}}),
+    do: {:error, "`nonce` included in ID Token but doesn't exist in session params"}
+  defp validate_for_nonce(_any, _jwt), do: :ok
 
   defp fetch_and_normalize_userinfo(openid_config, config, token, claims) do
     openid_config

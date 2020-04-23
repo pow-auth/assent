@@ -171,6 +171,16 @@ defmodule Assent.Strategy.OIDCTest do
       assert {:ok, _} = OIDC.callback(config, params)
     end
 
+    test "with no session params", %{config: config, callback_params: params, bypass: bypass} do
+      config = Keyword.delete(config, :session_params)
+
+      expect_oidc_access_token_request(bypass)
+
+      expect_oauth2_user_request(bypass, @user_claims)
+
+      assert {:ok, _} = OIDC.callback(config, params)
+    end
+
     test "with client_secret_basic authentication method", %{config: config, callback_params: params, bypass: bypass} do
       expect_oidc_access_token_request(bypass, [], fn conn, _params ->
         assert [{"authorization", "Basic " <> token} | _rest] = conn.req_headers
