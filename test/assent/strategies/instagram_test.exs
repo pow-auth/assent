@@ -3,30 +3,33 @@ defmodule Assent.Strategy.InstagramTest do
 
   alias Assent.Strategy.Instagram
 
-  # From https://www.instagram.com/developer/authentication/
+  # From https://developers.facebook.com/docs/instagram-basic-display-api/reference/user
   @user_response %{
-    "id" => "1574083",
-    "username" => "snoopdogg",
-    "full_name" => "Snoop Dogg",
-    "profile_picture" => "..."
+    "id" => "17841405793187218",
+    "username" => "jayposiris"
   }
   @user %{
-    "name" => "Snoop Dogg",
-    "picture" => "...",
-    "preferred_username" => "snoopdogg",
-    "sub" => "1574083"
+    "preferred_username" => "jayposiris",
+    "sub" => "17841405793187218"
   }
 
   test "authorize_url/2", %{config: config} do
     assert {:ok, %{url: url}} = Instagram.authorize_url(config)
-    assert url =~ "/oauth/authorize?client_id="
+    assert url =~ "https://api.instagram.com/oauth/authorize?client_id="
   end
 
   describe "callback/2" do
+    setup %{config: config, bypass: bypass} do
+      config = Keyword.put(config, :token_url, "http://localhost:#{bypass.port}/oauth/access_token")
+
+      {:ok, config: config}
+    end
+
     test "normalizes data", %{config: config, callback_params: params, bypass: bypass} do
-      expect_oauth2_access_token_request(bypass, [uri: "/oauth/token", params: %{access_token: "access_token", user: @user_response}], fn _conn, params ->
+      expect_oauth2_access_token_request(bypass, [uri: "/oauth/access_token", params: %{access_token: "access_token", user: @user_response}], fn _conn, params ->
         assert params["client_secret"] == config[:client_secret]
       end)
+      expect_oauth2_user_request(bypass, @user_response, uri: "/me")
 
       assert {:ok, %{user: user}} = Instagram.callback(config, params)
       assert user == @user

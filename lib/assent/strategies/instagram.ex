@@ -19,8 +19,11 @@ defmodule Assent.Strategy.Instagram do
   @impl true
   def default_config(_config) do
     [
-      site: "https://api.instagram.com",
-      authorization_params: [scope: "basic"],
+      site: "https://graph.instagram.com",
+      authorize_url: "https://api.instagram.com/oauth/authorize",
+      token_url: "https://api.instagram.com/oauth/access_token",
+      user_url: "/me",
+      authorization_params: [scope: "user_profile"],
       auth_method: :client_secret_post
     ]
   end
@@ -29,14 +32,7 @@ defmodule Assent.Strategy.Instagram do
   def normalize(_config, user) do
     {:ok, %{
       "sub"                => user["id"],
-      "name"               => user["full_name"],
-      "preferred_username" => user["username"],
-      "picture"            => user["profile_picture"]
+      "preferred_username" => user["username"]
     }}
-  end
-
-  @impl true
-  def get_user(_config, token) do
-    {:ok, token["user"]}
   end
 end
