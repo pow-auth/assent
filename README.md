@@ -58,7 +58,8 @@ config = [
 ]
 
 # Redirect user to provider
-{:ok, %{url: url, session_params: session_params}} = Assent.Strategy.Github.authorize_url(config)
+{:ok, %{url: url, session_params: session_params}} =
+  Assent.Strategy.Github.authorize_url(config)
 
 # Handle callback
 {:ok, %{user: user, token: token}} =
@@ -133,7 +134,7 @@ defmodule TestProvider do
     {:ok,
       # Conformed to https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.5.1
       %{
-        "sub"   => user["sub"],
+        "sub"      => user["sub"],
         "name"     => user["name"],
         "nickname" => user["username],
         "email"    => user["email"]
