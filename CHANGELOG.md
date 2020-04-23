@@ -3,6 +3,7 @@
 ## v0.1.9 (TBA)
 
 * `Assent.Strategy.Instagram` now uses the Instagram Graph API
+* `Assent.Strategy.OIDC` bug fixed when no `:session_params` set in config
 
 ## v0.1.8 (2020-02-15)
 
