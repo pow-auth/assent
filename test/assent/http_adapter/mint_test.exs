@@ -9,13 +9,11 @@ defmodule Assent.HTTPAdapter.MintTest do
   @hsts_certificate_url "https://hsts.badssl.com"
   @unreachable_http_url "http://localhost:8888/"
 
-  {otp_version, _} = Integer.parse(to_string(:erlang.system_info(:otp_release)))
-  @certificate_expired_error if otp_version >= 22, do: {:tls_alert, {:certificate_expired, 'received CLIENT ALERT: Fatal - Certificate Expired'}}, else: {:tls_alert, 'certificate expired'}
-
   describe "request/4" do
     test "handles SSL" do
       assert {:ok, %HTTPResponse{status: 200}} = Mint.request(:get, @hsts_certificate_url, nil, [])
-      assert {:error, %TransportError{reason: @certificate_expired_error}} = Mint.request(:get, @expired_certificate_url, nil, [])
+      assert {:error, %TransportError{reason: error}} = Mint.request(:get, @expired_certificate_url, nil, [])
+      assert expired?(error)
 
       assert {:ok, %HTTPResponse{status: 200}} = Mint.request(:get, @expired_certificate_url, nil, [], transport_opts: [verify: :verify_none])
 
@@ -42,4 +40,8 @@ defmodule Assent.HTTPAdapter.MintTest do
       assert {:ok, %HTTPResponse{status: 200}} = Mint.request(:get, "http://localhost:#{bypass.port}/get?a=1", nil, [])
     end
   end
+
+  defp expired?({:tls_alert, {:certificate_expired, _error}}), do: true
+  defp expired?({:tls_alert, 'certificate expired'}), do: true # For OTP version < 22
+  defp expired?(_any), do: false
 end

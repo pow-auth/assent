@@ -2,6 +2,8 @@
 
 ## v0.1.9 (2020-04-23)
 
+Now requires Elixir 1.7 or higher.
+
 * `Assent.Strategy.Instagram` now uses the Instagram Graph API
 * `Assent.Strategy.OIDC` bug fixed when no `:session_params` set in config
 
