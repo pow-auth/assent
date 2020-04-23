@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.9 (TBA)
+
+* `Assent.Strategy.Instagram` now uses the Instagram Graph API
+
 ## v0.1.8 (2020-02-15)
 
 * `Assent.Strategy.Github` now provides `email_verified` value
