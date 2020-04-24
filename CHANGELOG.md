@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.10 (TBA)
+
+Now requires Mint 1.0.0 or higher.
+
 ## v0.1.9 (2020-04-23)
 
 Now requires Elixir 1.7 or higher.

@@ -39,7 +39,7 @@ defmodule Assent.MixProject do
       {:certifi, ">= 0.0.0", optional: true},
       {:ssl_verify_fun, ">= 0.0.0", optional: true},
 
-      {:mint, ">= 0.1.0 and < 1.1.0", optional: true},
+      {:mint, "~> 1.0.0", optional: true},
       {:castore, "~> 0.1.0", optional: true},
 
       {:credo, "~> 1.1.0", only: [:dev, :test]},
