@@ -31,6 +31,23 @@ defmodule Assent.HTTPAdapter.HttpcTest do
 
       assert {:ok, %HTTPResponse{status: 200}} = Httpc.request(:get, "http://localhost:#{bypass.port}/get?a=1", nil, [])
     end
+
+    test "handles POST" do
+      bypass = Bypass.open()
+
+      Bypass.expect_once(bypass, "POST", "/post", fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn, [])
+        params = URI.decode_query(body)
+
+        assert params["a"] == "1"
+        assert params["b"] == "2"
+        assert Plug.Conn.get_req_header(conn, "content-type") == ["application/x-www-form-urlencoded"]
+
+        Plug.Conn.send_resp(conn, 200, "")
+      end)
+
+      assert {:ok, %HTTPResponse{status: 200}} = Httpc.request(:post, "http://localhost:#{bypass.port}/post", "a=1&b=2", [{"content-type", "application/x-www-form-urlencoded"}])
+    end
   end
 
   defp fetch_inet_error([_, {:inet, [:inet], error}]), do: error
