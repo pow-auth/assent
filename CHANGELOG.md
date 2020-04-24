@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.1.10 (TBA)
+## v0.1.10 (2020-04-23)
 
 Now requires Mint 1.0.0 or higher.
 
