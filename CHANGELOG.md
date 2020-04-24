@@ -4,6 +4,8 @@
 
 Now requires Mint 1.0.0 or higher.
 
+* `Assent.Strategy.Instagram` now accepts `:user_url_request_fields` config option and passes `fields` params to the `/me` point
+
 ## v0.1.9 (2020-04-23)
 
 Now requires Elixir 1.7 or higher.

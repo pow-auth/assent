@@ -16,6 +16,8 @@ defmodule Assent.Strategy.Instagram do
   """
   use Assent.Strategy.OAuth2.Base
 
+  alias Assent.{Config, Strategy.OAuth2}
+
   @impl true
   def default_config(_config) do
     [
@@ -23,9 +25,22 @@ defmodule Assent.Strategy.Instagram do
       authorize_url: "https://api.instagram.com/oauth/authorize",
       token_url: "https://api.instagram.com/oauth/access_token",
       user_url: "/me",
+      user_url_request_fields: "id,username",
       authorization_params: [scope: "user_profile"],
       auth_method: :client_secret_post
     ]
+  end
+
+  @impl true
+  def get_user(config, access_token) do
+    with {:ok, fields} <- Config.fetch(config, :user_url_request_fields) do
+      params = [
+        fields: fields,
+        access_token: access_token["access_token"]
+      ]
+
+      OAuth2.get_user(config, access_token, params)
+    end
   end
 
   @impl true

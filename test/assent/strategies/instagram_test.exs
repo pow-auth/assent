@@ -29,7 +29,13 @@ defmodule Assent.Strategy.InstagramTest do
       expect_oauth2_access_token_request(bypass, [uri: "/oauth/access_token", params: %{access_token: "access_token", user: @user_response}], fn _conn, params ->
         assert params["client_secret"] == config[:client_secret]
       end)
-      expect_oauth2_user_request(bypass, @user_response, uri: "/me")
+
+      expect_oauth2_user_request(bypass, @user_response, [uri: "/me"], fn conn ->
+        conn = Plug.Conn.fetch_query_params(conn)
+
+        assert conn.params["access_token"] == "access_token"
+        assert conn.params["fields"] == "id,username"
+      end)
 
       assert {:ok, %{user: user}} = Instagram.callback(config, params)
       assert user == @user
