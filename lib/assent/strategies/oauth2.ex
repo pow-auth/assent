@@ -65,7 +65,7 @@ defmodule Assent.Strategy.OAuth2 do
   @behaviour Assent.Strategy
 
   alias Assent.Strategy, as: Helpers
-  alias Assent.{CallbackCSRFError, CallbackError, Config, HTTPAdapter.HTTPResponse, JWTAdapter, RequestError}
+  alias Assent.{CallbackCSRFError, CallbackError, Config, HTTPAdapter.HTTPResponse, JWTAdapter, MissingParamError, RequestError}
 
   @doc """
   Generate authorization URL for request phase.
@@ -119,29 +119,38 @@ defmodule Assent.Strategy.OAuth2 do
   @impl true
   @spec callback(Config.t(), map(), atom()) :: {:ok, %{user: map(), token: map()}} | {:error, term()}
   def callback(config, params, strategy \\ __MODULE__) do
-    with :ok          <- check_state(config, params),
-         {:ok, token} <- get_access_token(config, params) do
+    with {:ok, session_params} <- Config.fetch(config, :session_params),
+         :ok                   <- check_error_params(params),
+         {:ok, code}           <- fetch_code_param(params),
+         :ok                   <- maybe_check_state(session_params, params),
+         {:ok, token}          <- get_access_token(config, code) do
 
       fetch_user(config, token, strategy)
     end
   end
 
-  defp check_state(config, params) do
-    config
-    |> Config.get(:session_params, nil)
-    |> do_check_state(params)
-  end
-
-  defp do_check_state(_params, %{"error" => _} = params) do
+  defp check_error_params(%{"error" => _} = params) do
     message   = params["error_description"] || params["error_reason"] || params["error"]
     error     = params["error"]
     error_uri = params["error_uri"]
 
     {:error, %CallbackError{message: message, error: error, error_uri: error_uri}}
   end
-  defp do_check_state(%{state: stored_state}, %{"state" => param_state}) when stored_state != param_state,
-    do: {:error, %CallbackCSRFError{}}
-  defp do_check_state(_state, _params), do: :ok
+  defp check_error_params(_params), do: :ok
+
+  defp fetch_code_param(%{"code" => code}), do: {:ok, code}
+  defp fetch_code_param(params), do: {:error, MissingParamError.new("code", params)}
+
+  defp maybe_check_state(%{state: stored_state}, %{"state" => provided_state}) do
+    case Assent.constant_time_compare(stored_state, provided_state) do
+      true -> :ok
+      false -> {:error, CallbackCSRFError.new("state")}
+    end
+  end
+  defp maybe_check_state(%{state: _state}, params) do
+    {:error, MissingParamError.new("state", params)}
+  end
+  defp maybe_check_state(_session_params, _params), do: :ok
 
   defp authentication_params(nil, config) do
     with {:ok, client_id}     <- Config.fetch(config, :client_id) do
@@ -219,7 +228,7 @@ defmodule Assent.Strategy.OAuth2 do
     end
   end
 
-  defp get_access_token(config, %{"code" => code}) do
+  defp get_access_token(config, code) do
     auth_method  = Config.get(config, :auth_method, nil)
     token_url    = Config.get(config, :token_url, "/oauth/token")
 

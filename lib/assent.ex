@@ -6,7 +6,24 @@ defmodule Assent do
   end
 
   defmodule CallbackCSRFError do
-    defexception message: "CSRF detected"
+    defexception [:message]
+
+    @spec new(binary()) :: %__MODULE__{}
+    def new(key) do
+      %__MODULE__{message: "CSRF detected with param key #{inspect key}"}
+    end
+  end
+
+  defmodule MissingParamError do
+    defexception [:message, :params]
+
+    @spec new(binary(), map()) :: %__MODULE__{}
+    def new(key, params) do
+      %__MODULE__{
+        message: "Expected #{inspect key} to exist in params, but only found the following keys: #{inspect Map.keys(params)}",
+        params: params
+      }
+    end
   end
 
   defmodule RequestError do
@@ -58,5 +75,22 @@ defmodule Assent do
         error: :unreachable
       }
     end
+  end
+
+  use Bitwise
+
+  @doc false
+  @spec constant_time_compare(binary(), binary()) :: boolean()
+  def constant_time_compare(left, right) when byte_size(left) == byte_size(right) do
+    constant_time_compare(left, right, 0) == 0
+  end
+  def constant_time_compare(_hash, _secret_hash), do: false
+
+  def constant_time_compare(<<x, left::binary>>, <<y, right::binary>>, acc) do
+    xorred = x ^^^ y
+    constant_time_compare(left, right, acc ||| xorred)
+  end
+  def constant_time_compare(<<>>, <<>>, acc) do
+    acc
   end
 end

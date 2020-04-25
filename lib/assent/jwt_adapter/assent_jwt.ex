@@ -136,7 +136,7 @@ defmodule Assent.JWTAdapter.AssentJWT do
   defp verify_message(_message, _signature, _alg, nil), do: false
   defp verify_message(message, signature, "HS" <> _rest = alg, secret) when is_binary(secret) do
     case sign_message(message, alg, secret) do
-      {:ok, signature_2} -> constant_time_compare(signature_2, signature)
+      {:ok, signature_2} -> Assent.constant_time_compare(signature_2, signature)
       _any               -> false
     end
   end
@@ -170,19 +170,4 @@ defmodule Assent.JWTAdapter.AssentJWT do
     end
   end
   defp decode_key(jwk) when is_map(jwk), do: {:error, "Can't decode JWK"}
-
-  use Bitwise
-
-  defp constant_time_compare(left, right) when byte_size(left) == byte_size(right) do
-    constant_time_compare(left, right, 0) == 0
-  end
-  defp constant_time_compare(_hash, _secret_hash), do: false
-
-  defp constant_time_compare(<<x, left::binary>>, <<y, right::binary>>, acc) do
-    xorred = x ^^^ y
-    constant_time_compare(left, right, acc ||| xorred)
-  end
-  defp constant_time_compare(<<>>, <<>>, acc) do
-    acc
-  end
 end

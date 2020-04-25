@@ -1,7 +1,7 @@
 defmodule Assent.Strategy.OAuth2Test do
   use Assent.Test.OAuth2TestCase
 
-  alias Assent.{CallbackCSRFError, CallbackError, Config.MissingKeyError, RequestError, Strategy.OAuth2}
+  alias Assent.{CallbackCSRFError, CallbackError, Config.MissingKeyError, MissingParamError, RequestError, Strategy.OAuth2}
 
   @client_id "id"
   @client_secret "secret"
@@ -68,12 +68,118 @@ defmodule Assent.Strategy.OAuth2Test do
       {:ok, config: config}
     end
 
+    test "with missing `:session_params` config", %{config: config, callback_params: params} do
+      config = Keyword.delete(config, :session_params)
+
+      assert {:error, %MissingKeyError{} = error} = OAuth2.callback(config, params)
+      assert error.message == "Key `:session_params` not found in config"
+    end
+
+    test "with error params", %{config: config, callback_params: %{"state" => state}} do
+      params = %{"error" => "access_denied", "error_description" => "The user denied the request", "state" => state}
+
+      assert {:error, %CallbackError{} = error} = OAuth2.callback(config, params)
+      assert error.message == "The user denied the request"
+      assert error.error == "access_denied"
+      refute error.error_uri
+    end
+
+    test "with missing code param", %{config: config, callback_params: params} do
+      params = Map.delete(params, "code")
+
+      assert {:error, %MissingParamError{} = error} = OAuth2.callback(config, params)
+      assert error.message == "Expected \"code\" to exist in params, but only found the following keys: [\"state\"]"
+      assert error.params == %{"state" => "state_test_value"}
+    end
+
+    test "with missing state param", %{config: config, callback_params: params} do
+      params = Map.delete(params, "state")
+
+      assert {:error, %MissingParamError{} = error} = OAuth2.callback(config, params)
+      assert error.message == "Expected \"state\" to exist in params, but only found the following keys: [\"code\"]"
+      assert error.params == %{"code" => "code_test_value"}
+    end
+
+    test "with invalid state param", %{config: config, callback_params: params} do
+      params = Map.put(params, "state", "invalid")
+
+      assert {:error, %CallbackCSRFError{} = error} = OAuth2.callback(config, params)
+      assert error.message == "CSRF detected with param key \"state\""
+    end
+
+    test "with state param without state in session_params", %{config: config, callback_params: params, bypass: bypass} do
+      config = Keyword.put(config, :session_params, %{})
+
+      expect_oauth2_access_token_request(bypass, [])
+      expect_oauth2_user_request(bypass, %{})
+
+      assert {:ok, _any} = OAuth2.callback(config, params)
+    end
+
+    test "without state in params and session params", %{config: config, callback_params: params, bypass: bypass} do
+      config = Keyword.put(config, :session_params, %{})
+      params = Map.delete(params, "state")
+
+      expect_oauth2_access_token_request(bypass, [])
+      expect_oauth2_user_request(bypass, %{})
+
+      assert {:ok, _any} = OAuth2.callback(config, params)
+    end
+
+    test "with access token error with 200 response", %{config: config, callback_params: params, bypass: bypass} do
+      expect_oauth2_access_token_request(bypass, params: %{"error" => "error", "error_description" => "Error description"})
+
+      assert {:error, %RequestError{} = error} = OAuth2.callback(config, params)
+      assert error.error == :unexpected_response
+      assert error.message =~ "An unexpected success response was received:"
+      assert error.message =~ "%{\"error\" => \"error\", \"error_description\" => \"Error description\"}"
+    end
+
+    test "with access token error with 500 response", %{config: config, callback_params: params, bypass: bypass} do
+      expect_oauth2_access_token_request(bypass, status_code: 500, params: %{error: "Error"})
+
+      assert {:error, %RequestError{} = error} = OAuth2.callback(config, params)
+      assert error.error == :invalid_server_response
+      assert error.message =~ "Server responded with status: 500"
+      assert error.message =~ "%{\"error\" => \"Error\"}"
+    end
+
+    test "with missing `:user_url`", %{config: config, callback_params: params, bypass: bypass} do
+      config = Keyword.delete(config, :user_url)
+
+      expect_oauth2_access_token_request(bypass)
+
+      assert {:error, %MissingKeyError{} = error} = OAuth2.callback(config, params)
+      assert error.message == "Key `:user_url` not found in config"
+    end
+
+    test "with unreachable `:user_url`", %{config: config, callback_params: params, bypass: bypass} do
+      config = Keyword.put(config, :user_url, "http://localhost:8888/api/user")
+
+      expect_oauth2_access_token_request(bypass)
+
+      assert {:error, %RequestError{} = error} = OAuth2.callback(config, params)
+      assert error.error == :unreachable
+      assert error.message =~ "Server was unreachable with Assent.HTTPAdapter.Httpc."
+      assert error.message =~ "{:failed_connect"
+      assert error.message =~ "URL: http://localhost:8888/api/user"
+    end
+
+    test "with unauthorized `:user_url`", %{config: config, callback_params: params, bypass: bypass} do
+      expect_oauth2_access_token_request(bypass)
+      expect_oauth2_user_request(bypass, %{"error" => "Unauthorized"}, status_code: 401)
+
+      assert {:error, %RequestError{} = error} = OAuth2.callback(config, params)
+      assert error.message == "Unauthorized token"
+      refute error.error
+    end
+
     @user_api_params %{name: "Dan Schultzer", email: "foo@example.com", uid: "1"}
 
     test "with no auth method", %{config: config, callback_params: params, bypass: bypass} do
       expect_oauth2_access_token_request(bypass, [], fn _conn, params ->
         assert params["grant_type"] == "authorization_code"
-        assert params["code"] == "test"
+        assert params["code"] == "code_test_value"
         assert params["redirect_uri"] == "http://localhost:4000/auth/callback"
         assert params["client_id"] == @client_id
         refute params["client_secret"]
@@ -92,7 +198,7 @@ defmodule Assent.Strategy.OAuth2Test do
         assert Base.url_decode64(token, padding: false) == {:ok, "#{@client_id}:#{@client_secret}"}
 
         assert params["grant_type"] == "authorization_code"
-        assert params["code"] == "test"
+        assert params["code"] == "code_test_value"
         assert params["redirect_uri"] == "http://localhost:4000/auth/callback"
       end)
 
@@ -106,7 +212,7 @@ defmodule Assent.Strategy.OAuth2Test do
 
       expect_oauth2_access_token_request(bypass, [], fn _conn, params ->
         assert params["grant_type"] == "authorization_code"
-        assert params["code"] == "test"
+        assert params["code"] == "code_test_value"
         assert params["redirect_uri"] == "http://localhost:4000/auth/callback"
         assert params["client_id"] == @client_id
         assert params["client_secret"] == @client_secret
@@ -122,7 +228,7 @@ defmodule Assent.Strategy.OAuth2Test do
 
       expect_oauth2_access_token_request(bypass, [], fn _conn, params ->
         assert params["grant_type"] == "authorization_code"
-        assert params["code"] == "test"
+        assert params["code"] == "code_test_value"
         assert params["redirect_uri"] == "http://localhost:4000/auth/callback"
         assert params["client_assertion_type"] == "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
 
@@ -151,7 +257,7 @@ defmodule Assent.Strategy.OAuth2Test do
 
       expect_oauth2_access_token_request(bypass, [], fn _conn, params ->
         assert params["grant_type"] == "authorization_code"
-        assert params["code"] == "test"
+        assert params["code"] == "code_test_value"
         assert params["redirect_uri"] == "http://localhost:4000/auth/callback"
         assert params["client_assertion_type"] == "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
 
@@ -200,53 +306,6 @@ defmodule Assent.Strategy.OAuth2Test do
       assert {:ok, %{user: user, token: token}} = OAuth2.callback(config, params)
       assert user == %{"email" => "foo@example.com", "name" => "Dan Schultzer", "uid" => "1"}
       assert token == %{"access_token" => "access_token"}
-    end
-
-    test "with redirect error", %{config: config} do
-      params = %{"error" => "access_denied", "error_description" => "The user denied the request", "state" => "test"}
-
-      assert {:error, %CallbackError{message: "The user denied the request", error: "access_denied", error_uri: nil}} = OAuth2.callback(config, params)
-    end
-
-    test "with invalid state", %{config: config, callback_params: params} do
-      params = Map.put(params, "state", "invalid")
-
-      assert {:error, %CallbackCSRFError{}} = OAuth2.callback(config, params)
-    end
-
-    test "access token error with 200 response", %{config: config, callback_params: params, bypass: bypass} do
-      expect_oauth2_access_token_request(bypass, params: %{"error" => "error", "error_description" => "Error description"})
-
-      assert {:error, %RequestError{error: :unexpected_response}} = OAuth2.callback(config, params)
-    end
-
-    test "access token error with 500 response", %{config: config, callback_params: params, bypass: bypass} do
-      expect_oauth2_access_token_request(bypass, status_code: 500, params: %{error: "Error"})
-
-      assert {:error, %RequestError{error: :invalid_server_response}} = OAuth2.callback(config, params)
-    end
-
-    test "configuration error", %{config: config, callback_params: params, bypass: bypass} do
-      config = Keyword.delete(config, :user_url)
-
-      expect_oauth2_access_token_request(bypass)
-
-      assert {:error, %MissingKeyError{message: "Key `:user_url` not found in config"}} = OAuth2.callback(config, params)
-    end
-
-    test "user url connection error", %{config: config, callback_params: params, bypass: bypass} do
-      config = Keyword.put(config, :user_url, "http://localhost:8888/api/user")
-
-      expect_oauth2_access_token_request(bypass)
-
-      assert {:error, %Assent.RequestError{error: :unreachable}} = OAuth2.callback(config, params)
-    end
-
-    test "user url unauthorized access token", %{config: config, callback_params: params, bypass: bypass} do
-      expect_oauth2_access_token_request(bypass)
-      expect_oauth2_user_request(bypass, %{"error" => "Unauthorized"}, status_code: 401)
-
-      assert {:error, %RequestError{message: "Unauthorized token"}} = OAuth2.callback(config, params)
     end
   end
 end

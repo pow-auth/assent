@@ -55,7 +55,7 @@ defmodule Assent.Test.OIDCTestCase do
   }
 
   setup _tags do
-    params = %{"code" => "test", "state" => "test"}
+    params = %{"code" => "test_code_value", "state" => "test_state_value"}
     bypass = Bypass.open()
     config = [
       client_id: @client_id,
@@ -69,7 +69,7 @@ defmodule Assent.Test.OIDCTestCase do
       client_secret: @client_secret,
       site: "http://localhost:#{bypass.port}",
       redirect_uri: "http://localhost:4000/auth/callback",
-      session_params: %{state: "test"}]
+      session_params: %{state: "test_state_value"}]
 
     {:ok, callback_params: params, config: config, bypass: bypass}
   end

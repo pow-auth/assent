@@ -31,25 +31,38 @@ defmodule Assent.Strategy.OAuthTest do
     test "bubbles up unexpected response with HTTP status 200", %{config: config, bypass: bypass} do
       expect_oauth_request_token_request(bypass, params: %{"error_code" => 215, "error_message" => "Bad Authentication data."})
 
-      assert {:error, %RequestError{error: :unexpected_response}} = OAuth.authorize_url(config)
+      assert {:error, %RequestError{} = error} = OAuth.authorize_url(config)
+      assert error.error == :unexpected_response
+      assert error.message =~ "An unexpected success response was received:"
+      assert error.message =~ "%{\"error_code\" => \"215\", \"error_message\" => \"Bad Authentication data.\"}"
     end
 
     test "bubbles up error response", %{config: config, bypass: bypass} do
       expect_oauth_request_token_request(bypass, status_code: 500, params: %{"error_code" => 215, "error_message" => "Bad Authentication data."})
 
-      assert {:error, %RequestError{error: :invalid_server_response}} = OAuth.authorize_url(config)
+      assert {:error, %RequestError{} = error} = OAuth.authorize_url(config)
+      assert error.error == :invalid_server_response
+      assert error.message =~ "Server responded with status: 500"
+      assert error.message =~ "%{\"error_code\" => \"215\", \"error_message\" => \"Bad Authentication data.\"}"
     end
 
     test "bubbles up json error response", %{config: config, bypass: bypass} do
       expect_oauth_request_token_request(bypass, status_code: 500, content_type: "application/json", params: %{"errors" => [%{"code" => 215, "message" => "Bad Authentication data."}]})
 
-      assert {:error, %RequestError{error: :invalid_server_response}} = OAuth.authorize_url(config)
+      assert {:error, %RequestError{} = error} = OAuth.authorize_url(config)
+      assert error.error == :invalid_server_response
+      assert error.message =~ "Server responded with status: 500"
+      assert error.message =~ "%{\"errors\" => [%{\"code\" => 215, \"message\" => \"Bad Authentication data.\"}]}"
     end
 
     test "bubbles up network error", %{config: config, bypass: bypass} do
       Bypass.down(bypass)
 
-      assert {:error, %Assent.RequestError{error: :unreachable}} = OAuth.authorize_url(config)
+      assert {:error, %Assent.RequestError{} = error} = OAuth.authorize_url(config)
+      assert error.error == :unreachable
+      assert error.message =~ "Server was unreachable with Assent.HTTPAdapter.Httpc."
+      assert error.message =~ "{:failed_connect, "
+      assert error.message =~ "URL: http://localhost:#{bypass.port}/oauth/request_token"
     end
   end
 
@@ -74,7 +87,10 @@ defmodule Assent.Strategy.OAuthTest do
 
       expect_oauth_access_token_request(bypass)
 
-      assert {:error, %RequestError{error: :invalid_server_response}} = OAuth.callback(config, params)
+      assert {:error, %RequestError{} = error} = OAuth.callback(config, params)
+      assert error.error == :invalid_server_response
+      assert error.message =~ "Server responded with status: 500"
+      assert error.message =~ "%{\"error\" => \"Invalid signature\"}"
     end
 
     test "with invalid request token secret", %{config: config, callback_params: params, bypass: bypass} do
@@ -82,14 +98,20 @@ defmodule Assent.Strategy.OAuthTest do
 
       expect_oauth_access_token_request(bypass)
 
-      assert {:error, %RequestError{error: :invalid_server_response}} = OAuth.callback(config, params)
+      assert {:error, %RequestError{} = error} = OAuth.callback(config, params)
+      assert error.error == :invalid_server_response
+      assert error.message =~ "Server responded with status: 500"
+      assert error.message =~ "%{\"error\" => \"Invalid signature\"}"
     end
 
     test "bubbles up error response", %{config: config, callback_params: params, bypass: bypass} do
       expect_oauth_access_token_request(bypass)
       expect_oauth_user_request(bypass, %{error: "Unknown error"}, status_code: 500)
 
-      assert {:error, %RequestError{error: :invalid_server_response}} = OAuth.callback(config, params)
+      assert {:error, %RequestError{} = error} = OAuth.callback(config, params)
+      assert error.error == :invalid_server_response
+      assert error.message =~ "Server responded with status: 500"
+      assert error.message =~ "%{\"error\" => \"Unknown error\"}"
     end
   end
 end
