@@ -3,9 +3,9 @@ defmodule Assent.Test.OAuth2TestCase do
   use ExUnit.CaseTemplate
 
   setup _tags do
-    params = %{"code" => "test", "state" => "test"}
+    params = %{"code" => "code_test_value", "state" => "state_test_value"}
     bypass = Bypass.open()
-    config = [client_id: "id", client_secret: "secret", site: "http://localhost:#{bypass.port}", redirect_uri: "http://localhost:4000/auth/callback", session_params: %{state: "test"}]
+    config = [client_id: "id", client_secret: "secret", site: "http://localhost:#{bypass.port}", redirect_uri: "http://localhost:4000/auth/callback", session_params: %{state: "state_test_value"}]
 
     {:ok, callback_params: params, config: config, bypass: bypass}
   end

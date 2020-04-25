@@ -337,17 +337,20 @@ defmodule Assent.Strategy.OIDC do
   end
 
   defp validate_nonce(jwt, config) do
-    config
-    |> Config.get(:session_params, nil)
-    |> validate_for_nonce(jwt)
+    with {:ok, session_params} <- Config.fetch(config, :session_params) do
+      validate_for_nonce(session_params, jwt)
+    end
   end
 
-  defp validate_for_nonce(%{nonce: nonce}, %{claims: %{"nonce" => nonce}}), do: :ok
-  defp validate_for_nonce(%{nonce: _nonce_1}, %{claims: %{"nonce" => _nonce_2}}),
-    do: {:error, "Invalid `nonce` included in ID Token"}
+  defp validate_for_nonce(%{nonce: stored_nonce}, %{claims: %{"nonce" => provided_nonce}}) do
+    case Assent.constant_time_compare(stored_nonce, provided_nonce) do
+      true -> :ok
+      false -> {:error, "Invalid `nonce` included in ID Token"}
+    end
+  end
   defp validate_for_nonce(%{nonce: _nonce}, _jwt),
     do: {:error, "`nonce` is not included in ID Token"}
-    defp validate_for_nonce(_any, %{claims: %{"nonce" => _nonce}}),
+  defp validate_for_nonce(_any, %{claims: %{"nonce" => _nonce}}),
     do: {:error, "`nonce` included in ID Token but doesn't exist in session params"}
   defp validate_for_nonce(_any, _jwt), do: :ok
 

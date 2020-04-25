@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.1.11 (TBA)
+
+* `Assent.Strategy.OAuth2.callback/2` now requires `:session_params` to be set in the config
+* `Assent.Strategy.OIDC.callback/2` now requires `:session_params` to be set in the config
+* `Assent.Strategy.OAuth2` now uses constant time comparison for state
+* `Assent.Strategy.OIDC` now uses constant time comparison for nonce
+
 ## v0.1.10 (2020-04-23)
 
 Now requires Mint 1.0.0 or higher.

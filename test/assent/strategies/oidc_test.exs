@@ -171,14 +171,11 @@ defmodule Assent.Strategy.OIDCTest do
       assert {:ok, _} = OIDC.callback(config, params)
     end
 
-    test "with no session params", %{config: config, callback_params: params, bypass: bypass} do
+    test "with missing `:session_params` config", %{config: config, callback_params: params} do
       config = Keyword.delete(config, :session_params)
 
-      expect_oidc_access_token_request(bypass)
-
-      expect_oauth2_user_request(bypass, @user_claims)
-
-      assert {:ok, _} = OIDC.callback(config, params)
+      assert {:error, %Assent.Config.MissingKeyError{} = error} = OIDC.callback(config, params)
+      assert error.message == "Key `:session_params` not found in config"
     end
 
     test "with client_secret_basic authentication method", %{config: config, callback_params: params, bypass: bypass} do
@@ -290,7 +287,9 @@ defmodule Assent.Strategy.OIDCTest do
         Plug.Conn.send_resp(conn, 404, "")
       end)
 
-      assert {:error, %Assent.RequestError{error: :invalid_server_response}} = OIDC.callback(config, params)
+      assert {:error, %Assent.RequestError{} = error} = OIDC.callback(config, params)
+      assert error.error == :invalid_server_response
+      assert error.message =~ "Server responded with status: 404"
     end
 
     test "with missing keys in `jwks_uri` url", %{config: config, openid_config: openid_config, callback_params: params, bypass: bypass} do
