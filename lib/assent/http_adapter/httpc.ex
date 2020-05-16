@@ -85,12 +85,21 @@ defmodule Assent.HTTPAdapter.Httpc do
   defp ssl_opts(url) do
     %{host: host} = URI.parse(url)
 
+    # This handles certificates for wildcard domain with SAN extension for
+    # OTP >= 22
+    hostname_match_check =
+      try do
+        [customize_hostname_check: [match_fun: :public_key.pkix_verify_hostname_match_fun(:https)]]
+      rescue
+        _e in UndefinedFunctionError -> []
+      end
+
     [
       verify: :verify_peer,
       depth: 99,
       cacerts: :certifi.cacerts(),
       verify_fun: {&:ssl_verify_hostname.verify_fun/3, check_hostname: to_charlist(host)}
-    ]
+    ] ++ hostname_match_check
   end
 
   defp warn_missing_ssl(opts) do
