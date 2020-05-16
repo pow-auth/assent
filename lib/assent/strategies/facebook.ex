@@ -21,6 +21,48 @@ defmodule Assent.Strategy.Facebook do
       ]
 
   See `Assent.Strategy.OAuth2` for more.
+
+  ## With JS SDK
+
+  You can use the JS SDK instead of handling it through `auhorize_url/2`. All
+  you have to do is to set up you HTML page with the following way:
+
+      <fb:login-button scope="[SCOPES]" onlogin="checkLoginState();">
+      </fb:login-button>
+      <div id="status">
+      </div>
+
+      <script>
+        function checkLoginState() {
+          FB.getLoginStatus(function(response) {
+            let signedRequest = response.authResponse.signedRequest
+            let encodedPayload = atob(signedRequest.split('.')[1])
+            let payload = JSON.parse(encodedPayload)
+
+            window.location.href = '<%= @redirect_uri %>?&code=' + encodeURI(payload.code)
+          });
+        }
+
+        window.fbAsyncInit = function() {
+          FB.init({
+            appId   : '[CLIENT_ID]',
+            cookie  : true, // required for server to pick up session
+            version : 'v6.0',
+            xfbml   : true
+          });
+        };
+      </script>
+      <script async defer src="https://connect.facebook.net/en_US/sdk.js"></script>
+
+  In the above, the signed request is decoded and the authorization code is
+  fetched from it. The `@redirect_uri` is the callback URL.
+
+  You have to use an empty `redirect_uri` for the callback:
+
+      {:ok, %{user: user, token: token}} =
+        config
+        |> Assent.Config.put(:redirect_uri, "")
+        |> Assent.Strategy.Facebook.callback(params)
   """
   use Assent.Strategy.OAuth2.Base
 
