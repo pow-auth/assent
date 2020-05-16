@@ -7,6 +7,7 @@
 * `Assent.Strategy.OAuth2` now uses constant time comparison for state
 * `Assent.Strategy.OIDC` now uses constant time comparison for nonce
 * `Assent.Strategy.Httpc.request/5` bug fixed for certificates that has wildcard domain with SAN extension
+* `Assent.Strategy.Mint.request/5` bug fixed for certificates that has wildcard domain with SAN extension
 
 ## v0.1.10 (2020-04-23)
 
