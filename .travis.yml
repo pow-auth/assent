@@ -1,6 +1,6 @@
 language: elixir
 elixir: 1.10
-otp_release: 22.3
+otp_release: 23.0
 jobs:
   include:
     - stage: test
@@ -9,6 +9,9 @@ jobs:
       script: &test_scripts
         - mix test
         - MIX_ENV=test mix credo --ignore design.tagtodo
+    - stage: test
+      otp_release: 22.3
+      script: *test_scripts
     - stage: test
       script: *test_scripts
     - stage: deploy
