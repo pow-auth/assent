@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.1.11 (TBA)
+## v0.1.11 (2020-05-16)
 
 * `Assent.Strategy.OAuth2.callback/2` now requires `:session_params` to be set in the config
 * `Assent.Strategy.OIDC.callback/2` now requires `:session_params` to be set in the config
