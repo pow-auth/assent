@@ -13,6 +13,18 @@ defmodule Assent.Strategy.Google do
         client_secret: "REPLACE_WITH_CLIENT_SECRET"
       ]
 
+  To get the refresh token, it's necessary to pass `access_type: "offline"` in
+  the authorization request:
+
+      config = [
+        client_id: "REPLACE_WITH_CLIENT_ID",
+        client_secret: "REPLACE_WITH_CLIENT_SECRET",
+        authorization_params: [
+          access_type: "offline",
+          scope: "https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile"
+        ]
+      ]
+
   See `Assent.Strategy.OAuth2` for more.
   """
   use Assent.Strategy.OAuth2.Base
