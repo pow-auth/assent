@@ -295,7 +295,7 @@ defmodule Assent.Strategy.OAuth2 do
 
   @spec authorization_headers(Config.t(), map()) :: [{binary(), binary()}]
   def authorization_headers(_config, token) do
-    access_token_type = Map.get(token, "token_type", "Bearer")
+    access_token_type = Map.get(token, "token_type", "Bearer") |> String.capitalize()
     access_token = token["access_token"]
 
     [{"authorization", "#{access_token_type} #{access_token}"}]
