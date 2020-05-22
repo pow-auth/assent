@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.12 (TBA)
+
+* `Assent.Strategy.OAuth2.authorization_headers/2` now capitalizes the token type in the authorization header
+
 ## v0.1.11 (2020-05-16)
 
 * `Assent.Strategy.OAuth2.callback/2` now requires `:session_params` to be set in the config
