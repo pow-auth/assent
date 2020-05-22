@@ -198,8 +198,7 @@ defmodule Assent.Strategy.OIDC do
       |> Config.put(:openid_configuration, openid_config)
       |> Config.put(:auth_method, method)
       |> Config.put(:token_url, token_url)
-      |> Config.put(:strategy, strategy)
-      |> OAuth2.callback(params, __MODULE__)
+      |> OAuth2.callback(params, strategy)
     end
   end
 
@@ -223,17 +222,15 @@ defmodule Assent.Strategy.OIDC do
   @spec get_user(Config.t(), map()) :: {:ok, map()} | {:error, term()}
   def get_user(config, token) do
     with {:ok, openid_config} <- Config.fetch(config, :openid_configuration),
-         {:ok, strategy}      <- Config.fetch(config, :strategy),
-         {:ok, jwt}           <- validate_id_token(token["id_token"], openid_config, config) do
-      case strategy do
-        __MODULE__ -> fetch_and_normalize_userinfo(openid_config, config, token, jwt.claims)
-        strategy   -> strategy.get_user(config, Map.put(token, "id_token", jwt))
-      end
+         {:ok, jwt}           <- validate_id_token(config, token["id_token"]) do
+      fetch_and_normalize_userinfo(openid_config, config, token, jwt.claims)
     end
   end
 
-  defp validate_id_token(token, openid_config, config) do
-    with {:ok, header}        <- peek_header(token, config),
+  @spec validate_id_token(Config.t(), binary()) :: {:ok, map()} | {:error, term()}
+  def validate_id_token(config, token) do
+    with {:ok, openid_config} <- Config.fetch(config, :openid_configuration),
+         {:ok, header}        <- peek_header(token, config),
          {:ok, client_id}     <- Config.fetch(config, :client_id),
          {:ok, issuer}        <- fetch_from_openid_config(openid_config, "issuer"),
          {:ok, secret_or_key} <- fetch_secret(header, openid_config, config),
