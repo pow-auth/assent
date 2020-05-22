@@ -295,10 +295,13 @@ defmodule Assent.Strategy.OAuth2 do
 
   @spec authorization_headers(Config.t(), map()) :: [{binary(), binary()}]
   def authorization_headers(_config, token) do
-    access_token_type = Map.get(token, "token_type", "Bearer")
-    access_token = token["access_token"]
-
-    [{"authorization", "#{access_token_type} #{access_token}"}]
+    token
+    |> Map.get("token_type", "Bearer")
+    |> String.capitalize()
+    |> case do
+      "Bearer" -> [{"authorization", "Bearer #{token["access_token"]}"}]
+      _any     -> []
+    end
   end
 
   defp process_user_response({:ok, %HTTPResponse{status: 200, body: user}}), do: {:ok, user}

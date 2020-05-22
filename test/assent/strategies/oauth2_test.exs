@@ -308,4 +308,13 @@ defmodule Assent.Strategy.OAuth2Test do
       assert token == %{"access_token" => "access_token"}
     end
   end
+
+  test "authorization_headers/2" do
+    assert OAuth2.authorization_headers([], %{"access_token" => "token"}) == [{"authorization", "Bearer token"}]
+
+    for token_type <- ["bearer", "Bearer"],
+      do: assert OAuth2.authorization_headers([], %{"access_token" => "token", "token_type" => token_type}) == [{"authorization", "Bearer token"}]
+
+    assert OAuth2.authorization_headers([], %{"access_token" => "token", "token_type" => "Max"}) == []
+  end
 end

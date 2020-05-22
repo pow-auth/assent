@@ -39,7 +39,7 @@ defmodule Assent.Test.OAuth2TestCase do
 
   @spec expect_oauth2_user_request(Bypass.t(), map(), Keyword.t(), function() | nil) :: :ok
   def expect_oauth2_user_request(bypass, user_params, opts \\ [], assert_fn \\ nil) do
-    uri          = Keyword.get(opts, :uri, "/api/user")
+    uri = Keyword.get(opts, :uri, "/api/user")
 
     expect_oauth2_api_request(bypass, uri, user_params, opts, assert_fn)
   end
