@@ -132,6 +132,8 @@ defmodule Assent.Test.OIDCTestCase do
       |> Map.put("iat", :os.system_time(:second))
       |> Map.merge(Keyword.get(opts, :id_token_claims, %{}))
 
+    claims = Map.drop(claims, Enum.filter(Map.keys(claims), &is_nil(claims[&1])))
+
     [jwk, jws] = signing_alg(opts)
     jwt        = JOSE.JWT.sign(jwk, add_kid(jws, opts), claims)
     {_, token} = JOSE.JWS.compact(jwt)

@@ -93,6 +93,14 @@ defmodule Assent.Strategy.OIDCTest do
       assert OIDC.callback(config, params) == {:error, "The ID Token is not a valid JWT"}
     end
 
+    for key <- ~w(iss sub aud exp iat) do
+      test "with missing required #{key} keys in id_token", %{config: config, callback_params: params, bypass: bypass} do
+        expect_oidc_access_token_request(bypass, id_token_claims: %{unquote(key) => nil})
+
+        assert OIDC.callback(config, params) == {:error, "Missing `#{unquote(key)}` in ID Token claims"}
+      end
+    end
+
     test "with invalid `issuer` in id_token", %{config: config, callback_params: params, bypass: bypass} do
       expect_oidc_access_token_request(bypass, id_token_claims: %{"iss" => "invalid"})
 

@@ -235,6 +235,7 @@ defmodule Assent.Strategy.OIDC do
          {:ok, issuer}        <- fetch_from_openid_config(openid_config, "issuer"),
          {:ok, secret_or_key} <- fetch_secret(header, openid_config, config),
          {:ok, jwt}           <- Helpers.verify_jwt(token, secret_or_key, config),
+         :ok                  <- validate_required_fields(jwt),
          :ok                  <- validate_issuer_identifer(jwt, issuer),
          :ok                  <- validate_audience(jwt, client_id),
          :ok                  <- validate_alg(jwt, openid_config),
@@ -289,6 +290,15 @@ defmodule Assent.Strategy.OIDC do
   defp find_key(_header, []), do: {:error, "No keys found in `jwks_uri` provider configuration"}
   defp find_key(_header, [key]), do: {:ok, key}
   defp find_key(_header, _keys), do: {:error, "Multiple public keys found in provider configuration and no `kid` value in ID Token"}
+
+  defp validate_required_fields(%{claims: claims}) do
+    Enum.find_value(~w(iss sub aud exp iat), :ok, fn key ->
+      case Map.has_key?(claims, key) do
+        true  -> nil
+        false -> {:error, "Missing `#{key}` in ID Token claims"}
+      end
+    end)
+  end
 
   defp validate_issuer_identifer(%{claims: %{"iss" => iss}}, iss), do: :ok
   defp validate_issuer_identifer(%{claims: %{"iss" => iss}}, _iss), do: {:error, "Invalid issuer \"#{iss}\" in ID Token"}
