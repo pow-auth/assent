@@ -87,6 +87,53 @@ defmodule Assent.Strategy.OIDCTest do
       -----END PUBLIC KEY-----
       """
 
+    test "with client_secret_basic authentication method", %{config: config, callback_params: params, bypass: bypass} do
+      expect_oidc_access_token_request(bypass, [], fn conn, _params ->
+        assert [{"authorization", "Basic " <> token} | _rest] = conn.req_headers
+        assert [client_id, client_secret] = String.split(Base.url_decode64!(token, padding: false), ":")
+
+        assert client_id == config[:client_id]
+        assert client_secret == config[:client_secret]
+      end)
+
+      expect_oauth2_user_request(bypass, @user_claims)
+
+      assert {:ok, %{user: user, token: token}} = OIDC.callback(config, params)
+      assert user == @user
+      assert %{"access_token" => "access_token", "id_token" => _id_token} = token
+    end
+
+    test "with private_key_jwt authentication method", %{config: config, callback_params: params, bypass: bypass} do
+      openid_configuration =
+        config[:openid_configuration]
+        |> Map.put("client_authentication_method", "private_key_jwt")
+        |> Map.put("token_endpoint_auth_methods_supported", ["private_key_jwt"])
+
+      config =
+        config
+        |> Keyword.put(:client_authentication_method, "private_key_jwt")
+        |> Keyword.put(:openid_configuration, openid_configuration)
+        |> Keyword.put(:private_key, @private_rsa_key)
+        |> Keyword.put(:private_key_id, "key_id")
+
+      expect_oidc_access_token_request(bypass, [], fn _conn, params ->
+        assert {:ok, jwt} = Assent.JWTAdapter.AssentJWT.verify(params["client_assertion"], @public_rsa_key, json_library: Jason)
+        assert jwt.header["alg"] == "RS256"
+        assert jwt.header["typ"] == "JWT"
+        assert jwt.header["kid"] == "key_id"
+        assert jwt.claims["iss"] == "id"
+        assert jwt.claims["sub"] == "id"
+        assert jwt.claims["aud"] == "http://localhost:#{bypass.port}"
+        assert jwt.claims["exp"] > DateTime.to_unix(DateTime.utc_now())
+      end)
+
+      expect_oauth2_user_request(bypass, @user_claims)
+
+      assert {:ok, %{user: user, token: token}} = OIDC.callback(config, params)
+      assert user == @user
+      assert %{"access_token" => "access_token", "id_token" => _id_token} = token
+    end
+
     test "with invalid id token", %{config: config, callback_params: params, bypass: bypass} do
       expect_oidc_access_token_request(bypass, id_token: "invalid")
 
@@ -161,6 +208,13 @@ defmodule Assent.Strategy.OIDCTest do
       assert OIDC.callback(config, params) == {:error, "`nonce` included in ID Token but doesn't exist in session params"}
     end
 
+    test "with missing `:session_params` config", %{config: config, callback_params: params} do
+      config = Keyword.delete(config, :session_params)
+
+      assert {:error, %Assent.Config.MissingKeyError{} = error} = OIDC.callback(config, params)
+      assert error.message == "Key `:session_params` not found in config"
+    end
+
     test "with invalid nonce in id_token", %{config: config, callback_params: params, bypass: bypass} do
       config = Keyword.put(config, :session_params, Map.put(config[:session_params], :nonce, "n-0S6_WzA2Mj"))
 
@@ -177,60 +231,6 @@ defmodule Assent.Strategy.OIDCTest do
       expect_oauth2_user_request(bypass, @user_claims)
 
       assert {:ok, _} = OIDC.callback(config, params)
-    end
-
-    test "with missing `:session_params` config", %{config: config, callback_params: params} do
-      config = Keyword.delete(config, :session_params)
-
-      assert {:error, %Assent.Config.MissingKeyError{} = error} = OIDC.callback(config, params)
-      assert error.message == "Key `:session_params` not found in config"
-    end
-
-    test "with client_secret_basic authentication method", %{config: config, callback_params: params, bypass: bypass} do
-      expect_oidc_access_token_request(bypass, [], fn conn, _params ->
-        assert [{"authorization", "Basic " <> token} | _rest] = conn.req_headers
-        assert [client_id, client_secret] = String.split(Base.url_decode64!(token, padding: false), ":")
-
-        assert client_id == config[:client_id]
-        assert client_secret == config[:client_secret]
-      end)
-
-      expect_oauth2_user_request(bypass, @user_claims)
-
-      assert {:ok, %{user: user, token: token}} = OIDC.callback(config, params)
-      assert user == @user
-      assert %{"access_token" => "access_token", "id_token" => _id_token} = token
-    end
-
-    test "with private_key_jwt authentication method", %{config: config, callback_params: params, bypass: bypass} do
-      openid_configuration =
-        config[:openid_configuration]
-        |> Map.put("client_authentication_method", "private_key_jwt")
-        |> Map.put("token_endpoint_auth_methods_supported", ["private_key_jwt"])
-
-      config =
-        config
-        |> Keyword.put(:client_authentication_method, "private_key_jwt")
-        |> Keyword.put(:openid_configuration, openid_configuration)
-        |> Keyword.put(:private_key, @private_rsa_key)
-        |> Keyword.put(:private_key_id, "key_id")
-
-      expect_oidc_access_token_request(bypass, [], fn _conn, params ->
-        assert {:ok, jwt} = Assent.JWTAdapter.AssentJWT.verify(params["client_assertion"], @public_rsa_key, json_library: Jason)
-        assert jwt.header["alg"] == "RS256"
-        assert jwt.header["typ"] == "JWT"
-        assert jwt.header["kid"] == "key_id"
-        assert jwt.claims["iss"] == "id"
-        assert jwt.claims["sub"] == "id"
-        assert jwt.claims["aud"] == "http://localhost:#{bypass.port}"
-        assert jwt.claims["exp"] > DateTime.to_unix(DateTime.utc_now())
-      end)
-
-      expect_oauth2_user_request(bypass, @user_claims)
-
-      assert {:ok, %{user: user, token: token}} = OIDC.callback(config, params)
-      assert user == @user
-      assert %{"access_token" => "access_token", "id_token" => _id_token} = token
     end
   end
 
