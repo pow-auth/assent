@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.1.12 (TBA)
+## v0.1.12 (2020-05-24)
 
 * `Assent.Strategy.OAuth2.authorization_headers/2` now capitalizes the token type in the authorization header
 * `Assent.Strategy.OIDC.callback/2` now calls the strategy `get_user/2` method before any ID token validation
