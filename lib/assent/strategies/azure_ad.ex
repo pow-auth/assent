@@ -49,8 +49,4 @@ defmodule Assent.Strategy.AzureAD do
 
   @impl true
   def normalize(_config, user), do: {:ok, user}
-
-  @impl true
-  def get_user(_config, %{"id_token" => %{claims: claims}}),
-    do: {:ok, claims}
 end
