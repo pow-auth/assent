@@ -218,23 +218,25 @@ defmodule Assent.Strategy.OIDC do
   defp to_client_auth_method("private_key_jwt"), do: {:ok, :private_key_jwt}
   defp to_client_auth_method(method), do: {:error, "Invalid client authentication method: #{method}"}
 
-  @doc false
+  @doc """
+  Fetches user params and normalizes response.
+
+  The ID Token is validated, and the claims is returned as the user params.
+  Use `fetch_userinfo/2` to fetch the claims from the `userinfo` endpoint.
+  """
   @spec get_user(Config.t(), map()) :: {:ok, map()} | {:error, term()}
   def get_user(config, token) do
-    with {:ok, openid_config} <- Config.fetch(config, :openid_configuration),
-         {:ok, jwt}           <- validate_id_token(config, token["id_token"]) do
-      fetch_and_normalize_userinfo(openid_config, config, token, jwt.claims)
+    with {:ok, jwt} <- validate_id_token(config, token["id_token"]) do
+      Helpers.normalize_userinfo(jwt.claims)
     end
   end
 
   @spec validate_id_token(Config.t(), binary()) :: {:ok, map()} | {:error, term()}
-  def validate_id_token(config, token) do
+  def validate_id_token(config, id_token) do
     with {:ok, openid_config} <- Config.fetch(config, :openid_configuration),
-         {:ok, header}        <- peek_header(token, config),
          {:ok, client_id}     <- Config.fetch(config, :client_id),
          {:ok, issuer}        <- fetch_from_openid_config(openid_config, "issuer"),
-         {:ok, secret_or_key} <- fetch_secret(header, openid_config, config),
-         {:ok, jwt}           <- Helpers.verify_jwt(token, secret_or_key, config),
+         {:ok, jwt}           <- verify_jwt(id_token, openid_config, config),
          :ok                  <- validate_required_fields(jwt),
          :ok                  <- validate_issuer_identifer(jwt, issuer),
          :ok                  <- validate_audience(jwt, client_id),
@@ -244,6 +246,13 @@ defmodule Assent.Strategy.OIDC do
          :ok                  <- validate_issued_at(jwt, config),
          :ok                  <- validate_nonce(jwt, config) do
       {:ok, jwt}
+    end
+  end
+
+  defp verify_jwt(token, openid_config, config) do
+    with {:ok, header}        <- peek_header(token, config),
+         {:ok, secret_or_key} <- fetch_secret(header, openid_config, config) do
+      Helpers.verify_jwt(token, secret_or_key, config)
     end
   end
 
@@ -361,22 +370,44 @@ defmodule Assent.Strategy.OIDC do
     do: {:error, "`nonce` included in ID Token but doesn't exist in session params"}
   defp validate_for_nonce(_any, _jwt), do: :ok
 
-  defp fetch_and_normalize_userinfo(openid_config, config, token, claims) do
-    openid_config
-    |> fetch_from_openid_config("userinfo_endpoint")
-    |> case do
-      {:ok, user_url} -> fetch_from_userinfo_endpoint(config, token, user_url)
-      {:error, _any}  -> {:ok, claims}
+  @spec fetch_userinfo(Config.t(), map()) :: {:ok, map()} | {:error, term()}
+  def fetch_userinfo(config, token) do
+    with {:ok, openid_config} <- Config.fetch(config, :openid_configuration),
+         {:ok, userinfo_url}  <- fetch_from_openid_config(openid_config, "userinfo_endpoint"),
+         {:ok, claims}        <- fetch_from_userinfo_endpoint(config, openid_config, token, userinfo_url),
+         {:ok, id_token}      <- verify_jwt(token["id_token"], openid_config, config),
+         :ok                  <- validate_userinfo_sub(id_token.claims, claims) do
+      {:ok, claims}
     end
-    |> normalize()
   end
 
-  defp fetch_from_userinfo_endpoint(config, token, user_url) do
+  defp fetch_from_userinfo_endpoint(config, openid_config, token, userinfo_url) do
     config
-    |> Config.put(:user_url, user_url)
-    |> OAuth2.get_user(token)
+    |> OAuth2.get(token, userinfo_url)
+    |> process_userinfo_response(openid_config, config)
   end
 
-  defp normalize({:ok, user}), do: Helpers.normalize_userinfo(user)
-  defp normalize({:error, error}), do: {:error, error}
+  defp process_userinfo_response({:ok, %HTTPResponse{status: 200, body: body, headers: headers}}, openid_config, config) do
+    case List.keyfind(headers, "content-type", 0) do
+      {"content-type", "application/jwt" <> _rest} -> process_jwt(body, openid_config, config)
+      _any                                         -> {:ok, body}
+    end
+  end
+  defp process_userinfo_response({:error, %HTTPResponse{status: 401}}, _openid_config, _config), do: {:error, %RequestError{message: "Unauthorized token"}}
+  defp process_userinfo_response(any, _openid_config, _config), do: process_response(any)
+
+  defp process_jwt(body, openid_config, config) do
+    with {:ok, jwt} <- verify_jwt(body, openid_config, config),
+         :ok        <- validate_verified(jwt) do
+      {:ok, jwt.claims}
+    end
+  end
+
+  defp process_response({:ok, %HTTPResponse{} = response}), do: {:error, RequestError.unexpected(response)}
+  defp process_response({:error, %HTTPResponse{} = response}), do: {:error, RequestError.invalid(response)}
+  defp process_response({:error, error}), do: {:error, error}
+
+  defp validate_userinfo_sub(%{"sub" => sub}, %{"sub" => sub}), do: :ok
+  defp validate_userinfo_sub(%{"sub" => _sub_1}, %{"sub" => _sub_2}), do: {:error, "`sub` in userinfo response not the same as in ID Token"}
+  defp validate_userinfo_sub(%{"sub" => _sub}, _claims), do: {:error, "`sub` not in userinfo response"}
 end

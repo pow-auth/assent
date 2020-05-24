@@ -48,7 +48,7 @@ defmodule Assent.Test.OIDCTestCase do
   @client_id "id"
   @client_secret "secret"
   @claims %{
-    "sub" => "248289761001",
+    "sub" => "1",
     "aud" => @client_id,
     "exp" => 1_311_281_970,
     "iat" => 1_311_280_970
@@ -64,7 +64,7 @@ defmodule Assent.Test.OIDCTestCase do
         "id_token_signed_response_alg" => ["HS256"],
         "authorization_endpoint" => "http://localhost:#{bypass.port}/oauth/authorize",
         "token_endpoint" => "http://localhost:#{bypass.port}/oauth/token",
-        "userinfo_endpoint" => "http://localhost:#{bypass.port}/api/user"
+        "userinfo_endpoint" => "http://localhost:#{bypass.port}/userinfo"
       },
       client_secret: @client_secret,
       site: "http://localhost:#{bypass.port}",
@@ -110,6 +110,27 @@ defmodule Assent.Test.OIDCTestCase do
       conn
       |> Plug.Conn.put_resp_content_type("application/json")
       |> Plug.Conn.send_resp(200, Jason.encode!(%{"keys" => keys}))
+    end)
+  end
+
+  @spec expect_oidc_userinfo_request(Bypass.t(), map() | binary(), Keyword.t()) :: :ok
+  def expect_oidc_userinfo_request(bypass, claims_or_jwt, opts \\ [])
+  def expect_oidc_userinfo_request(bypass, claims, opts) when is_map(claims) do
+    opts = Keyword.put_new(opts, :uri, "/userinfo")
+
+    OAuth2TestCase.expect_oauth2_user_request(bypass, claims, opts)
+  end
+  def expect_oidc_userinfo_request(bypass, jwt, opts) when is_binary(jwt) do
+    uri          = Keyword.get(opts, :uri, "/userinfo")
+    access_token = Keyword.get(opts, :access_token, "access_token")
+    status_code  = Keyword.get(opts, :status_code, 200)
+
+    Bypass.expect_once(bypass, "GET", uri, fn conn ->
+      assert {"authorization", "Bearer #{access_token}"} in conn.req_headers
+
+      conn
+      |> Conn.put_resp_content_type("application/jwt")
+      |> Conn.send_resp(status_code, jwt)
     end)
   end
 

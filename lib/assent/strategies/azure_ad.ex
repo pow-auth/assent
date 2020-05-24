@@ -34,7 +34,7 @@ defmodule Assent.Strategy.AzureAD do
   """
   use Assent.Strategy.OIDC.Base
 
-  alias Assent.{Config, Strategy.OIDC}
+  alias Assent.Config
 
   @impl true
   def default_config(config) do
@@ -49,11 +49,4 @@ defmodule Assent.Strategy.AzureAD do
 
   @impl true
   def normalize(_config, user), do: {:ok, user}
-
-  @impl true
-  def get_user(config, token) do
-    with {:ok, %{claims: claims}} <- OIDC.validate_id_token(config, token["id_token"]) do
-      {:ok, claims}
-    end
-  end
 end
