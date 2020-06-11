@@ -1,4 +1,4 @@
-defmodule Assent.Strategy.Digitalocean do
+defmodule Assent.Strategy.DigitalOcean do
   @moduledoc """
   DigitalOcean OAuth 2.0 strategy.
 
@@ -18,10 +18,10 @@ defmodule Assent.Strategy.Digitalocean do
   @impl true
   def default_config(config) do
     [
-      site: "https://cloud.digitalocean.com/v1/oauth",
-      authorize_url: "/authorize",
-      token_url: "/token",
-      user_url: "https://api.digitalocean.com/v2/account",
+      site: "https://api.digitalocean.com",
+      authorize_url: "https://cloud.digitalocean.com/v1/oauth/authorize",
+      token_url: "https://cloud.digitalocean.com/v1/oauth/token",
+      user_url: "/v2/account",
       authorization_params: [
         prompt: Config.get(config, :prompt, "select_account"),
         scope: "read write",
