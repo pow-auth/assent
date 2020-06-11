@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.13 (TBA)
+
+* `Assent.Strategy.DigitalOcean` added
+
 ## v0.1.12 (2020-05-24)
 
 * `Assent.Strategy.OAuth2.authorization_headers/2` now capitalizes the token type in the authorization header
