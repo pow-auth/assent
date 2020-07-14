@@ -137,7 +137,7 @@ defmodule TestProvider do
       %{
         "sub"      => user["sub"],
         "name"     => user["name"],
-        "nickname" => user["username],
+        "nickname" => user["username"],
         "email"    => user["email"]
       # },
       # # Provider specific data not part of the standard claims spec
