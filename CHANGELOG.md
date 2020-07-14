@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.1.13 (TBA)
+## v0.1.13 (2020-07-14)
 
 * `Assent.Strategy.DigitalOcean` added
 
