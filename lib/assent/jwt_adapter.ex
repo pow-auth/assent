@@ -1,6 +1,6 @@
 defmodule Assent.JWTAdapter do
   @moduledoc """
-  JWT adapter helper module
+  JWT adapter helper module.
 
   ## Usage
 
