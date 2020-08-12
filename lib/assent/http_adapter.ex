@@ -1,6 +1,6 @@
 defmodule Assent.HTTPAdapter do
   @moduledoc """
-  HTTP adapter helper module
+  HTTP adapter helper module.
 
   ## Usage
 
@@ -8,7 +8,7 @@ defmodule Assent.HTTPAdapter do
         @behaviour Assent.HTTPAdapter
 
         @impl true
-        def request(method, url, body, haders, opts) do
+        def request(method, url, body, headers, opts) do
           # ...
         end
       end
