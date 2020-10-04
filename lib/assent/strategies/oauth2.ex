@@ -123,7 +123,7 @@ defmodule Assent.Strategy.OAuth2 do
          :ok                   <- check_error_params(params),
          {:ok, code}           <- fetch_code_param(params),
          :ok                   <- maybe_check_state(session_params, params),
-         {:ok, token}          <- get_access_token(config, code) do
+         {:ok, token}          <- get_access_token_for_code(config, code) do
 
       fetch_user(config, token, strategy)
     end
@@ -228,15 +228,20 @@ defmodule Assent.Strategy.OAuth2 do
     end
   end
 
-  defp get_access_token(config, code) do
+  defp get_access_token_for_code(config, code) do
+    with {:ok, redirect_uri} <- Config.fetch(config, :redirect_uri) do
+      access_token_request(config, "authorization_code", code: code, redirect_uri: redirect_uri)
+    end
+  end
+
+  defp access_token_request(config, grant_type, params) do
     auth_method  = Config.get(config, :auth_method, nil)
     token_url    = Config.get(config, :token_url, "/oauth/token")
 
     with {:ok, site}                    <- Config.fetch(config, :site),
-         {:ok, auth_headers, auth_body} <- authentication_params(auth_method, config),
-         {:ok, redirect_uri}            <- Config.fetch(config, :redirect_uri) do
+         {:ok, auth_headers, auth_body} <- authentication_params(auth_method, config) do
       headers = [{"content-type", "application/x-www-form-urlencoded"}] ++ auth_headers
-      params  = Keyword.merge(auth_body, code: code, redirect_uri: redirect_uri, grant_type: "authorization_code")
+      params  = Keyword.merge(params, auth_body ++ [grant_type: grant_type])
       url     = Helpers.to_url(site, token_url)
       body    = URI.encode_query(params)
 
@@ -261,6 +266,11 @@ defmodule Assent.Strategy.OAuth2 do
       {:ok, user}     -> {:ok, %{token: token, user: user}}
       {:error, error} -> {:error, error}
     end
+  end
+
+  @spec refresh_access_token(Config.t(), map(), Keyword.get()) :: {:ok, map()} | {:error, term()}
+  def refresh_access_token(config, token, params \\ []) do
+    access_token_request(config, "refresh_token", params ++ [refresh_token: token["refresh_token"]])
   end
 
   @doc """

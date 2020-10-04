@@ -309,6 +309,57 @@ defmodule Assent.Strategy.OAuth2Test do
     end
   end
 
+  describe "refresh_access_token/3" do
+    setup %{config: config} do
+      config =
+        config
+        |> Keyword.put(:client_id, @client_id)
+        |> Keyword.put(:client_secret, @client_secret)
+
+      {:ok, config: config}
+    end
+
+    test "with refresh token error with 200 response", %{config: config, bypass: bypass} do
+      expect_oauth2_access_token_request(bypass, params: %{"error" => "error", "error_description" => "Error description"})
+
+      assert {:error, %RequestError{} = error} = OAuth2.refresh_access_token(config, %{"refresh_token" => "refresh_token_test_value"})
+      assert error.error == :unexpected_response
+      assert error.message =~ "An unexpected success response was received:"
+      assert error.message =~ "%{\"error\" => \"error\", \"error_description\" => \"Error description\"}"
+    end
+
+    test "with fresh token error with 500 response", %{config: config, bypass: bypass} do
+      expect_oauth2_access_token_request(bypass, status_code: 500, params: %{error: "Error"})
+
+      assert {:error, %RequestError{} = error} = OAuth2.refresh_access_token(config, %{"refresh_token" => "refresh_token_test_value"})
+      assert error.error == :invalid_server_response
+      assert error.message =~ "Server responded with status: 500"
+      assert error.message =~ "%{\"error\" => \"Error\"}"
+    end
+
+    test "returns token", %{config: config, bypass: bypass} do
+      expect_oauth2_access_token_request(bypass, [], fn _conn, params ->
+        assert params["grant_type"] == "refresh_token"
+        assert params["refresh_token"] == "refresh_token_test_value"
+        assert params["client_id"] == @client_id
+        refute params["client_secret"]
+      end)
+
+      assert {:ok, token} = OAuth2.refresh_access_token(config, %{"refresh_token" => "refresh_token_test_value"})
+      assert token == %{"access_token" => "access_token"}
+    end
+
+    test "with additional params", %{config: config, bypass: bypass} do
+      expect_oauth2_access_token_request(bypass, [], fn _conn, params ->
+        assert params["grant_type"] == "refresh_token"
+        assert params["refresh_token"] == "refresh_token_test_value"
+        assert params["scope"] == "test"
+      end)
+
+      assert {:ok, _any} = OAuth2.refresh_access_token(config, %{"refresh_token" => "refresh_token_test_value"}, scope: "test")
+    end
+  end
+
   test "authorization_headers/2" do
     assert OAuth2.authorization_headers([], %{"access_token" => "token"}) == [{"authorization", "Bearer token"}]
 
