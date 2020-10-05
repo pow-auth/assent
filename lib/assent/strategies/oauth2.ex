@@ -124,8 +124,9 @@ defmodule Assent.Strategy.OAuth2 do
     with {:ok, session_params} <- Config.fetch(config, :session_params),
          :ok                   <- check_error_params(params),
          {:ok, code}           <- fetch_code_param(params),
+         {:ok, redirect_uri}   <- Config.fetch(config, :redirect_uri),
          :ok                   <- maybe_check_state(session_params, params),
-         {:ok, token}          <- get_access_token_for_code(config, code) do
+         {:ok, token}          <- get_access_token(config, "authorization_code", code: code, redirect_uri: redirect_uri) do
 
       fetch_user(config, token, strategy)
     end
@@ -230,13 +231,11 @@ defmodule Assent.Strategy.OAuth2 do
     end
   end
 
-  defp get_access_token_for_code(config, code) do
-    with {:ok, redirect_uri} <- Config.fetch(config, :redirect_uri) do
-      access_token_request(config, "authorization_code", code: code, redirect_uri: redirect_uri)
-    end
-  end
-
-  defp access_token_request(config, grant_type, params) do
+  @doc """
+  Gets an access token.
+  """
+  @spec get_access_token(Config.t(), binary(), Keyword.t()) :: {:ok, map()} | {:error, term()}
+  def get_access_token(config, grant_type, params)  do
     auth_method  = Config.get(config, :auth_method, nil)
     token_url    = Config.get(config, :token_url, "/oauth/token")
 
@@ -275,7 +274,9 @@ defmodule Assent.Strategy.OAuth2 do
   """
   @spec refresh_access_token(Config.t(), map(), Keyword.get()) :: {:ok, map()} | {:error, term()}
   def refresh_access_token(config, token, params \\ []) do
-    access_token_request(config, "refresh_token", params ++ [refresh_token: token["refresh_token"]])
+    with {:ok, refresh_token} <- fetch_from_token(token, "refresh_token") do
+      get_access_token(config, "refresh_token", params ++ [refresh_token: refresh_token])
+    end
   end
 
   @doc """
@@ -285,9 +286,9 @@ defmodule Assent.Strategy.OAuth2 do
   """
   @spec get(Config.t(), map(), binary(), map() | Keyword.t()) :: {:ok, map()} | {:error, term()}
   def get(config, token, url, params \\ []) do
-    with {:ok, site} <- Config.fetch(config, :site) do
-      url     = Helpers.to_url(site, url, params)
-      headers = authorization_headers(config, token)
+    with {:ok, site} <- Config.fetch(config, :site),
+         {:ok, headers} <- authorization_headers(config, token) do
+      url = Helpers.to_url(site, url, params)
 
       :get
       |> Helpers.request(url, nil, headers, config)
@@ -318,14 +319,29 @@ defmodule Assent.Strategy.OAuth2 do
 
   Defaults to `Bearer`.
   """
-  @spec authorization_headers(Config.t(), map()) :: [{binary(), binary()}]
-  def authorization_headers(_config, token) do
-    token
-    |> Map.get("token_type", "Bearer")
-    |> String.capitalize()
-    |> case do
-      "Bearer" -> [{"authorization", "Bearer #{token["access_token"]}"}]
-      _any     -> []
+  @spec authorization_headers(Config.t(), map()) :: {:ok, [{binary(), binary()}]} | {:error, term()}
+  def authorization_headers(config, token) do
+    type =
+      token
+      |> Map.get("token_type", "Bearer")
+      |> String.downcase()
+
+    authorization_headers(config, token, type)
+  end
+
+  defp authorization_headers(_config, token, "bearer") do
+    with {:ok, access_token} <- fetch_from_token(token, "access_token") do
+      {:ok, [{"authorization", "Bearer #{access_token}"}]}
+    end
+  end
+  defp authorization_headers(_config, _token, type) do
+    {:error, "Authorization with token type `#{type}` not supported"}
+  end
+
+  defp fetch_from_token(token, key) do
+    case Map.fetch(token, key) do
+      {:ok, value} -> {:ok, value}
+      :error       -> {:error, "No `#{key}` in token map"}
     end
   end
 

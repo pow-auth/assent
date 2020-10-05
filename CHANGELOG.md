@@ -2,6 +2,7 @@
 
 ## v0.1.14 (TBA)
 
+* `Assent.Strategy.OAuth2.get_access_token/3` added
 * `Assent.Strategy.OAuth2.refresh_access_token/3` added
 
 ## v0.1.13 (2020-07-14)

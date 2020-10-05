@@ -153,6 +153,12 @@ defmodule Assent.Strategy.OAuth2Test do
       assert error.message == "Key `:user_url` not found in config"
     end
 
+    test "with invalid token type", %{config: config, callback_params: params, bypass: bypass} do
+      expect_oauth2_access_token_request(bypass, params: %{access_token: "access_token", token_type: "invalid"})
+
+      assert OAuth2.callback(config, params) == {:error, "Authorization with token type `invalid` not supported"}
+    end
+
     test "with unreachable `:user_url`", %{config: config, callback_params: params, bypass: bypass} do
       config = Keyword.put(config, :user_url, "http://localhost:8888/api/user")
 
@@ -319,6 +325,10 @@ defmodule Assent.Strategy.OAuth2Test do
       {:ok, config: config}
     end
 
+    test "with missing `refreh_token` in token", %{config: config} do
+      assert OAuth2.refresh_access_token(config, %{}) == {:error, "No `refresh_token` in token map"}
+    end
+
     test "with refresh token error with 200 response", %{config: config, bypass: bypass} do
       expect_oauth2_access_token_request(bypass, params: %{"error" => "error", "error_description" => "Error description"})
 
@@ -360,12 +370,20 @@ defmodule Assent.Strategy.OAuth2Test do
     end
   end
 
-  test "authorization_headers/2" do
-    assert OAuth2.authorization_headers([], %{"access_token" => "token"}) == [{"authorization", "Bearer token"}]
+  describe "authorization_headers/2" do
+    test "with no token_type" do
+      assert OAuth2.authorization_headers([], %{}) == {:error, "No `access_token` in token map"}
+      assert OAuth2.authorization_headers([], %{"access_token" => "token"}) == {:ok, [{"authorization", "Bearer token"}]}
+    end
 
-    for token_type <- ["bearer", "Bearer"],
-      do: assert OAuth2.authorization_headers([], %{"access_token" => "token", "token_type" => token_type}) == [{"authorization", "Bearer token"}]
+    test "with bearer token_type" do
+      assert OAuth2.authorization_headers([], %{"token_type" => "bearer"}) == {:error, "No `access_token` in token map"}
+      assert OAuth2.authorization_headers([], %{"access_token" => "token", "token_type" => "bearer"}) == {:ok, [{"authorization", "Bearer token"}]}
+      assert OAuth2.authorization_headers([], %{"access_token" => "token", "token_type" => "Bearer"}) == {:ok, [{"authorization", "Bearer token"}]}
+    end
 
-    assert OAuth2.authorization_headers([], %{"access_token" => "token", "token_type" => "Max"}) == []
+    test "with invalid token_type" do
+      assert OAuth2.authorization_headers([], %{"token_type" => "invalid"}) == {:error, "Authorization with token type `invalid` not supported"}
+    end
   end
 end
