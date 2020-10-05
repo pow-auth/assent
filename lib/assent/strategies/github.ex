@@ -64,16 +64,10 @@ defmodule Assent.Strategy.Github do
     end
   end
 
-  defp get_email(config, access_token, user, url) do
-    with {:ok, site} <- Config.fetch(config, :site) do
-      url             = Helpers.to_url(site, url)
-      headers         = OAuth2.authorization_headers(config, access_token)
-
-      :get
-      |> Helpers.request(url, nil, headers, config)
-      |> Helpers.decode_response(config)
-      |> process_get_email_response(user)
-    end
+  defp get_email(config, token, user, url) do
+    config
+    |> OAuth2.get(token, url)
+    |> process_get_email_response(user)
   end
 
   defp process_get_email_response({:ok, %{body: emails}}, user) do
