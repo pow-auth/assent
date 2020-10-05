@@ -314,13 +314,7 @@ defmodule Assent.Strategy.OAuth2 do
     end
   end
 
-  @doc """
-  Authorization header used for the access token.
-
-  Defaults to `Bearer`.
-  """
-  @spec authorization_headers(Config.t(), map()) :: {:ok, [{binary(), binary()}]} | {:error, term()}
-  def authorization_headers(config, token) do
+  defp authorization_headers(config, token) do
     type =
       token
       |> Map.get("token_type", "Bearer")
@@ -328,7 +322,6 @@ defmodule Assent.Strategy.OAuth2 do
 
     authorization_headers(config, token, type)
   end
-
   defp authorization_headers(_config, token, "bearer") do
     with {:ok, access_token} <- fetch_from_token(token, "access_token") do
       {:ok, [{"authorization", "Bearer #{access_token}"}]}

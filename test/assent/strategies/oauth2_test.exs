@@ -370,20 +370,39 @@ defmodule Assent.Strategy.OAuth2Test do
     end
   end
 
-  describe "authorization_headers/2" do
-    test "with no token_type" do
-      assert OAuth2.authorization_headers([], %{}) == {:error, "No `access_token` in token map"}
-      assert OAuth2.authorization_headers([], %{"access_token" => "token"}) == {:ok, [{"authorization", "Bearer token"}]}
+  describe "get/4" do
+    test "with missing `:site` config", %{config: config} do
+      config = Keyword.delete(config, :site)
+
+      assert OAuth2.get(config, %{}, "/info") == {:error, %MissingKeyError{message: "Key `:site` not found in config"}}
     end
 
-    test "with bearer token_type" do
-      assert OAuth2.authorization_headers([], %{"token_type" => "bearer"}) == {:error, "No `access_token` in token map"}
-      assert OAuth2.authorization_headers([], %{"access_token" => "token", "token_type" => "bearer"}) == {:ok, [{"authorization", "Bearer token"}]}
-      assert OAuth2.authorization_headers([], %{"access_token" => "token", "token_type" => "Bearer"}) == {:ok, [{"authorization", "Bearer token"}]}
+    test "with missing `access_token` in token", %{config: config} do
+      assert OAuth2.get(config, %{}, "/info") == {:error, "No `access_token` in token map"}
+      assert OAuth2.get(config, %{"token_type" => "bearer"}, "/info") == {:error, "No `access_token` in token map"}
     end
 
-    test "with invalid token_type" do
-      assert OAuth2.authorization_headers([], %{"token_type" => "invalid"}) == {:error, "Authorization with token type `invalid` not supported"}
+    test "with invalid `token_type` in token", %{config: config} do
+      assert OAuth2.get(config, %{"token_type" => "invalid"}, "/info") == {:error, "Authorization with token type `invalid` not supported"}
+    end
+
+    test "fetches", %{config: config, bypass: bypass} do
+      expect_oauth2_api_request(bypass, "/info", %{"success" => true})
+
+      assert {:ok, response} = OAuth2.get(config, %{"access_token" => "access_token"}, "/info")
+      assert response.body == %{"success" => true}
+    end
+
+    test "with `token_type=bearer` in token", %{config: config, bypass: bypass} do
+      expect_oauth2_api_request(bypass, "/info", %{"success" => true})
+      assert {:ok, response} = OAuth2.get(config, %{"access_token" => "access_token", "token_type" => "bearer"}, "/info")
+      assert response.body == %{"success" => true}
+    end
+
+    test "with `token_type=Bearer` in token", %{config: config, bypass: bypass} do
+      expect_oauth2_api_request(bypass, "/info", %{"success" => true})
+      assert {:ok, response} = OAuth2.get(config, %{"access_token" => "access_token", "token_type" => "Bearer"}, "/info")
+      assert response.body == %{"success" => true}
     end
   end
 end
