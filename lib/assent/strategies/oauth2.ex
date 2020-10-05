@@ -156,7 +156,7 @@ defmodule Assent.Strategy.OAuth2 do
   defp maybe_check_state(_session_params, _params), do: :ok
 
   defp authentication_params(nil, config) do
-    with {:ok, client_id}     <- Config.fetch(config, :client_id) do
+    with {:ok, client_id} <- Config.fetch(config, :client_id) do
 
       headers = []
       body    = [client_id: client_id]
@@ -242,7 +242,7 @@ defmodule Assent.Strategy.OAuth2 do
     with {:ok, site}                    <- Config.fetch(config, :site),
          {:ok, auth_headers, auth_body} <- authentication_params(auth_method, config) do
       headers = [{"content-type", "application/x-www-form-urlencoded"}] ++ auth_headers
-      params  = Keyword.merge(params, auth_body ++ [grant_type: grant_type])
+      params  = Keyword.merge(params, Keyword.put(auth_body, :grant_type, grant_type))
       url     = Helpers.to_url(site, token_url)
       body    = URI.encode_query(params)
 
@@ -275,7 +275,7 @@ defmodule Assent.Strategy.OAuth2 do
   @spec refresh_access_token(Config.t(), map(), Keyword.get()) :: {:ok, map()} | {:error, term()}
   def refresh_access_token(config, token, params \\ []) do
     with {:ok, refresh_token} <- fetch_from_token(token, "refresh_token") do
-      get_access_token(config, "refresh_token", params ++ [refresh_token: refresh_token])
+      get_access_token(config, "refresh_token", Keyword.put(params, :refresh_token, refresh_token))
     end
   end
 
