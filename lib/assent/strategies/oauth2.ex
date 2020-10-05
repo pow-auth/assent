@@ -106,7 +106,9 @@ defmodule Assent.Strategy.OAuth2 do
   end
 
   @doc """
-  Callback phase for generating access token and fetch user data.
+  Callback phase for generating access token with authorization code and fetch
+  user data. Returns a map with access token in `:token` and user data in
+  `:user`.
 
   ## Configuration
 
@@ -268,15 +270,18 @@ defmodule Assent.Strategy.OAuth2 do
     end
   end
 
+  @doc """
+  Refreshes the access token.
+  """
   @spec refresh_access_token(Config.t(), map(), Keyword.get()) :: {:ok, map()} | {:error, term()}
   def refresh_access_token(config, token, params \\ []) do
     access_token_request(config, "refresh_token", params ++ [refresh_token: token["refresh_token"]])
   end
 
   @doc """
-  Makes a HTTP get request to the API.
+  Performs a HTTP GET request to the API using the access token.
 
-  JSON responses will be decoded to maps.
+  Uses `authorization_headers/2` for headers.
   """
   @spec get(Config.t(), map(), binary(), map() | Keyword.t()) :: {:ok, map()} | {:error, term()}
   def get(config, token, url, params \\ []) do
@@ -290,6 +295,11 @@ defmodule Assent.Strategy.OAuth2 do
     end
   end
 
+  @doc """
+  Fetch user data with the access token.
+
+  Uses `get/4` to fetch the user data.
+  """
   @spec get_user(Config.t(), map(), map() | Keyword.t()) :: {:ok, map()} | {:error, term()}
   def get_user(config, token, params \\ []) do
     case Config.fetch(config, :user_url) do
@@ -303,6 +313,11 @@ defmodule Assent.Strategy.OAuth2 do
     end
   end
 
+  @doc """
+  Authorization header used for the access token.
+
+  Defaults to `Bearer`.
+  """
   @spec authorization_headers(Config.t(), map()) :: [{binary(), binary()}]
   def authorization_headers(_config, token) do
     token
