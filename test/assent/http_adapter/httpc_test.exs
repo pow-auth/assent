@@ -2,6 +2,7 @@ defmodule Assent.HTTPAdapter.HttpcTest do
   use ExUnit.Case
   doctest Assent.HTTPAdapter.Httpc
 
+  alias ExUnit.CaptureIO
   alias Assent.HTTPAdapter.{Httpc, HTTPResponse}
 
   @expired_certificate_url "https://expired.badssl.com"
@@ -14,7 +15,9 @@ defmodule Assent.HTTPAdapter.HttpcTest do
       assert {:error, {:failed_connect, error}} = Httpc.request(:get, @expired_certificate_url, nil, [])
       assert expired?(fetch_inet_error(error))
 
-      assert {:ok, %HTTPResponse{status: 200}} = Httpc.request(:get, @expired_certificate_url, nil, [], ssl: [])
+      assert CaptureIO.capture_io(:stderr, fn ->
+        assert {:ok, %HTTPResponse{status: 200}} = Httpc.request(:get, @expired_certificate_url, nil, [], ssl: [])
+      end) =~ "This request will NOT be verified for valid SSL certificate"
 
       assert {:error, {:failed_connect, error}} = Httpc.request(:get, @unreachable_http_url, nil, [])
       assert fetch_inet_error(error) == :econnrefused
