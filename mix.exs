@@ -42,12 +42,15 @@ defmodule Assent.MixProject do
       {:mint, "~> 1.0.0", optional: true},
       {:castore, "~> 0.1.0", optional: true},
 
-      {:credo, "~> 1.1.0", only: [:dev, :test]},
+      {:credo, "~> 1.1", only: [:dev, :test]},
       {:jason, "~> 1.0", only: [:dev, :test]},
 
-      {:ex_doc, "~> 0.21.0", only: :dev},
+      {:ex_doc, "~> 0.21", only: :dev},
 
-      {:bypass, "~> 1.0.0", only: :test}
+      {:cowboy, "~> 2.8", only: :test, override: true},
+      {:cowlib, "~> 2.9", only: :test, override: true},
+      {:ranch, "~> 1.7", only: :test, override: true},
+      {:bypass, "~> 2.0.0", only: :test}
     ]
   end
 
