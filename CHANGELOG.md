@@ -5,6 +5,7 @@
 * `Assent.Strategy.OAuth2.get_access_token/3` added
 * `Assent.Strategy.OAuth2.refresh_access_token/3` added
 * `Assent.Strategy.OAuth2.authorization_headers/2` is no long a public function
+* `Assent.Strategy.Apple` updated to handle `name` scope
 
 ## v0.1.13 (2020-07-14)
 

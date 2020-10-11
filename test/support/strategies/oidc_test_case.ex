@@ -95,8 +95,12 @@ defmodule Assent.Test.OIDCTestCase do
 
   @spec expect_oidc_access_token_request(Bypass.t(), Keyword.t(), function() | nil) :: :ok
   def expect_oidc_access_token_request(bypass, opts \\ [], assert_fn \\ nil) do
-    token = Keyword.get(opts, :id_token) || gen_id_token(bypass, opts)
-    opts  = Keyword.put(opts, :params, %{access_token: "access_token", id_token: token})
+    params =
+      opts
+      |> Keyword.get(:params, %{access_token: "access_token"})
+      |> Map.put_new(:id_token, Keyword.get(opts, :id_token) || gen_id_token(bypass, opts))
+
+    opts = Keyword.put(opts, :params, params)
 
     OAuth2TestCase.expect_oauth2_access_token_request(bypass, opts, assert_fn)
   end
