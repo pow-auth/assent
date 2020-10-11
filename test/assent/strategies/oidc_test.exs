@@ -39,7 +39,18 @@ defmodule Assent.Strategy.OIDCTest do
 
       assert OIDC.callback(config, params) == {:error, "The ID Token is not a valid JWT"}
     end
+  end
 
+  test "authorize_url/2 with self-issued provider", %{config: config} do
+    config = [site: "https://self-issued.me", redirect_uri: config[:redirect_uri]]
+
+    assert {:ok, %{url: url, session_params: %{state: state}}} = OIDC.authorize_url(config)
+
+    refute is_nil(state)
+    assert url =~ "openid://?client_id=http%3A%2F%2Flocalhost%3A4000%2Fauth%2Fcallback&redirect_uri=&response_type=id_token&scope=openid&state=#{state}"
+  end
+
+  describe "callback/2" do
     @user_claims %{sub: "1", name: "Dan Schultzer", email: "foo@example.com", email_verified: true}
     @user %{"email" => "foo@example.com", "name" => "Dan Schultzer", "sub" => "1", "email_verified" => true}
 
@@ -442,6 +453,27 @@ defmodule Assent.Strategy.OIDCTest do
       expect_oidc_userinfo_request(bypass, Map.put(@user_claims, :sub, "2"))
 
       assert OIDC.fetch_userinfo(config, access_token) == {:error, "`sub` in userinfo response not the same as in ID Token"}
+    end
+  end
+
+  describe "callback/2 with self-issued provider" do
+    setup %{config: config, callback_params: params} do
+      config = [site: "https://self-issued.me", redirect_uri: config[:redirect_uri]]
+      params = %{"id_token" => gen_id_token(iss: "https://self-isued.me"), "state" => params["test_state_value"]}
+
+      {:ok, config: config, callback_params: params}
+    end
+
+    test "with invalid `issuer` in id_token", %{config: config, callback_params: params} do
+      params = Map.put(params, "id_token", gen_id_token(iss: "https://self-isued.me"))
+
+      assert {:ok, %{user: user}} = OIDC.callback(config, params)
+      assert user == %{"sub" => "248289761001"}
+    end
+
+    test "with valid id_token", %{config: config, callback_params: params} do
+      assert {:ok, %{user: user}} = OIDC.callback(config, params)
+      assert user == %{"sub" => "248289761001"}
     end
   end
 end

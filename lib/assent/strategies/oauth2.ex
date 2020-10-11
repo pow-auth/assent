@@ -94,9 +94,10 @@ defmodule Assent.Strategy.OAuth2 do
 
   defp authorization_params(config, client_id, redirect_uri) do
     params = Config.get(config, :authorization_params, [])
+    response_type = Config.get(config, :response_type, "code")
 
     [
-      response_type: "code",
+      response_type: response_type,
       client_id: client_id,
       state: gen_state(),
       redirect_uri: redirect_uri]

@@ -46,6 +46,12 @@ defmodule Assent.Strategy.OIDC do
         |> Assent.Config.put(:session_params, session_params)
         |> Assent.Strategy.OIDC.callback(params)
 
+  ## Self-issued OpenID Provider
+
+  To use a self-issued OpenID provider you should set the `:site` to
+  `https://self-issued.me`. `:client_id` will automatically be set to
+  `:redirect_uri`.
+
   ## Nonce
 
   `:nonce` can be set in the provider config. The `:nonce` will be returned in
@@ -87,7 +93,8 @@ defmodule Assent.Strategy.OIDC do
   @spec authorize_url(Config.t()) :: {:ok, %{session_params: %{state: binary()} | %{state: binary(), nonce: binary()}, url: binary()}} | {:error, term()}
   def authorize_url(config) do
     with {:ok, openid_config} <- openid_configuration(config),
-         {:ok, authorize_url} <- fetch_from_openid_config(openid_config, "authorization_endpoint"),
+         {:ok, config}        <- self_issued_config(config),
+         {:ok, authorize_url} <- fetch_authorize_url(openid_config),
          {:ok, params}        <- authorization_params(config) do
       config
       |> Config.put(:authorization_params, params)
@@ -96,6 +103,17 @@ defmodule Assent.Strategy.OIDC do
       |> add_nonce_to_session_params(config)
     end
   end
+
+  @self_issued_issuer "https://self-issued.me"
+  @self_issued_config %{
+    "authorization_endpoint" => "openid:",
+    "issuer" => @self_issued_issuer,
+    "scopes_supported" => ["openid", "profile", "email", "address", "phone"],
+    "response_types_supported" => ["id_token"],
+    "subject_types_supported" => ["pairwise"],
+    "id_token_signing_alg_values_supported" => ["RS256"],
+    "request_object_signing_alg_values_supported" => ["none", "RS256"]
+   }
 
   defp openid_configuration(config) do
     case Config.get(config, :openid_configuration, nil) do
@@ -106,18 +124,54 @@ defmodule Assent.Strategy.OIDC do
 
   defp fetch_openid_configuration(config) do
     with {:ok, site} <- Config.fetch(config, :site) do
-      configuration_url = Config.get(config, :openid_configuration_uri, "/.well-known/openid-configuration")
-      url               = Helpers.to_url(site, configuration_url)
+      case self_issued?(site) do
+        true  -> {:ok, @self_issued_config}
+        false -> discover_openid_configuration(config, site)
+      end
+    end
+  end
 
-      :get
-      |> Helpers.request(url, nil, [], config)
-      |> Helpers.decode_response(config)
-      |> case do
-        {:ok, %HTTPResponse{status: 200, body: configuration}} ->
-          {:ok, configuration}
+  defp self_issued?(@self_issued_issuer), do: true
+  defp self_issued?(_any), do: false
 
-        {:error, response} ->
-          {:error, RequestError.invalid(response)}
+  defp discover_openid_configuration(config, site) do
+    config_url = Config.get(config, :openid_configuration_uri, "/.well-known/openid-configuration")
+    url        = Helpers.to_url(site, config_url)
+
+    :get
+    |> Helpers.request(url, nil, [], config)
+    |> Helpers.decode_response(config)
+    |> case do
+      {:ok, %HTTPResponse{status: 200, body: openid_config}} ->
+        {:ok, openid_config}
+
+      {:error, response} ->
+        {:error, RequestError.invalid(response)}
+    end
+  end
+
+  defp self_issued_config(config) do
+    with {:ok, site}         <- Config.fetch(config, :site),
+         true                <- self_issued?(site),
+         {:ok, redirect_uri} <- Config.fetch(config, :redirect_uri) do
+      config =
+        config
+        |> Config.put(:response_type, "id_token")
+        |> Config.put(:client_id, redirect_uri)
+        |> Config.put(:redirect_uri, nil)
+
+      {:ok, config}
+    else
+      false -> {:ok, config}
+      any   -> any
+    end
+  end
+
+  defp fetch_authorize_url(openid_config) do
+    with {:ok, endpoint} <- fetch_from_openid_config(openid_config, "authorization_endpoint") do
+      case endpoint do
+        "openid:" -> {:ok, "openid://"}
+        endpoint  -> {:ok, endpoint}
       end
     end
   end
@@ -193,6 +247,7 @@ defmodule Assent.Strategy.OIDC do
   @spec callback(Config.t(), map(), atom()) :: {:ok, %{user: map(), token: map()}} | {:error, term()}
   def callback(config, params, strategy \\ __MODULE__) do
     with {:ok, openid_config} <- openid_configuration(config),
+         {:ok, config}        <- self_issued_config(config),
          {:ok, method}        <- fetch_client_authentication_method(openid_config, config),
          {:ok, token_url}     <- fetch_from_openid_config(openid_config, "token_endpoint") do
 
