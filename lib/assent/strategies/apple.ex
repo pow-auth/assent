@@ -43,7 +43,7 @@ defmodule Assent.Strategy.Apple do
   """
   use Assent.Strategy.OIDC.Base
 
-  alias Assent.{Config, JWTAdapter, Strategy.OIDC.Base}
+  alias Assent.{Config, JWTAdapter, Strategy.OIDC, Strategy.OIDC.Base}
 
   @impl true
   def default_config(config) do
@@ -90,7 +90,7 @@ defmodule Assent.Strategy.Apple do
          :ok                <- ensure_private_key_id(config),
          {:ok, private_key} <- JWTAdapter.load_private_key(config) do
 
-      claims    = %{
+      claims = %{
         "aud" => site,
         "iss" => team_id,
         "sub" => client_id,
@@ -109,5 +109,25 @@ defmodule Assent.Strategy.Apple do
   end
 
   @impl true
-  def normalize(_config, user), do: {:ok, user}
+  def get_user(config, token) do
+    case OIDC.get_user(config, token) do
+      {:ok, user}     -> {:ok, merge_with_user_info(user, token)}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  defp merge_with_user_info(user, %{"user" => user_info}),
+    do: Map.merge(user_info, user)
+  defp merge_with_user_info(user, _any), do: user
+
+  @impl true
+  def normalize(_config, user) do
+    {:ok, %{
+      "sub"            => user["sub"],
+      "email"          => user["email"],
+      "email_verified" => true,
+      "given_name"     => Map.get(user, "name", %{})["firstName"],
+      "family_name"    => Map.get(user, "name", %{})["lastName"]
+    }}
+  end
 end

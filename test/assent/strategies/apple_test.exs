@@ -27,8 +27,7 @@ defmodule Assent.Strategy.AppleTest do
       "aud" => @client_id,
       "exp" => :os.system_time(:second) + 5 * 60,
       "iat" => :os.system_time(:second),
-      "email" => "john.doe@example.com",
-      "email_verified" => true
+      "email" => "john.doe@example.com"
     },
     "RS256",
     """
@@ -114,6 +113,30 @@ defmodule Assent.Strategy.AppleTest do
 
       assert {:ok, %{user: user}} = Apple.callback(config, params)
       assert user == @user
+    end
+
+    test "callback/2 with name scope", %{config: config, callback_params: params, bypass: bypass} do
+      expected_user = Map.merge(@user, %{"given_name" => "John", "family_name" => "Doe"})
+
+      opts = [
+        params: %{
+          access_token: "access_token",
+          id_token: @id_token,
+          user: %{
+            email: "john.doe2@example.com",
+            name: %{
+              firstName: "John",
+              lastName: "Doe"
+            }
+          }
+        },
+        uri: "/auth/token"]
+
+      expect_oidc_access_token_request(bypass, opts)
+      expect_oidc_jwks_uri_request(bypass, uri: "/auth/keys", keys: [@jwk])
+
+      assert {:ok, %{user: user}} = Apple.callback(config, params)
+      assert user == expected_user
     end
   else
     IO.warn("No support curve algorithms, can't test #{__MODULE__}")
