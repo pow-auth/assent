@@ -60,11 +60,11 @@ defmodule Assent.Test.OIDCTestCase do
     config = [
       client_id: @client_id,
       openid_configuration: %{
-        "issuer" => "http://localhost:#{bypass.port}",
-        "id_token_signed_response_alg" => ["HS256"],
+        "issuer" => "http://localhost",
         "authorization_endpoint" => "http://localhost:#{bypass.port}/oauth/authorize",
         "token_endpoint" => "http://localhost:#{bypass.port}/oauth/token",
-        "userinfo_endpoint" => "http://localhost:#{bypass.port}/userinfo"
+        "userinfo_endpoint" => "http://localhost:#{bypass.port}/userinfo",
+        "jwks_uri" => "http://localhost:#{bypass.port}/jwks_uri.json"
       },
       client_secret: @client_secret,
       site: "http://localhost:#{bypass.port}",
@@ -95,12 +95,22 @@ defmodule Assent.Test.OIDCTestCase do
 
   @spec expect_oidc_access_token_request(Bypass.t(), Keyword.t(), function() | nil) :: :ok
   def expect_oidc_access_token_request(bypass, opts \\ [], assert_fn \\ nil) do
+    id_token = Keyword.get_lazy(opts, :id_token, fn ->
+      opts
+      |> Keyword.get(:id_token_opts, [])
+      |> Keyword.put_new(:iss, "http://localhost:#{bypass.port}")
+      |> gen_id_token()
+    end)
+
     params =
       opts
       |> Keyword.get(:params, %{access_token: "access_token"})
-      |> Map.put_new(:id_token, Keyword.get(opts, :id_token) || gen_id_token(bypass, opts))
+      |> Map.put_new(:id_token, id_token)
 
-    opts = Keyword.put(opts, :params, params)
+    opts =
+      opts
+      |> Keyword.drop([:id_token, :id_token_opts])
+      |> Keyword.put(:params, params)
 
     OAuth2TestCase.expect_oauth2_access_token_request(bypass, opts, assert_fn)
   end
@@ -148,33 +158,45 @@ defmodule Assent.Test.OIDCTestCase do
     end
   end
 
-  @spec gen_id_token(Bypass.t(), Keyword.t()) :: binary()
-  def gen_id_token(bypass, opts \\ []) do
+  @spec gen_id_token(Keyword.t()) :: binary()
+  def gen_id_token(opts \\ []) do
+    iss    = Keyword.get(opts, :iss, "http://localhost")
+    claims = Keyword.get(opts, :claims, %{})
+    alg    = Keyword.get(opts, :alg, "RS256")
+
     claims =
       @claims
-      |> Map.put("iss", "http://localhost:#{bypass.port}")
+      |> Map.put("iss", iss)
       |> Map.put("exp", :os.system_time(:second) + 600)
       |> Map.put("iat", :os.system_time(:second))
-      |> Map.merge(Keyword.get(opts, :id_token_claims, %{}))
+      |> Map.merge(claims)
 
     claims = Map.drop(claims, Enum.filter(Map.keys(claims), &is_nil(claims[&1])))
 
-    [jwk, jws] = signing_alg(opts)
-    jwt        = JOSE.JWT.sign(jwk, add_kid(jws, opts), claims)
-    {_, token} = JOSE.JWS.compact(jwt)
-
-    token
+    alg
+    |> signed_jwt(claims, opts)
+    |> JOSE.JWS.compact()
+    |> elem(1)
   end
 
-  defp signing_alg(opts) do
-    case opts[:jwt_algorithm] do
-      "RS256" -> [JOSE.JWK.from_pem(@private_key), %{"alg" => "RS256"}]
-      _any    -> [JOSE.JWK.from_oct(@client_secret), %{"alg" => "HS256"}]
-    end
+  defp signed_jwt("HS256", claims, _opts) do
+    @client_secret
+    |> JOSE.JWK.from_oct()
+    |> JOSE.JWT.sign(%{"alg" => "HS256"}, claims)
+  end
+  defp signed_jwt("RS256", claims, opts) do
+    @private_key
+    |> JOSE.JWK.from_pem()
+    |> JOSE.JWT.sign(add_kid(%{"alg" => "RS256"}, opts), claims)
+  end
+  defp signed_jwt("none", claims, _opts) do
+    16
+    |> JOSE.JWK.generate_key()
+    |> JOSE.JWT.sign(%{"alg" => "none"}, claims)
   end
 
   defp add_kid(jws, opts) do
-    case opts[:jwt_kid] do
+    case opts[:kid] do
       nil -> jws
       kid -> Map.put(jws, "kid", kid)
     end

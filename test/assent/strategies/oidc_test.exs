@@ -22,30 +22,43 @@ defmodule Assent.Strategy.OIDCTest do
     end
   end
 
-  describe "authorize_url/2 with dynamic OpenID configuration" do
-    setup %{config: config, bypass: bypass} do
-      config = Keyword.delete(config, :openid_configuration)
+  describe "callback/2 with static OpenID configuration" do
+    test "with missing `token_endpoint` configuration options", %{config: config, callback_params: params} do
+      openid_config =
+        config
+        |> Keyword.get(:openid_configuration)
+        |> Map.delete("token_endpoint")
 
-      openid_config = %{
-          "authorization_endpoint" => "http://localhost:#{bypass.port}/oauth/authorize"
-        }
+      config = Keyword.put(config, :openid_configuration, openid_config)
 
-      {:ok, config: config, openid_config: openid_config}
+      assert OIDC.callback(config, params) == {:error, "`token_endpoint` not found in OpenID configuration"}
     end
 
-    test "pulls dynamic configuration", %{config: config, openid_config: openid_config, bypass: bypass} do
-      expect_openid_config_request(bypass, openid_config)
+    test "with invalid id_token", %{config: config, callback_params: params, bypass: bypass} do
+      expect_oidc_access_token_request(bypass, [id_token: "invalid"])
 
-      assert {:ok, %{url: url, session_params: %{state: state}}} = OIDC.authorize_url(config)
-
-      refute is_nil(state)
-      assert url =~ "http://localhost:#{bypass.port}/oauth/authorize?client_id=id&redirect_uri=http%3A%2F%2Flocalhost%3A4000%2Fauth%2Fcallback&response_type=code&scope=openid&state=#{state}"
+      assert OIDC.callback(config, params) == {:error, "The ID Token is not a valid JWT"}
     end
-  end
 
-  describe "callback/2" do
     @user_claims %{sub: "1", name: "Dan Schultzer", email: "foo@example.com", email_verified: true}
     @user %{"email" => "foo@example.com", "name" => "Dan Schultzer", "sub" => "1", "email_verified" => true}
+
+    test "with `client_secret_basic` authentication method", %{config: config, callback_params: params, bypass: bypass} do
+      expect_oidc_access_token_request(bypass, [id_token_opts: [claims: @user_claims, iss: "http://localhost"]], fn conn, _params ->
+        assert [{"authorization", "Basic " <> token} | _rest] = conn.req_headers
+        assert [client_id, client_secret] = String.split(Base.url_decode64!(token, padding: false), ":")
+
+        assert client_id == config[:client_id]
+        assert client_secret == config[:client_secret]
+      end)
+
+      expect_oidc_jwks_uri_request(bypass, count: 1)
+
+      assert {:ok, %{user: user, token: token}} = OIDC.callback(config, params)
+      assert user == @user
+      assert %{"access_token" => "access_token", "id_token" => _id_token} = token
+    end
+
     @private_rsa_key """
       -----BEGIN RSA PRIVATE KEY-----
       MIIEogIBAAKCAQEAnzyis1ZjfNB0bBgKFMSvvkTtwlvBsaJq7S5wA+kzeVOVpVWw
@@ -87,21 +100,7 @@ defmodule Assent.Strategy.OIDCTest do
       -----END PUBLIC KEY-----
       """
 
-    test "with client_secret_basic authentication method", %{config: config, callback_params: params, bypass: bypass} do
-      expect_oidc_access_token_request(bypass, [id_token_claims: @user_claims], fn conn, _params ->
-        assert [{"authorization", "Basic " <> token} | _rest] = conn.req_headers
-        assert [client_id, client_secret] = String.split(Base.url_decode64!(token, padding: false), ":")
-
-        assert client_id == config[:client_id]
-        assert client_secret == config[:client_secret]
-      end)
-
-      assert {:ok, %{user: user, token: token}} = OIDC.callback(config, params)
-      assert user == @user
-      assert %{"access_token" => "access_token", "id_token" => _id_token} = token
-    end
-
-    test "with private_key_jwt authentication method", %{config: config, callback_params: params, bypass: bypass} do
+    test "with `private_key_jwt` authentication method", %{config: config, callback_params: params, bypass: bypass} do
       openid_configuration =
         config[:openid_configuration]
         |> Map.put("client_authentication_method", "private_key_jwt")
@@ -114,7 +113,7 @@ defmodule Assent.Strategy.OIDCTest do
         |> Keyword.put(:private_key, @private_rsa_key)
         |> Keyword.put(:private_key_id, "key_id")
 
-      expect_oidc_access_token_request(bypass, [id_token_claims: @user_claims], fn _conn, params ->
+      expect_oidc_access_token_request(bypass, [id_token_opts: [claims: @user_claims, iss: "http://localhost"]], fn _conn, params ->
         assert {:ok, jwt} = Assent.JWTAdapter.AssentJWT.verify(params["client_assertion"], @public_rsa_key, json_library: Jason)
         assert jwt.header["alg"] == "RS256"
         assert jwt.header["typ"] == "JWT"
@@ -125,304 +124,324 @@ defmodule Assent.Strategy.OIDCTest do
         assert jwt.claims["exp"] > DateTime.to_unix(DateTime.utc_now())
       end)
 
+      expect_oidc_jwks_uri_request(bypass, count: 1)
+
       assert {:ok, %{user: user, token: token}} = OIDC.callback(config, params)
       assert user == @user
       assert %{"access_token" => "access_token", "id_token" => _id_token} = token
     end
-
-    test "with invalid id token", %{config: config, callback_params: params, bypass: bypass} do
-      expect_oidc_access_token_request(bypass, id_token: "invalid")
-
-      assert OIDC.callback(config, params) == {:error, "The ID Token is not a valid JWT"}
-    end
-
-    for key <- ~w(iss sub aud exp iat) do
-      test "with missing required #{key} keys in id_token", %{config: config, callback_params: params, bypass: bypass} do
-        expect_oidc_access_token_request(bypass, id_token_claims: %{unquote(key) => nil})
-
-        assert OIDC.callback(config, params) == {:error, "Missing `#{unquote(key)}` in ID Token claims"}
-      end
-    end
-
-    test "with invalid `issuer` in id_token", %{config: config, callback_params: params, bypass: bypass} do
-      expect_oidc_access_token_request(bypass, id_token_claims: %{"iss" => "invalid"})
-
-      assert OIDC.callback(config, params) == {:error, "Invalid issuer \"invalid\" in ID Token"}
-    end
-
-    test "with invalid `alg`", %{config: config, callback_params: params, bypass: bypass} do
-      openid_configuration = Map.delete(config[:openid_configuration], "id_token_signed_response_alg")
-      config               = Keyword.put(config, :openid_configuration, openid_configuration)
-
-      expect_oidc_access_token_request(bypass, jwt_algorithm: "HS512")
-
-      assert OIDC.callback(config, params) == {:error, "`alg` in ID Token can only be \"RS256\""}
-    end
-
-    test "with invalid `aud` in id_token", %{config: config, callback_params: params, bypass: bypass} do
-      expect_oidc_access_token_request(bypass, id_token_claims: %{"aud" => "invalid"})
-
-      assert OIDC.callback(config, params) == {:error, "Invalid audience \"invalid\" in ID Token"}
-    end
-
-    test "with invalid signature in id_token", %{config: config, callback_params: params, bypass: bypass} do
-      [header, payload, _signature] =
-        bypass
-        |> gen_id_token()
-        |> String.split(".")
-
-      expect_oidc_access_token_request(bypass, id_token: "#{header}.#{payload}.invalid")
-
-      assert OIDC.callback(config, params) == {:error, "Invalid JWT signature for ID Token"}
-    end
-
-    test "with expired id_token", %{config: config, callback_params: params, bypass: bypass} do
-      expect_oidc_access_token_request(bypass, id_token_claims: %{"exp" => :os.system_time(:second)})
-
-      assert OIDC.callback(config, params) == {:error, "The ID Token has expired"}
-    end
-
-    test "with TTL reached for id_token", %{config: config, callback_params: params, bypass: bypass} do
-      config = Keyword.put(config, :id_token_ttl_seconds, 60)
-
-      expect_oidc_access_token_request(bypass, id_token_claims: %{"iat" => :os.system_time(:second) - 60})
-
-      assert OIDC.callback(config, params) == {:error, "The ID Token was issued too long ago"}
-    end
-
-    test "with missing nonce in id_token", %{config: config, callback_params: params, bypass: bypass} do
-      config = Keyword.put(config, :session_params, Map.put(config[:session_params], :nonce, "n-0S6_WzA2Mj"))
-
-      expect_oidc_access_token_request(bypass)
-
-      assert OIDC.callback(config, params) == {:error, "`nonce` is not included in ID Token"}
-    end
-
-    test "with unexpected nonce in id_token", %{config: config, callback_params: params, bypass: bypass} do
-      expect_oidc_access_token_request(bypass, id_token_claims: %{"nonce" => "n-0S6_WzA2Mj"})
-
-      assert OIDC.callback(config, params) == {:error, "`nonce` included in ID Token but doesn't exist in session params"}
-    end
-
-    test "with missing `:session_params` config", %{config: config, callback_params: params} do
-      config = Keyword.delete(config, :session_params)
-
-      assert {:error, %Assent.Config.MissingKeyError{} = error} = OIDC.callback(config, params)
-      assert error.message == "Key `:session_params` not found in config"
-    end
-
-    test "with invalid nonce in id_token", %{config: config, callback_params: params, bypass: bypass} do
-      config = Keyword.put(config, :session_params, Map.put(config[:session_params], :nonce, "n-0S6_WzA2Mj"))
-
-      expect_oidc_access_token_request(bypass, id_token_claims: %{"nonce" => "invalid"})
-
-      assert OIDC.callback(config, params) == {:error, "Invalid `nonce` included in ID Token"}
-    end
-
-    test "with valid nonce in id_token", %{config: config, callback_params: params, bypass: bypass} do
-      config = Keyword.put(config, :session_params, Map.put(config[:session_params], :nonce, "n-0S6_WzA2Mj"))
-
-      expect_oidc_access_token_request(bypass, id_token_claims: %{"nonce" => "n-0S6_WzA2Mj"})
-
-      assert {:ok, _} = OIDC.callback(config, params)
-    end
   end
 
   describe "callback/2 with dynamic OpenID configuration" do
-    setup %{config: config} do
+    setup %{config: config, bypass: bypass} do
       config = Keyword.delete(config, :openid_configuration)
 
       openid_config = %{
         "token_endpoint" => "/dynamic/token/path",
-        "issuer" => config[:site],
-        "id_token_signed_response_alg" => ["HS256"]
+        "jwks_uri" => "http://localhost:#{bypass.port}/jwks_uri.json",
+        "issuer" => config[:site]
       }
 
       {:ok, config: config, openid_config: openid_config}
     end
 
-    test "pulls dynamic configuration", %{config: config, openid_config: openid_config, callback_params: params, bypass: bypass} do
+    test "with invalid id_token", %{config: config, openid_config: openid_config, callback_params: params, bypass: bypass} do
+      expect_openid_config_request(bypass, openid_config)
+
+      expect_oidc_access_token_request(bypass, uri: "/dynamic/token/path", id_token: "invalid")
+
+      assert OIDC.callback(config, params) == {:error, "The ID Token is not a valid JWT"}
+    end
+
+    test "with valid id_token", %{config: config, openid_config: openid_config, callback_params: params, bypass: bypass} do
       expect_openid_config_request(bypass, openid_config)
 
       expect_oidc_access_token_request(bypass, uri: "/dynamic/token/path")
+
+      expect_oidc_jwks_uri_request(bypass, count: 1)
 
       assert {:ok, %{user: user}} = OIDC.callback(config, params)
       assert user == %{"sub" => "1"}
     end
+  end
 
-    test "with missing `token_endpoint` configuration options", %{config: config, openid_config: openid_config, callback_params: params, bypass: bypass} do
-      expect_openid_config_request(bypass, Map.delete(openid_config, "token_endpoint"))
+  describe "validate_id_token/2 with `alg=none`" do
+    setup %{config: config} do
+      JOSE.unsecured_signing(true)
+      id_token = gen_id_token(alg: "none")
+      config   = Keyword.put(config, :id_token_signed_response_alg, "none")
 
-      assert OIDC.callback(config, params) == {:error, "`token_endpoint` not found in OpenID configuration"}
+      {:ok, id_token: id_token, config: config}
     end
 
-    test "with missing `issuer` configuration options", %{config: config, openid_config: openid_config, callback_params: params, bypass: bypass} do
-      expect_openid_config_request(bypass, Map.delete(openid_config, "issuer"))
+    test "fails", %{config: config, id_token: id_token} do
+      assert OIDC.validate_id_token(config, id_token) == {:error, "Invalid JWT signature for ID Token"}
+    end
+  end
 
-      expect_oidc_access_token_request(bypass, uri: "/dynamic/token/path")
+  describe "validate_id_token/2 with `alg=HS256`" do
+    setup %{config: config} do
+      id_token = gen_id_token(alg: "HS256")
+      config   = Keyword.put(config, :id_token_signed_response_alg, "HS256")
 
-      assert OIDC.callback(config, params) == {:error, "`issuer` not found in OpenID configuration"}
+      {:ok, id_token: id_token, config: config}
     end
 
-    test "with invalid `alg` in id_token", %{config: config, openid_config: openid_config, callback_params: params, bypass: bypass} do
-      expect_openid_config_request(bypass, Map.put(openid_config, "id_token_signed_response_alg", ["custom"]))
+    test "with no `:openid_configuration`", %{config: config, id_token: id_token} do
+      config = Keyword.delete(config, :openid_configuration)
 
-      expect_oidc_access_token_request(bypass, uri: "/dynamic/token/path")
-
-      assert OIDC.callback(config, params) == {:error, "Unsupported algorithm \"HS256\" in ID Token"}
+      assert {:error, %Assent.Config.MissingKeyError{} = error} = OIDC.validate_id_token(config, id_token)
+      assert error.message == "Key `:openid_configuration` not found in config"
     end
 
-    test "with missing `jwks_uri` configuration options", %{config: config, openid_config: openid_config, callback_params: params, bypass: bypass} do
-      expect_openid_config_request(bypass, openid_config)
+    test "with no `:client_id`", %{config: config, id_token: id_token} do
+      config = Keyword.delete(config, :client_id)
 
-      expect_oidc_access_token_request(bypass, uri: "/dynamic/token/path", jwt_algorithm: "RS256")
-
-      assert OIDC.callback(config, params) == {:error, "`jwks_uri` not found in OpenID configuration"}
+      assert {:error, %Assent.Config.MissingKeyError{} = error} = OIDC.validate_id_token(config, id_token)
+      assert error.message == "Key `:client_id` not found in config"
     end
 
-    test "with 404 `jwks_uri` url", %{config: config, openid_config: openid_config, callback_params: params, bypass: bypass} do
-      expect_openid_config_request(bypass, Map.put(openid_config, "jwks_uri", "http://localhost:#{bypass.port}/jwks_uri.json"))
+    test "with missing `issuer` in OpenID configuration", %{config: config, id_token: id_token} do
+      openid_config = Map.delete(Keyword.get(config, :openid_configuration), "issuer")
+      config        = Keyword.put(config, :openid_configuration, openid_config)
 
-      expect_oidc_access_token_request(bypass, uri: "/dynamic/token/path", jwt_algorithm: "RS256")
+      assert OIDC.validate_id_token(config, id_token) == {:error, "`issuer` not found in OpenID configuration"}
+    end
 
+    test "with invalid id_token", %{config: config} do
+      assert OIDC.validate_id_token(config, "invalid") == {:error, "The ID Token is not a valid JWT"}
+    end
+
+    test "with no `:client_secret`", %{config: config, id_token: id_token} do
+      config = Keyword.delete(config, :client_secret)
+
+      assert {:error, %Assent.Config.MissingKeyError{} = error} = OIDC.validate_id_token(config, id_token)
+      assert error.message == "Key `:client_secret` not found in config"
+    end
+
+    for key <- ~w(iss sub aud exp iat) do
+      test "with missing required #{key} keys in id_token", %{config: config} do
+        id_token = gen_id_token(alg: "HS256", claims: %{unquote(key) => nil})
+
+        assert OIDC.validate_id_token(config, id_token) == {:error, "Missing `#{unquote(key)}` in ID Token claims"}
+      end
+    end
+
+    test "with invalid `issuer` in id_token", %{config: config} do
+      id_token = gen_id_token(alg: "HS256", claims: %{"iss" => "invalid"})
+
+      assert OIDC.validate_id_token(config, id_token) == {:error, "Invalid issuer \"invalid\" in ID Token"}
+    end
+
+    test "with unexpected `alg`", %{config: config, id_token: id_token} do
+      assert OIDC.validate_id_token(Keyword.delete(config, :id_token_signed_response_alg), id_token) == {:error, "Expected `alg` in ID Token to be \"RS256\", got \"HS256\""}
+
+      JOSE.unsecured_signing(true)
+      id_token = gen_id_token(alg: "none")
+
+      assert OIDC.validate_id_token(config, id_token) == {:error, "Expected `alg` in ID Token to be \"HS256\", got \"none\""}
+    end
+
+    test "with invalid `aud` in id_token", %{config: config} do
+      id_token = gen_id_token(alg: "HS256", claims: %{"aud" => "invalid"})
+
+      assert OIDC.validate_id_token(config, id_token) == {:error, "Invalid audience \"invalid\" in ID Token"}
+    end
+
+    test "with invalid signature in id_token", %{config: config, id_token: id_token} do
+      [header, payload, _signature] = String.split(id_token, ".")
+      id_token                      = "#{header}.#{payload}.invalid"
+
+      assert OIDC.validate_id_token(config, id_token) == {:error, "Invalid JWT signature for ID Token"}
+    end
+
+    test "with expired id_token", %{config: config} do
+      id_token = gen_id_token(alg: "HS256", claims: %{"exp" => :os.system_time(:second)})
+
+      assert OIDC.validate_id_token(config, id_token) == {:error, "The ID Token has expired"}
+    end
+
+    test "with TTL reached for id_token", %{config: config} do
+      config   = Keyword.put(config, :id_token_ttl_seconds, 60)
+      id_token = gen_id_token(alg: "HS256", claims: %{"iat" => :os.system_time(:second) - 60})
+
+      assert OIDC.validate_id_token(config, id_token) == {:error, "The ID Token was issued too long ago"}
+    end
+
+    test "with missing `:session_params` config", %{config: config, id_token: id_token} do
+      config = Keyword.delete(config, :session_params)
+
+      assert {:error, %Assent.Config.MissingKeyError{} = error} = OIDC.validate_id_token(config, id_token)
+      assert error.message == "Key `:session_params` not found in config"
+    end
+
+    test "without nonce", %{config: config, id_token: id_token} do
+      assert {:ok, jwt} = OIDC.validate_id_token(config, id_token)
+      assert jwt.verified?
+      assert jwt.claims["sub"] == "1"
+    end
+
+    test "with unexpected `nonce` in id_token", %{config: config} do
+      id_token = gen_id_token(alg: "HS256", claims: %{"nonce" => "a"})
+
+      assert OIDC.validate_id_token(config, id_token) == {:error, "`nonce` included in ID Token but doesn't exist in session params"}
+    end
+
+    test "with missing `nonce` in id_token", %{config: config, id_token: id_token} do
+      config = Keyword.put(config, :session_params, Map.put(config[:session_params], :nonce, "n-0S6_WzA2Mj"))
+
+      assert OIDC.validate_id_token(config, id_token) == {:error, "`nonce` is not included in ID Token"}
+    end
+
+    test "with invalid `nonce` in id_token", %{config: config} do
+      config   = Keyword.put(config, :session_params, Map.put(config[:session_params], :nonce, "b"))
+      id_token = gen_id_token(alg: "HS256", claims: %{"nonce" => "a"})
+
+      assert OIDC.validate_id_token(config, id_token) == {:error, "Invalid `nonce` included in ID Token"}
+    end
+
+    test "with valid nonce in id_token", %{config: config} do
+      config   = Keyword.put(config, :session_params, Map.put(config[:session_params], :nonce, "a"))
+      id_token = gen_id_token(alg: "HS256", claims: %{"nonce" => "a"})
+
+      assert {:ok, jwt} = OIDC.validate_id_token(config, id_token)
+      assert jwt.verified?
+      assert jwt.claims["sub"] == "1"
+    end
+  end
+
+  describe "validate_id_token/2 with `alg=RS256`" do
+    setup %{config: config} do
+      id_token = gen_id_token()
+
+      {:ok, config: config, id_token: id_token}
+    end
+
+    test "with missing `jwks_uri` in OpenID configuration", %{config: config, id_token: id_token} do
+      openid_config = Map.delete(Keyword.get(config, :openid_configuration), "jwks_uri")
+      config = Keyword.put(config, :openid_configuration, openid_config)
+
+      assert OIDC.validate_id_token(config, id_token) == {:error, "`jwks_uri` not found in OpenID configuration"}
+    end
+
+    test "with 404 `jwks_uri` url", %{config: config, id_token: id_token, bypass: bypass} do
       Bypass.expect_once(bypass, "GET", "/jwks_uri.json", fn conn ->
         Plug.Conn.send_resp(conn, 404, "")
       end)
 
-      assert {:error, %Assent.RequestError{} = error} = OIDC.callback(config, params)
+      assert {:error, %Assent.RequestError{} = error} = OIDC.validate_id_token(config, id_token)
       assert error.error == :invalid_server_response
       assert error.message =~ "Server responded with status: 404"
     end
 
-    test "with missing keys in `jwks_uri` url", %{config: config, openid_config: openid_config, callback_params: params, bypass: bypass} do
-      expect_openid_config_request(bypass, Map.put(openid_config, "jwks_uri", "http://localhost:#{bypass.port}/jwks_uri.json"))
-
-      expect_oidc_access_token_request(bypass, uri: "/dynamic/token/path", jwt_algorithm: "RS256")
-
+    test "with missing keys in `jwks_uri` url", %{config: config, id_token: id_token, bypass: bypass} do
       Bypass.expect_once(bypass, "GET", "/jwks_uri.json", fn conn ->
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
         |> Plug.Conn.send_resp(200, "{}")
       end)
 
-      assert OIDC.callback(config, params) == {:error, "No keys found in `jwks_uri` provider configuration"}
+      assert OIDC.validate_id_token(config, id_token) == {:error, "No keys found in `jwks_uri` provider configuration"}
     end
 
-    test "with no `kid` in header and multiple keys fetched from `jwks_uri` url", %{config: config, openid_config: openid_config, callback_params: params, bypass: bypass} do
-      expect_openid_config_request(bypass, Map.put(openid_config, "jwks_uri", "http://localhost:#{bypass.port}/jwks_uri.json"))
-
-      expect_oidc_access_token_request(bypass, uri: "/dynamic/token/path", jwt_algorithm: "RS256")
-
+    test "with no `kid` in header and multiple keys fetched from `jwks_uri` url", %{config: config, id_token: id_token, bypass: bypass} do
       expect_oidc_jwks_uri_request(bypass)
 
-      assert OIDC.callback(config, params) == {:error, "Multiple public keys found in provider configuration and no `kid` value in ID Token"}
+      assert OIDC.validate_id_token(config, id_token) == {:error, "Multiple public keys found in provider configuration and no `kid` value in ID Token"}
     end
 
-    test "with no `kid` in header and single key fetched from `jwks_uri` url", %{config: config, openid_config: openid_config, callback_params: params, bypass: bypass} do
-      openid_config =
-        openid_config
-        |> Map.put("id_token_signed_response_alg", ["RS256"])
-        |> Map.put("jwks_uri", "http://localhost:#{bypass.port}/jwks_uri.json")
-
-      expect_openid_config_request(bypass, openid_config)
-
-      expect_oidc_access_token_request(bypass, uri: "/dynamic/token/path", jwt_algorithm: "RS256")
-
+    test "with no `kid` in header and single key fetched from `jwks_uri` url", %{config: config, id_token: id_token, bypass: bypass} do
       expect_oidc_jwks_uri_request(bypass, count: 1)
 
-      assert {:ok, %{user: user, token: token}} = OIDC.callback(config, params)
-      assert user == %{"sub" => "1"}
-      assert %{"access_token" => "access_token", "id_token" => _id_token} = token
+      assert {:ok, jwt} = OIDC.validate_id_token(config, id_token)
+      assert jwt.verified?
+      assert jwt.claims["sub"] == "1"
     end
 
-    test "with no matching `kid` in keys fetched from `jwks_uri` url", %{config: config, openid_config: openid_config, callback_params: params, bypass: bypass} do
-      expect_openid_config_request(bypass, Map.put(openid_config, "jwks_uri", "http://localhost:#{bypass.port}/jwks_uri.json"))
-
-      expect_oidc_access_token_request(bypass, uri: "/dynamic/token/path", jwt_algorithm: "RS256", jwt_kid: "invalid")
+    test "with no matching `kid` in keys fetched from `jwks_uri` url", %{config: config, bypass: bypass} do
+      id_token = gen_id_token(kid: "invalid")
 
       expect_oidc_jwks_uri_request(bypass)
 
-      assert OIDC.callback(config, params) == {:error, "No keys found for the `kid` value \"invalid\" provided in ID Token"}
+      assert OIDC.validate_id_token(config, id_token) == {:error, "No keys found for the `kid` value \"invalid\" provided in ID Token"}
     end
 
-    test "with matching `kid` in keys fetched from `jwks_uri` url", %{config: config, openid_config: openid_config, callback_params: params, bypass: bypass} do
-      openid_config =
-        openid_config
-        |> Map.put("id_token_signed_response_alg", ["RS256"])
-        |> Map.put("jwks_uri", "http://localhost:#{bypass.port}/jwks_uri.json")
-
-      expect_openid_config_request(bypass, openid_config)
-
-      expect_oidc_access_token_request(bypass, uri: "/dynamic/token/path", jwt_algorithm: "RS256", jwt_kid: "key-1")
+    test "with matching `kid` in keys fetched from `jwks_uri` url", %{config: config, bypass: bypass} do
+      id_token = gen_id_token(kid: "key-1")
 
       expect_oidc_jwks_uri_request(bypass)
 
-      assert {:ok, %{user: user, token: token}} = OIDC.callback(config, params)
-      assert user == %{"sub" => "1"}
-      assert %{"access_token" => "access_token", "id_token" => _id_token} = token
+      assert {:ok, jwt} = OIDC.validate_id_token(config, id_token)
+      assert jwt.verified?
+      assert jwt.claims["sub"] == "1"
     end
   end
 
   describe "fetch_userinfo/2" do
-    setup %{bypass: bypass} do
-      token = %{"access_token" => "access_token", "id_token" => gen_id_token(bypass)}
+    setup %{config: config} do
+      id_token     = gen_id_token(alg: "HS256")
+      config       = Keyword.put(config, :id_token_signed_response_alg, "HS256")
+      access_token = %{"access_token" => "access_token", "id_token" => id_token}
 
-      {:ok, token: token}
+      {:ok, config: config, access_token: access_token}
     end
 
-    test "with missing `userinfo_endpoint` in configuration options", %{config: config, token: token} do
+    test "with no `:openid_configuration`", %{config: config, access_token: access_token} do
+      config = Keyword.delete(config, :openid_configuration)
+
+      assert {:error, %Assent.Config.MissingKeyError{} = error} = OIDC.fetch_userinfo(config, access_token)
+      assert error.message == "Key `:openid_configuration` not found in config"
+    end
+
+    test "with missing `userinfo_endpoint` in OpenID configuration", %{config: config, access_token: access_token} do
       openid_configuration = Map.delete(config[:openid_configuration], "userinfo_endpoint")
       config               = Keyword.put(config, :openid_configuration, openid_configuration)
 
-      assert OIDC.fetch_userinfo(config, token) == {:error, "`userinfo_endpoint` not found in OpenID configuration"}
+      assert OIDC.fetch_userinfo(config, access_token) == {:error, "`userinfo_endpoint` not found in OpenID configuration"}
     end
 
-    test "with unreachable `userinfo_endpoint`", %{config: config, token: token} do
+    test "with unreachable `userinfo_endpoint`", %{config: config, access_token: access_token} do
       openid_configuration = Map.put(config[:openid_configuration], "userinfo_endpoint", "http://localhost:8888/userinfo")
       config               = Keyword.put(config, :openid_configuration, openid_configuration)
 
-      assert {:error, %RequestError{} = error} = OIDC.fetch_userinfo(config, token)
+      assert {:error, %RequestError{} = error} = OIDC.fetch_userinfo(config, access_token)
       assert error.error == :unreachable
       assert error.message =~ "Server was unreachable with Assent.HTTPAdapter.Httpc."
       assert error.message =~ "{:failed_connect"
       assert error.message =~ "URL: http://localhost:8888/userinfo"
     end
 
-    test "with unauthorized `userinfo_endpoint`", %{config: config, token: token, bypass: bypass} do
+    test "with unauthorized `userinfo_endpoint`", %{config: config, access_token: access_token, bypass: bypass} do
       expect_oidc_userinfo_request(bypass, %{"error" => "Unauthorized"}, status_code: 401)
 
-      assert {:error, %RequestError{} = error} = OIDC.fetch_userinfo(config, token)
+      assert {:error, %RequestError{} = error} = OIDC.fetch_userinfo(config, access_token)
       assert error.message == "Unauthorized token"
       refute error.error
     end
 
-    test "with missing `sub` in userinfo claims", %{config: config, token: token, bypass: bypass} do
-      expect_oidc_userinfo_request(bypass, Map.delete(@user_claims, :sub))
-
-      assert OIDC.fetch_userinfo(config, token) == {:error, "`sub` not in userinfo response"}
-    end
-
-    test "with different `sub` in userinfo claims", %{config: config, token: token, bypass: bypass} do
-      expect_oidc_userinfo_request(bypass, Map.put(@user_claims, :sub, "2"))
-
-      assert OIDC.fetch_userinfo(config, token) == {:error, "`sub` in userinfo response not the same as in ID Token"}
-    end
-
-    test "with invalid jwt signature", %{config: config, token: token, bypass: bypass} do
-      [header, payload, _signature] =
-        bypass
-        |> gen_id_token()
-        |> String.split(".")
-
+    test "with jwt response with invalid signature", %{config: config, access_token: access_token, bypass: bypass} do
+      [header, payload, _signature] = String.split(gen_id_token(alg: "HS256"), ".")
       expect_oidc_userinfo_request(bypass, "#{header}.#{payload}.invalid")
 
-      assert OIDC.fetch_userinfo(config, token) == {:error, "Invalid JWT signature for ID Token"}
+      assert OIDC.fetch_userinfo(config, access_token) == {:error, "Invalid JWT signature for ID Token"}
     end
 
-    test "with valid jwt", %{config: config, token: token, bypass: bypass} do
-      expect_oidc_userinfo_request(bypass, gen_id_token(bypass))
+    test "with jwt response", %{config: config, access_token: access_token, bypass: bypass} do
+      expect_oidc_userinfo_request(bypass, gen_id_token(alg: "HS256"))
 
-      assert {:ok, %{"sub" => "1"}} = OIDC.fetch_userinfo(config, token)
+      assert {:ok, %{"sub" => "1"}} = OIDC.fetch_userinfo(config, access_token)
+    end
+
+    test "with missing `sub` in userinfo claims", %{config: config, access_token: access_token, bypass: bypass} do
+      expect_oidc_userinfo_request(bypass, Map.delete(@user_claims, :sub))
+
+      assert OIDC.fetch_userinfo(config, access_token) == {:error, "`sub` not in userinfo response"}
+    end
+
+    test "with different `sub` in userinfo claims", %{config: config, access_token: access_token, bypass: bypass} do
+      expect_oidc_userinfo_request(bypass, Map.put(@user_claims, :sub, "2"))
+
+      assert OIDC.fetch_userinfo(config, access_token) == {:error, "`sub` in userinfo response not the same as in ID Token"}
     end
   end
 end

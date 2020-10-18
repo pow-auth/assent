@@ -57,7 +57,6 @@ defmodule Assent.Strategy.Apple do
       site: site,
       openid_configuration: %{
         "issuer" => "https://appleid.apple.com",
-        "id_token_signed_response_alg" => ["RS256"],
         "authorization_endpoint" => site <> "/auth/authorize",
         "token_endpoint" => site <> "/auth/token",
         "jwks_uri" => site <> "/auth/keys",
