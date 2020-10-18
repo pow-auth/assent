@@ -8,7 +8,7 @@ jobs:
       otp_release: 22.0.2
       script: &test_scripts
         - mix test
-        - MIX_ENV=test mix credo --ignore design.tagtodo
+        - MIX_ENV=test mix credo --ignore Credo.Check.Design.TagTODO
     - stage: test
       otp_release: 22.3
       script: *test_scripts
