@@ -4,6 +4,7 @@
 
 * `Assent.Strategy.OIDC.validate_id_token/2` has a bug fixed where `alg` was not validated correctly
 * `Assent.Strategy.OIDC` now has an `:id_token_signed_response_alg` configuration option
+* `Assent.Strategy.LINE` added
 
 ## v0.1.14 (2020-10-11)
 

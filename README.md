@@ -25,6 +25,7 @@ Multi-provider authentication framework.
   * Slack - `Assent.Strategy.Slack`
   * Twitter - `Assent.Strategy.Twitter`
   * VK - `Assent.Strategy.VK`
+  * LINE Login - `Assent.Strategy.LINE`
 
 ## Installation
 
