@@ -44,6 +44,7 @@ defmodule Assent.Strategy.AzureAD do
       site: "https://login.microsoftonline.com/#{tenant_id}/v2.0",
       authorization_params: [scope: "email profile", response_mode: "form_post"],
       client_auth_method: :client_secret_post,
+      id_token_signed_response_alg: "HS256"
     ]
   end
 

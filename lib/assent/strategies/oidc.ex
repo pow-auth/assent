@@ -19,6 +19,8 @@ defmodule Assent.Strategy.OIDC do
     - `:openid_configuration` - The OpenID configuration, optional, the
       configuration will be fetched from `:openid_configuration_uri` if this is
       not defined
+    - `:id_token_signed_response_alg` - The `id_token_signed_response_alg`
+      parameter sent by the Client during Registration, defaults to `RS256`
     - `:id_token_ttl_seconds` - The number of seconds from `iat` that an ID
       Token will be considered valid, optional, defaults to nil
     - `:nonce` - The nonce to use for authorization request, optional, MUST be
@@ -233,6 +235,8 @@ defmodule Assent.Strategy.OIDC do
 
   @spec validate_id_token(Config.t(), binary()) :: {:ok, map()} | {:error, term()}
   def validate_id_token(config, id_token) do
+    expected_alg = Config.get(config, :id_token_signed_response_alg, "RS256")
+
     with {:ok, openid_config} <- Config.fetch(config, :openid_configuration),
          {:ok, client_id}     <- Config.fetch(config, :client_id),
          {:ok, issuer}        <- fetch_from_openid_config(openid_config, "issuer"),
@@ -240,7 +244,7 @@ defmodule Assent.Strategy.OIDC do
          :ok                  <- validate_required_fields(jwt),
          :ok                  <- validate_issuer_identifer(jwt, issuer),
          :ok                  <- validate_audience(jwt, client_id),
-         :ok                  <- validate_alg(jwt, openid_config),
+         :ok                  <- validate_alg(jwt, expected_alg),
          :ok                  <- validate_verified(jwt),
          :ok                  <- validate_expiration(jwt),
          :ok                  <- validate_issued_at(jwt, config),
@@ -266,7 +270,7 @@ defmodule Assent.Strategy.OIDC do
     end
   end
 
-  defp fetch_secret(%{"alg" => "none"}, _openid_config, _config), do: {:ok, nil}
+  defp fetch_secret(%{"alg" => "none"}, _openid_config, _config), do: {:ok, ""}
   defp fetch_secret(%{"alg" => "HS" <> _rest}, _openid_config, config) do
     Config.fetch(config, :client_secret)
   end
@@ -315,14 +319,8 @@ defmodule Assent.Strategy.OIDC do
   defp validate_audience(%{claims: %{"aud" => aud}}, aud), do: :ok
   defp validate_audience(%{claims: %{"aud" => aud}}, _client_id), do: {:error, "Invalid audience \"#{aud}\" in ID Token"}
 
-  defp validate_alg(%{header: %{"alg" => alg}}, %{"id_token_signed_response_alg" => algs}) do
-    case alg in algs do
-      true  -> :ok
-      false -> {:error, "Unsupported algorithm \"#{alg}\" in ID Token"}
-    end
-  end
-  defp validate_alg(%{header: %{"alg" => "RS256"}}, _openid_config), do: :ok
-  defp validate_alg(%{header: %{"alg" => _alg}}, _openid_config), do: {:error, "`alg` in ID Token can only be \"RS256\""}
+  defp validate_alg(%{header: %{"alg" => alg}}, alg), do: :ok
+  defp validate_alg(%{header: %{"alg" => alg}}, expected_alg), do: {:error, "Expected `alg` in ID Token to be \"#{expected_alg}\", got \"#{alg}\""}
 
   defp validate_verified(%{verified?: true}), do: :ok
   defp validate_verified(%{verified?: false}), do: {:error, "Invalid JWT signature for ID Token"}
@@ -375,8 +373,7 @@ defmodule Assent.Strategy.OIDC do
     with {:ok, openid_config} <- Config.fetch(config, :openid_configuration),
          {:ok, userinfo_url}  <- fetch_from_openid_config(openid_config, "userinfo_endpoint"),
          {:ok, claims}        <- fetch_from_userinfo_endpoint(config, openid_config, token, userinfo_url),
-         {:ok, id_token}      <- verify_jwt(token["id_token"], openid_config, config),
-         :ok                  <- validate_userinfo_sub(id_token.claims, claims) do
+         :ok                  <- validate_userinfo_sub(config, token["id_token"], claims) do
       {:ok, claims}
     end
   end
@@ -407,7 +404,12 @@ defmodule Assent.Strategy.OIDC do
   defp process_response({:error, %HTTPResponse{} = response}), do: {:error, RequestError.invalid(response)}
   defp process_response({:error, error}), do: {:error, error}
 
-  defp validate_userinfo_sub(%{"sub" => sub}, %{"sub" => sub}), do: :ok
-  defp validate_userinfo_sub(%{"sub" => _sub_1}, %{"sub" => _sub_2}), do: {:error, "`sub` in userinfo response not the same as in ID Token"}
-  defp validate_userinfo_sub(%{"sub" => _sub}, _claims), do: {:error, "`sub` not in userinfo response"}
+  defp validate_userinfo_sub(config, id_token, claims) when is_binary(id_token) do
+    with {:ok, jwt} <- validate_id_token(config, id_token) do
+      validate_userinfo_sub(config, jwt.claims, claims)
+    end
+  end
+  defp validate_userinfo_sub(_config, %{"sub" => sub}, %{"sub" => sub}), do: :ok
+  defp validate_userinfo_sub(_config, %{"sub" => _sub_1}, %{"sub" => _sub_2}), do: {:error, "`sub` in userinfo response not the same as in ID Token"}
+  defp validate_userinfo_sub(_config, %{"sub" => _sub}, _claims), do: {:error, "`sub` not in userinfo response"}
 end
