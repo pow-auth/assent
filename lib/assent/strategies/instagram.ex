@@ -32,14 +32,14 @@ defmodule Assent.Strategy.Instagram do
   end
 
   @impl true
-  def get_user(config, access_token) do
+  def fetch_user(config, access_token) do
     with {:ok, fields} <- Config.fetch(config, :user_url_request_fields) do
       params = [
         fields: fields,
         access_token: access_token["access_token"]
       ]
 
-      OAuth2.get_user(config, access_token, params)
+      OAuth2.fetch_user(config, access_token, params)
     end
   end
 

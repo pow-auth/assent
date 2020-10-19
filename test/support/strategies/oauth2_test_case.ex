@@ -45,11 +45,11 @@ defmodule Assent.Test.OAuth2TestCase do
   end
 
   @spec expect_oauth2_api_request(Bypass.t(), binary(), map(), Keyword.t(), function() | nil) :: :ok
-  def expect_oauth2_api_request(bypass, uri, response, opts \\ [], assert_fn \\ nil) do
+  def expect_oauth2_api_request(bypass, uri, response, opts \\ [], assert_fn \\ nil, method \\ "GET") do
     access_token = Keyword.get(opts, :access_token, "access_token")
     status_code  = Keyword.get(opts, :status_code, 200)
 
-    Bypass.expect_once(bypass, "GET", uri, fn conn ->
+    Bypass.expect_once(bypass, method, uri, fn conn ->
       if assert_fn, do: assert_fn.(conn)
 
       assert_bearer_token_in_header(conn, access_token)

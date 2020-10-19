@@ -42,60 +42,76 @@ defmodule Assent.Test.OAuthTestCase do
   @spec expect_oauth_access_token_request(Bypass.t(), Keyword.t()) :: :ok
   def expect_oauth_access_token_request(bypass, _opts \\ []) do
     Bypass.expect_once(bypass, "POST", "/oauth/access_token", fn conn ->
-      cond do
-        invalid_oauth_access_token_request_signature?(conn) ->
-          conn
-          |> Conn.put_resp_content_type("application/json")
-          |> Conn.send_resp(500, Jason.encode!(%{error: "Invalid signature"}))
+      handle_signed_request(conn, "post", "/oauth/access_token", fn ->
+        token = %{
+          oauth_token: "token",
+          oauth_token_secret: "token_secret"
+        }
 
-        invalid_verifier?(conn) ->
-          conn
-          |> Conn.put_resp_content_type("application/json")
-          |> Conn.send_resp(500, Jason.encode!(%{error: "CSRF"}))
-
-        true ->
-          token = %{
-            oauth_token: "7588892-kagSNqWge8gB1WwE3plnFsJHAZVfxWD7Vb57p0b4&",
-            oauth_token_secret: "PbKfYqSryyeKDWz4ebtY3o5ogNLG11WJuZBc9fQrQo"
-          }
-
-          conn
-          |> Conn.put_resp_content_type("application/x-www-form-urlencoded")
-          |> Conn.resp(200, URI.encode_query(token))
-      end
+        conn
+        |> Conn.put_resp_content_type("application/x-www-form-urlencoded")
+        |> Conn.resp(200, URI.encode_query(token))
+      end, token: "request_token", token_secret: "request_token_secret", params: %{"oauth_verifier" => "verifier"})
     end)
   end
 
-  defp invalid_oauth_access_token_request_signature?(conn) do
-    %{"oauth_nonce" => nonce,
-      "oauth_timestamp" => timestamp,
-      "oauth_signature" => signature} = parse_auth_header(conn)
+  defp handle_signed_request(conn, method, path, fun, opts \\ []) do
+    cond do
+      invalid_oauth_access_token_request_signature?(conn, method, path, opts) ->
+        conn
+        |> Conn.put_resp_content_type("application/json")
+        |> Conn.send_resp(500, Jason.encode!(%{error: "Invalid signature"}))
+
+      invalid_verifier?(conn) ->
+        conn
+        |> Conn.put_resp_content_type("application/json")
+        |> Conn.send_resp(500, Jason.encode!(%{error: "CSRF"}))
+
+      true ->
+        fun.()
+    end
+  end
+
+  defp invalid_oauth_access_token_request_signature?(conn, method, path, opts) do
+    token = Keyword.get(opts, :token, "token")
+    token_secret = Keyword.get(opts, :token_secret, "token_secret")
+    params = Keyword.get(opts, :params, %{})
+
+    headers   = parse_auth_header(conn)
+    nonce     = URI.decode(headers["oauth_nonce"])
+    timestamp = headers["oauth_timestamp"]
+    signature = URI.decode(headers["oauth_signature"])
+    method    = String.downcase(method)
+    url       = "http://localhost:#{conn.port}#{path}"
 
     creds =
       OAuther.credentials([
         consumer_key: "key",
         consumer_secret: "secret",
-        token: "request_token",
-        token_secret: "request_token_secret"])
+        token: token,
+        token_secret: token_secret])
 
     params =
-      [{"oauth_verifier", "verifier"}]
+      params
+      |> Enum.to_list()
       |> OAuther.protocol_params(creds)
       |> Enum.map(fn
-          {"oauth_nonce", _} -> {"oauth_nonce", URI.decode(nonce)}
+          {"oauth_nonce", _} -> {"oauth_nonce", nonce}
           {"oauth_timestamp", _} -> {"oauth_timestamp", timestamp}
           any -> any
         end)
 
-    expected = OAuther.signature("post", "http://localhost:#{conn.port}/oauth/access_token", params, creds)
+    expected = OAuther.signature(method, url, params, creds)
 
-    URI.decode(signature) != expected
+    signature != expected
   end
 
   defp invalid_verifier?(conn) do
-    %{"oauth_verifier" => verifier} = parse_auth_header(conn)
-
-    verifier != "verifier"
+    case parse_auth_header(conn) do
+      %{"oauth_verifier" => "verifier"} -> false
+      %{"oauth_verifier" => _any} -> true
+      _none -> false
+    end
   end
 
   defp parse_auth_header(conn) do
@@ -117,9 +133,27 @@ defmodule Assent.Test.OAuthTestCase do
     status_code  = Keyword.get(opts, :status_code, 200)
 
     Bypass.expect_once(bypass, "GET", uri, fn conn ->
-      conn
-      |> Conn.put_resp_content_type("application/json")
-      |> Conn.send_resp(status_code, Jason.encode!(user_params))
+      handle_signed_request(conn, "get", uri, fn ->
+        conn
+        |> Conn.put_resp_content_type("application/json")
+        |> Conn.send_resp(status_code, Jason.encode!(user_params))
+      end, Keyword.take(opts, [:params]))
+    end)
+  end
+
+  @spec expect_oauth_api_request(Bypass.t(), binary(), map(), Keyword.t(), function() | nil) :: :ok
+  def expect_oauth_api_request(bypass, uri, response, opts \\ [], assert_fn \\ nil, method \\ "GET") do
+    status_code = Keyword.get(opts, :status_code, 200)
+
+    Bypass.expect_once(bypass, method, uri, fn conn ->
+      if assert_fn, do: assert_fn.(conn)
+
+      handle_signed_request(conn, to_string(method), uri, fn ->
+        conn
+        |> Conn.put_resp_content_type("application/json")
+        |> Conn.put_status(status_code)
+        |> Conn.send_resp(status_code, Jason.encode!(response))
+      end, Keyword.take(opts, [:params]))
     end)
   end
 end

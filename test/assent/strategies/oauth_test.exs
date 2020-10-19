@@ -1,7 +1,7 @@
 defmodule Assent.Strategy.OAuthTest do
   use Assent.Test.OAuthTestCase
 
-  alias Assent.{RequestError, Strategy.OAuth}
+  alias Assent.{Config.MissingKeyError, RequestError, Strategy.OAuth}
 
   describe "authorize_url/2" do
     test "returns url", %{config: config, bypass: bypass} do
@@ -79,7 +79,7 @@ defmodule Assent.Strategy.OAuthTest do
 
       assert {:ok, %{user: user, token: token}} = OAuth.callback(config, params)
       assert user == %{"email" => nil}
-      assert token == %{"oauth_token" => "7588892-kagSNqWge8gB1WwE3plnFsJHAZVfxWD7Vb57p0b4&", "oauth_token_secret" => "PbKfYqSryyeKDWz4ebtY3o5ogNLG11WJuZBc9fQrQo"}
+      assert token == %{"oauth_token" => "token", "oauth_token_secret" => "token_secret"}
     end
 
     test "with invalid verifier", %{config: config, callback_params: params, bypass: bypass} do
@@ -113,5 +113,77 @@ defmodule Assent.Strategy.OAuthTest do
       assert error.message =~ "Server responded with status: 500"
       assert error.message =~ "%{\"error\" => \"Unknown error\"}"
     end
+  end
+
+  describe "request/6 as GET request" do
+    setup do
+      {:ok, token: %{"oauth_token" => "token", "oauth_token_secret" => "token_secret"}}
+    end
+
+    test "with missing `:site` config", %{config: config, token: token} do
+      config = Keyword.delete(config, :site)
+
+      assert OAuth.request(config, token, :get, "/info") == {:error, %MissingKeyError{message: "Key `:site` not found in config"}}
+    end
+
+    test "with missing `:consumer_key` config", %{config: config, token: token} do
+      config = Keyword.delete(config, :consumer_key)
+
+      assert OAuth.request(config, token, :get, "/info") == {:error, %MissingKeyError{message: "Key `:consumer_key` not found in config"}}
+    end
+
+    test "with missing `:consumer_secret` config", %{config: config, token: token} do
+      config = Keyword.delete(config, :consumer_secret)
+
+      assert OAuth.request(config, token, :get, "/info") == {:error, %MissingKeyError{message: "Key `:consumer_secret` not found in config"}}
+    end
+
+    test "with missing `oauth_token` in token", %{config: config, token: token} do
+      assert OAuth.request(config, Map.delete(token, "oauth_token"), :get, "/info") == {:error, "No `oauth_token` in token map"}
+    end
+
+    test "with missing `oauth_token_secret` in token", %{config: config, token: token} do
+      assert OAuth.request(config, Map.delete(token, "oauth_token_secret"), :get, "/info") == {:error, "No `oauth_token_secret` in token map"}
+    end
+
+    test "gets", %{config: config, token: token, bypass: bypass} do
+      expect_oauth_api_request(bypass, "/info", %{"success" => true})
+
+      assert {:ok, response} = OAuth.request(config, token, :get, "/info")
+      assert response.body == %{"success" => true}
+
+      expect_oauth_api_request(bypass, "/info", %{"success" => true}, [params: [a: 1]], fn conn ->
+        assert conn.params["a"] == "1"
+      end)
+
+      assert {:ok, response} = OAuth.request(config, token, :get, "/info", a: 1)
+      assert response.body == %{"success" => true}
+
+      expect_oauth_api_request(bypass, "/info", %{"success" => true}, [params: [a: 1]], fn conn ->
+        assert Plug.Conn.get_req_header(conn, "b") == ["2"]
+      end)
+
+      assert {:ok, response} = OAuth.request(config, token, :get, "/info", [a: 1], [{"b", "2"}])
+      assert response.body == %{"success" => true}
+    end
+  end
+
+  test "request/6 as POST request", %{config: config, bypass: bypass} do
+    token = %{"oauth_token" => "token", "oauth_token_secret" => "token_secret"}
+
+    expect_oauth_api_request(bypass, "/info", %{"success" => true}, [], nil, "POST")
+
+    assert {:ok, response} = OAuth.request(config, token, :post, "/info")
+    assert response.body == %{"success" => true}
+
+    expect_oauth_api_request(bypass, "/info", %{"success" => true}, [params: [a: 1]], fn conn ->
+      {:ok, body, _conn} = Plug.Conn.read_body(conn, [])
+      params = URI.decode_query(body)
+
+      assert params["a"] == "1"
+    end, "POST")
+
+    assert {:ok, response} = OAuth.request(config, token, :post, "/info", [a: 1])
+    assert response.body == %{"success" => true}
   end
 end

@@ -370,39 +370,78 @@ defmodule Assent.Strategy.OAuth2Test do
     end
   end
 
-  describe "get/4" do
-    test "with missing `:site` config", %{config: config} do
+  describe "request/6 as GET request" do
+    setup do
+      {:ok, token: %{"access_token" => "access_token"}}
+    end
+
+    test "with missing `:site` config", %{config: config, token: token} do
       config = Keyword.delete(config, :site)
 
-      assert OAuth2.get(config, %{}, "/info") == {:error, %MissingKeyError{message: "Key `:site` not found in config"}}
+      assert OAuth2.request(config, token, :get, "/info") == {:error, %MissingKeyError{message: "Key `:site` not found in config"}}
     end
 
-    test "with missing `access_token` in token", %{config: config} do
-      assert OAuth2.get(config, %{}, "/info") == {:error, "No `access_token` in token map"}
-      assert OAuth2.get(config, %{"token_type" => "bearer"}, "/info") == {:error, "No `access_token` in token map"}
+    test "with missing `access_token` in token", %{config: config, token: token} do
+      token =  Map.delete(token, "access_token")
+
+      assert OAuth2.request(config, token, :get, "/info") == {:error, "No `access_token` in token map"}
+      assert OAuth2.request(config, Map.put(token, "token_type", "bearer"), :get, "/info") == {:error, "No `access_token` in token map"}
     end
 
-    test "with invalid `token_type` in token", %{config: config} do
-      assert OAuth2.get(config, %{"token_type" => "invalid"}, "/info") == {:error, "Authorization with token type `invalid` not supported"}
+    test "with invalid `token_type` in token", %{config: config, token: token} do
+      assert OAuth2.request(config, Map.put(token, "token_type", "invalid"), :get, "/info") == {:error, "Authorization with token type `invalid` not supported"}
     end
 
-    test "fetches", %{config: config, bypass: bypass} do
+    test "gets", %{config: config, token: token, bypass: bypass} do
       expect_oauth2_api_request(bypass, "/info", %{"success" => true})
 
-      assert {:ok, response} = OAuth2.get(config, %{"access_token" => "access_token"}, "/info")
+      assert {:ok, response} = OAuth2.request(config, token, :get, "/info")
+      assert response.body == %{"success" => true}
+
+      expect_oauth2_api_request(bypass, "/info", %{"success" => true}, [], fn conn ->
+        assert conn.params["a"] == "1"
+      end)
+
+      assert {:ok, response} = OAuth2.request(config, token, :get, "/info", a: 1)
+      assert response.body == %{"success" => true}
+
+      expect_oauth2_api_request(bypass, "/info", %{"success" => true}, [], fn conn ->
+        assert Plug.Conn.get_req_header(conn, "b") == ["2"]
+      end)
+
+      assert {:ok, response} = OAuth2.request(config, token, :get, "/info", [a: 1], [{"b", "2"}])
       assert response.body == %{"success" => true}
     end
 
-    test "with `token_type=bearer` in token", %{config: config, bypass: bypass} do
+    test "with `token_type=bearer` in token", %{config: config, token: token, bypass: bypass} do
       expect_oauth2_api_request(bypass, "/info", %{"success" => true})
-      assert {:ok, response} = OAuth2.get(config, %{"access_token" => "access_token", "token_type" => "bearer"}, "/info")
+      assert {:ok, response} = OAuth2.request(config, Map.put(token, "token_type", "bearer"), :get, "/info")
       assert response.body == %{"success" => true}
     end
 
-    test "with `token_type=Bearer` in token", %{config: config, bypass: bypass} do
+    test "with `token_type=Bearer` in token", %{config: config, token: token, bypass: bypass} do
       expect_oauth2_api_request(bypass, "/info", %{"success" => true})
-      assert {:ok, response} = OAuth2.get(config, %{"access_token" => "access_token", "token_type" => "Bearer"}, "/info")
+      assert {:ok, response} = OAuth2.request(config, Map.put(token, "token_type", "Bearer"), :get, "/info")
       assert response.body == %{"success" => true}
     end
+  end
+
+  test "request/6 as POST request", %{config: config, bypass: bypass} do
+    token = %{"access_token" => "access_token"}
+
+    expect_oauth2_api_request(bypass, "/info", %{"success" => true}, [], nil, "POST")
+
+    assert {:ok, response} = OAuth2.request(config, token, :post, "/info")
+    assert response.body == %{"success" => true}
+
+    expect_oauth2_api_request(bypass, "/info", %{"success" => true}, [], fn conn ->
+      {:ok, body, _conn} = Plug.Conn.read_body(conn, [])
+      params = URI.decode_query(body)
+
+      assert params["a"] == "1"
+    end, "POST")
+
+    assert {:ok, response} = OAuth2.request(config, token, :post, "/info", [a: 1])
+    assert response.body == %{"success" => true}
   end
 end

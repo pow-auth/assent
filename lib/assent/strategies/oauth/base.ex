@@ -41,7 +41,7 @@ defmodule Assent.Strategy.OAuth.Base do
 
   @callback default_config(Keyword.t()) :: Keyword.t()
   @callback normalize(Keyword.t(), map()) :: {:ok, map()} | {:ok, map(), map()} | {:error, term()}
-  @callback get_user(Keyword.t(), map()) :: {:ok, map()} | {:error, term()}
+  @callback fetch_user(Keyword.t(), map()) :: {:ok, map()} | {:error, term()}
 
   @doc false
   defmacro __using__(_opts) do
@@ -58,7 +58,7 @@ defmodule Assent.Strategy.OAuth.Base do
       def callback(config, params), do: unquote(__MODULE__).callback(config, params, __MODULE__)
 
       @impl unquote(__MODULE__)
-      def get_user(config, token), do: OAuth.get_user(config, token)
+      def fetch_user(config, token), do: OAuth.fetch_user(config, token)
 
       defoverridable unquote(__MODULE__)
     end

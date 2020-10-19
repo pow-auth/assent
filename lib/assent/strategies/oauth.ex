@@ -68,6 +68,94 @@ defmodule Assent.Strategy.OAuth do
     end
   end
 
+  defp get_request_token(config, params) do
+    with {:ok, site} <- Config.fetch(config, :site),
+         {:ok, consumer_key} <- Config.fetch(config, :consumer_key),
+         {:ok, consumer_secret} <- Config.fetch(config, :consumer_secret) do
+      request_token_url = Config.get(config, :request_token_url, "/oauth/request_token")
+      url               = process_url(site, request_token_url)
+
+      credentials =
+        OAuther.credentials([
+          consumer_key: consumer_key,
+          consumer_secret: consumer_secret
+        ])
+
+      config
+      |> do_request(:post, site, url, credentials, params)
+      |> Helpers.decode_response(config)
+      |> process_token_response()
+    end
+  end
+
+  defp process_url(site, url) do
+    case String.downcase(url) do
+      <<"http://"::utf8, _::binary>>  -> url
+      <<"https://"::utf8, _::binary>> -> url
+      _                               -> site <> url
+    end
+  end
+
+  defp do_request(config, method, site, url, credentials, params, headers \\ []) do
+    params =
+      params
+      |> Enum.to_list()
+      |> Enum.map(fn {key, value} -> {to_string(key), value} end)
+
+    signed_params        = OAuther.sign(Atom.to_string(method), url, params, credentials)
+    {header, req_params} = OAuther.header(signed_params)
+    req_headers          = request_headers(method, [header] ++ headers)
+    req_body             = request_body(method, req_params)
+    params               = url_params(method, params)
+    url                  = Helpers.to_url(site, url, params)
+
+    Helpers.request(method, url, req_body, req_headers, config)
+  end
+
+  defp request_headers(:post, headers), do: [{"content-type", "application/x-www-form-urlencoded"}] ++ headers
+  defp request_headers(_method, headers), do: headers
+
+  defp request_body(:post, req_params), do: URI.encode_query(req_params)
+  defp request_body(_method, _req_params), do: nil
+
+  defp url_params(:post, _params), do: []
+  defp url_params(_method, params), do: params
+
+  defp process_token_response({:ok, %HTTPResponse{status: 200, body: body} = response}) when is_binary(body), do: process_token_response({:ok, %{response | body: URI.decode_query(body)}})
+  defp process_token_response({:ok, %HTTPResponse{status: 200, body: %{"oauth_token" => _} = token}}), do: {:ok, token}
+  defp process_token_response(any), do: process_response(any)
+
+  defp process_response({:ok, %HTTPResponse{} = response}), do: {:error, RequestError.unexpected(response)}
+  defp process_response({:error, %HTTPResponse{} = response}), do: {:error, RequestError.invalid(response)}
+  defp process_response({:error, error}), do: {:error, error}
+
+  defp build_authorize_url({:ok, token}, config) do
+    with {:ok, site} <- Config.fetch(config, :site),
+         {:ok, oauth_token} <- fetch_from_token(token, "oauth_token"),
+         {:ok, oauth_token_secret} <- fetch_from_token(token, "oauth_token_secret") do
+      authorization_url = Config.get(config, :authorize_url, "/oauth/authenticate")
+      params            = authorization_params(config, oauth_token: oauth_token)
+      url               = Helpers.to_url(site, authorization_url, params)
+
+      {:ok, url, oauth_token_secret}
+    end
+  end
+  defp build_authorize_url({:error, error}, _config), do: {:error, error}
+
+  defp fetch_from_token(token, key) do
+    case Map.fetch(token, key) do
+      {:ok, value} -> {:ok, value}
+      :error       -> {:error, "No `#{key}` in token map"}
+    end
+  end
+
+  defp authorization_params(config, params) do
+    config
+    |> Config.get(:authorization_params, [])
+    |> Config.merge(params)
+    |> List.keysort(0)
+  end
+
   @doc """
   Callback phase for generating access token and fetch user data.
 
@@ -82,44 +170,10 @@ defmodule Assent.Strategy.OAuth do
   @impl true
   @spec callback(Config.t(), map(), atom()) :: {:ok, %{user: map(), token: map()}} | {:error, term()}
   def callback(config, %{"oauth_token" => oauth_token, "oauth_verifier" => oauth_verifier}, strategy \\ __MODULE__) do
-    config
-    |> get_access_token(oauth_token, oauth_verifier)
-    |> fetch_user(config, strategy)
-  end
-
-  defp get_request_token(config, params) do
-    with {:ok, site} <- Config.fetch(config, :site),
-         {:ok, consumer_key} <- Config.fetch(config, :consumer_key),
-         {:ok, consumer_secret} <- Config.fetch(config, :consumer_secret) do
-      request_token_url = Config.get(config, :request_token_url, "/oauth/request_token")
-      url               = process_url(site, request_token_url)
-      credentials       = OAuther.credentials([
-        consumer_key: consumer_key,
-        consumer_secret: consumer_secret])
-
-      config
-      |> request(:post, site, url, credentials, params)
-      |> Helpers.decode_response(config)
-      |> process_token_response()
+    with {:ok, token} <- get_access_token(config, oauth_token, oauth_verifier),
+         {:ok, user}  <- strategy.fetch_user(config, token) do
+      {:ok, %{user: user, token: token}}
     end
-  end
-
-  defp build_authorize_url({:ok, token}, config) do
-    with {:ok, site} <- Config.fetch(config, :site) do
-      authorization_url = Config.get(config, :authorize_url, "/oauth/authenticate")
-      params            = authorization_params(config, oauth_token: token["oauth_token"])
-      url               = Helpers.to_url(site, authorization_url, params)
-
-      {:ok, url, token["oauth_token_secret"]}
-    end
-  end
-  defp build_authorize_url({:error, error}, _config), do: {:error, error}
-
-  defp authorization_params(config, params) do
-    config
-    |> Config.get(:authorization_params, [])
-    |> Config.merge(params)
-    |> List.keysort(0)
   end
 
   defp get_access_token(config, oauth_token, oauth_verifier) do
@@ -131,83 +185,54 @@ defmodule Assent.Strategy.OAuth do
       url                = process_url(site, access_token_url)
       params             = [{"oauth_verifier", oauth_verifier}]
       oauth_token_secret = Kernel.get_in(config, [:session_params, :oauth_token_secret])
-      credentials        = OAuther.credentials([
-        consumer_key: consumer_key,
-        consumer_secret: consumer_secret,
-        token: oauth_token,
-        token_secret: oauth_token_secret])
+
+      credentials =
+        OAuther.credentials([
+          consumer_key: consumer_key,
+          consumer_secret: consumer_secret,
+          token: oauth_token,
+          token_secret: oauth_token_secret
+        ])
 
       config
-      |> request(:post, site, url, credentials, params)
+      |> do_request(:post, site, url, credentials, params)
       |> Helpers.decode_response(config)
       |> process_token_response()
     end
   end
 
-  defp request(config, method, site, url, credentials, params) do
-    signed_params        = OAuther.sign(Atom.to_string(method), url, params, credentials)
-    {header, req_params} = OAuther.header(signed_params)
-    headers              = request_headers(method, header)
-    body                 = request_body(method, req_params)
-    url                  = Helpers.to_url(site, url)
-
-    Helpers.request(method, url, body, headers, config)
-  end
-
-  defp request_headers(:post, header), do: [{"content-type", "application/x-www-form-urlencoded"}, header]
-  defp request_headers(_method, header), do: [header]
-
-  defp request_body(:post, req_params), do: URI.encode_query(req_params)
-  defp request_body(_method, _req_params), do: nil
-
-  defp process_token_response({:ok, %HTTPResponse{status: 200, body: body} = response}) when is_binary(body), do: process_token_response({:ok, %{response | body: URI.decode_query(body)}})
-  defp process_token_response({:ok, %HTTPResponse{status: 200, body: %{"oauth_token" => _} = token}}), do: {:ok, token}
-  defp process_token_response(any), do: process_response(any)
-
-  defp process_response({:ok, %HTTPResponse{} = response}), do: {:error, RequestError.unexpected(response)}
-  defp process_response({:error, %HTTPResponse{} = response}), do: {:error, RequestError.invalid(response)}
-  defp process_response({:error, error}), do: {:error, error}
-
-  defp fetch_user({:ok, token}, config, strategy) do
-    config
-    |> strategy.get_user(token)
-    |> case do
-      {:ok, user}     -> {:ok, %{user: user, token: token}}
-      {:error, error} -> {:error, error}
-    end
-  end
-  defp fetch_user({:error, error}, _config, _strategy),
-    do: {:error, error}
-
   @doc """
-  Makes a HTTP get request to the API.
-
-  JSON responses will be decoded to maps.
+  Performs a signed HTTP request to the API using the oauth token.
   """
-  @spec get(Config.t(), map(), binary(), Keyword.t()) :: {:ok, map()} | {:error, term()}
-  def get(config, token, url, params \\ []) do
+  @spec request(Config.t(), map(), atom(), binary(), map() | Keyword.t(), [{binary(), binary()}]) :: {:ok, map()} | {:error, term()}
+  def request(config, token, method, url, params \\ [], headers \\ []) do
     with {:ok, site} <- Config.fetch(config, :site),
          {:ok, consumer_key} <- Config.fetch(config, :consumer_key),
-         {:ok, consumer_secret} <- Config.fetch(config, :consumer_secret) do
-      url         = process_url(site, url)
-      credentials = OAuther.credentials([
-        consumer_key: consumer_key,
-        consumer_secret: consumer_secret,
-        token: token["oauth_token"],
-        token_secret: token["oauth_token_secret"]])
+         {:ok, consumer_secret} <- Config.fetch(config, :consumer_secret),
+         {:ok, oauth_token} <- fetch_from_token(token, "oauth_token"),
+         {:ok, oauth_token_secret} <- fetch_from_token(token, "oauth_token_secret") do
+      url = process_url(site, url)
+
+      credentials =
+        OAuther.credentials([
+          consumer_key: consumer_key,
+          consumer_secret: consumer_secret,
+          token: oauth_token,
+          token_secret: oauth_token_secret
+        ])
 
       config
-      |> request(:get, site, url, credentials, params)
+      |> do_request(method, site, url, credentials, params, headers)
       |> Helpers.decode_response(config)
     end
   end
 
   @doc false
-  @spec get_user(Config.t(), map()) :: {:ok, map()} | {:error, term()}
-  def get_user(config, token) do
+  @spec fetch_user(Config.t(), map()) :: {:ok, map()} | {:error, term()}
+  def fetch_user(config, token) do
     with {:ok, url} <- Config.fetch(config, :user_url) do
       config
-      |> get(token, url)
+      |> request(token, :get, url)
       |> process_user_response()
     end
   end
@@ -215,12 +240,4 @@ defmodule Assent.Strategy.OAuth do
   defp process_user_response({:ok, %HTTPResponse{status: 200, body: user}}), do: {:ok, user}
   defp process_user_response({:error, %HTTPResponse{status: 401}}), do: {:error, %RequestError{message: "Unauthorized token"}}
   defp process_user_response(any), do: process_response(any)
-
-  defp process_url(site, url) do
-    case String.downcase(url) do
-      <<"http://"::utf8, _::binary>>  -> url
-      <<"https://"::utf8, _::binary>> -> url
-      _                               -> site <> url
-    end
-  end
 end

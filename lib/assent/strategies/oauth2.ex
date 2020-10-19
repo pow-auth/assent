@@ -126,9 +126,9 @@ defmodule Assent.Strategy.OAuth2 do
          {:ok, code}           <- fetch_code_param(params),
          {:ok, redirect_uri}   <- Config.fetch(config, :redirect_uri),
          :ok                   <- maybe_check_state(session_params, params),
-         {:ok, token}          <- get_access_token(config, "authorization_code", code: code, redirect_uri: redirect_uri) do
+         {:ok, token}          <- grant_access_token(config, "authorization_code", code: code, redirect_uri: redirect_uri) do
 
-      fetch_user(config, token, strategy)
+      fetch_user_with_strategy(config, token, strategy)
     end
   end
 
@@ -232,10 +232,10 @@ defmodule Assent.Strategy.OAuth2 do
   end
 
   @doc """
-  Gets an access token.
+  Grants an access token.
   """
-  @spec get_access_token(Config.t(), binary(), Keyword.t()) :: {:ok, map()} | {:error, term()}
-  def get_access_token(config, grant_type, params)  do
+  @spec grant_access_token(Config.t(), binary(), Keyword.t()) :: {:ok, map()} | {:error, term()}
+  def grant_access_token(config, grant_type, params)  do
     auth_method  = Config.get(config, :auth_method, nil)
     token_url    = Config.get(config, :token_url, "/oauth/token")
 
@@ -260,9 +260,9 @@ defmodule Assent.Strategy.OAuth2 do
   defp process_response({:error, %HTTPResponse{} = response}), do: {:error, RequestError.invalid(response)}
   defp process_response({:error, error}), do: {:error, error}
 
-  defp fetch_user(config, token, strategy) do
+  defp fetch_user_with_strategy(config, token, strategy) do
     config
-    |> strategy.get_user(token)
+    |> strategy.fetch_user(token)
     |> case do
       {:ok, user}     -> {:ok, %{token: token, user: user}}
       {:error, error} -> {:error, error}
@@ -275,42 +275,49 @@ defmodule Assent.Strategy.OAuth2 do
   @spec refresh_access_token(Config.t(), map(), Keyword.get()) :: {:ok, map()} | {:error, term()}
   def refresh_access_token(config, token, params \\ []) do
     with {:ok, refresh_token} <- fetch_from_token(token, "refresh_token") do
-      get_access_token(config, "refresh_token", Keyword.put(params, :refresh_token, refresh_token))
+      grant_access_token(config, "refresh_token", Keyword.put(params, :refresh_token, refresh_token))
     end
   end
 
   @doc """
-  Performs a HTTP GET request to the API using the access token.
-
-  Uses `authorization_headers/2` for headers.
+  Performs a HTTP request to the API using the access token.
   """
-  @spec get(Config.t(), map(), binary(), map() | Keyword.t()) :: {:ok, map()} | {:error, term()}
-  def get(config, token, url, params \\ []) do
+  @spec request(Config.t(), map(), atom(), binary(), map() | Keyword.t(), [{binary(), binary()}]) :: {:ok, map()} | {:error, term()}
+  def request(config, token, method, url, params \\ [], headers \\ []) do
     with {:ok, site} <- Config.fetch(config, :site),
-         {:ok, headers} <- authorization_headers(config, token) do
-      url = Helpers.to_url(site, url, params)
+         {:ok, auth_headers} <- authorization_headers(config, token) do
 
-      :get
-      |> Helpers.request(url, nil, headers, config)
+      req_headers = request_headers(method, auth_headers ++ headers)
+      req_body    = request_body(method, params)
+      params      = url_params(method, params)
+      url         = Helpers.to_url(site, url, params)
+
+      method
+      |> Helpers.request(url, req_body, req_headers, config)
       |> Helpers.decode_response(config)
     end
   end
 
+  defp request_headers(:post, headers), do: [{"content-type", "application/x-www-form-urlencoded"}] ++ headers
+  defp request_headers(_method, headers), do: headers
+
+  defp request_body(:post, params), do: URI.encode_query(params)
+  defp request_body(_method, _params), do: nil
+
+  defp url_params(:post, _params), do: []
+  defp url_params(_method, params), do: params
+
   @doc """
   Fetch user data with the access token.
 
-  Uses `get/4` to fetch the user data.
+  Uses `request/6` to fetch the user data.
   """
-  @spec get_user(Config.t(), map(), map() | Keyword.t()) :: {:ok, map()} | {:error, term()}
-  def get_user(config, token, params \\ []) do
-    case Config.fetch(config, :user_url) do
-      {:ok, user_url} ->
-        config
-        |> get(token, user_url, params)
-        |> process_user_response()
-
-      {:error, error} ->
-        {:error, error}
+  @spec fetch_user(Config.t(), map(), map() | Keyword.t()) :: {:ok, map()} | {:error, term()}
+  def fetch_user(config, token, params \\ []) do
+    with {:ok, user_url} <- Config.fetch(config, :user_url) do
+      config
+      |> request(token, :get, user_url, params)
+      |> process_user_response()
     end
   end
 

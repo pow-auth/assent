@@ -112,8 +112,8 @@ defmodule Assent.Strategy.Apple do
   end
 
   @impl true
-  def get_user(config, token) do
-    case OIDC.get_user(config, token) do
+  def fetch_user(config, token) do
+    case OIDC.fetch_user(config, token) do
       {:ok, user}     -> {:ok, merge_with_user_info(user, token)}
       {:error, error} -> {:error, error}
     end
