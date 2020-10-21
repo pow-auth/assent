@@ -1,6 +1,6 @@
 # Assent
 
-[![Build Status](https://travis-ci.org/pow-auth/assent.svg?branch=master)](https://travis-ci.org/pow-auth/assent) [![hex.pm](http://img.shields.io/hexpm/v/assent.svg?style=flat)](https://hex.pm/packages/assent)
+![Build Status](https://img.shields.io/github/workflow/status/pow-auth/assent/CI/master) [![hex.pm](http://img.shields.io/hexpm/v/assent.svg?style=flat)](https://hex.pm/packages/assent)
 
 Multi-provider authentication framework.
 
