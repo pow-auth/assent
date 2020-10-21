@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.1.16 (TBA)
+## v0.1.16 (2020-10-21)
 
 **Warning:** This release has breaking changes.
 
