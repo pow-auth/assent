@@ -272,7 +272,7 @@ defmodule Assent.Strategy.OAuth2 do
   @doc """
   Refreshes the access token.
   """
-  @spec refresh_access_token(Config.t(), map(), Keyword.get()) :: {:ok, map()} | {:error, term()}
+  @spec refresh_access_token(Config.t(), map(), Keyword.t()) :: {:ok, map()} | {:error, term()}
   def refresh_access_token(config, token, params \\ []) do
     with {:ok, refresh_token} <- fetch_from_token(token, "refresh_token") do
       grant_access_token(config, "refresh_token", Keyword.put(params, :refresh_token, refresh_token))
