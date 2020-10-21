@@ -226,8 +226,8 @@ defmodule Assent.Strategy.OIDC do
   The ID Token is validated, and the claims is returned as the user params.
   Use `fetch_userinfo/2` to fetch the claims from the `userinfo` endpoint.
   """
-  @spec get_user(Config.t(), map()) :: {:ok, map()} | {:error, term()}
-  def get_user(config, token) do
+  @spec fetch_user(Config.t(), map()) :: {:ok, map()} | {:error, term()}
+  def fetch_user(config, token) do
     with {:ok, jwt} <- validate_id_token(config, token["id_token"]) do
       Helpers.normalize_userinfo(jwt.claims)
     end
@@ -380,7 +380,7 @@ defmodule Assent.Strategy.OIDC do
 
   defp fetch_from_userinfo_endpoint(config, openid_config, token, userinfo_url) do
     config
-    |> OAuth2.get(token, userinfo_url)
+    |> OAuth2.request(token, :get, userinfo_url)
     |> process_userinfo_response(openid_config, config)
   end
 

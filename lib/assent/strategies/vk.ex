@@ -54,14 +54,14 @@ defmodule Assent.Strategy.VK do
   end
 
   @impl true
-  def get_user(config, token) do
+  def fetch_user(config, token) do
     params =
       config
       |> Config.get(:user_url_params, [])
       |> Config.put(:access_token, token["access_token"])
 
     config
-    |> OAuth2.get_user(token, params)
+    |> OAuth2.fetch_user(token, params)
     |> handle_user_response(token)
   end
 

@@ -48,34 +48,25 @@ defmodule Assent.Strategy.Github do
   end
 
   @impl true
-  def get_user(config, access_token) do
-    case Config.fetch(config, :user_emails_url) do
-      {:ok, user_emails_url} -> get_user(config, access_token, user_emails_url)
-      {:error, error}        -> {:error, error}
+  def fetch_user(config, access_token) do
+    with {:ok, user_emails_url} <- Config.fetch(config, :user_emails_url),
+         {:ok, user} <- OAuth2.fetch_user(config, access_token) do
+      fetch_email(config, access_token, user, user_emails_url)
     end
   end
 
-  defp get_user(config, access_token, url) do
+  defp fetch_email(config, token, user, url) do
     config
-    |> OAuth2.get_user(access_token)
-    |> case do
-      {:ok, user}     -> get_email(config, access_token, user, url)
-      {:error, error} -> {:error, error}
-    end
+    |> OAuth2.request(token, :get, url)
+    |> process_email_response(user)
   end
 
-  defp get_email(config, token, user, url) do
-    config
-    |> OAuth2.get(token, url)
-    |> process_get_email_response(user)
-  end
-
-  defp process_get_email_response({:ok, %{body: emails}}, user) do
+  defp process_email_response({:ok, %{body: emails}}, user) do
     {email, verified} = get_primary_email(emails)
 
     {:ok, Map.merge(user, %{"email" => email, "email_verified" => verified})}
   end
-  defp process_get_email_response({:error, error}, _user), do: {:error, error}
+  defp process_email_response({:error, error}, _user), do: {:error, error}
 
   defp get_primary_email([%{"verified" => verified, "primary" => true, "email" => email} | _rest]),
     do: {email, verified}

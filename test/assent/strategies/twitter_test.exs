@@ -135,7 +135,7 @@ defmodule Assent.Strategy.TwitterTest do
 
   test "callback/2", %{config: config, callback_params: params, bypass: bypass} do
     expect_oauth_access_token_request(bypass)
-    expect_oauth_user_request(bypass, @user_response, uri: "/1.1/account/verify_credentials.json")
+    expect_oauth_user_request(bypass, @user_response, uri: "/1.1/account/verify_credentials.json", params: [include_entities: false, skip_status: true, include_email: true])
 
     assert {:ok, %{user: user}} = Twitter.callback(config, params)
     assert user == @user

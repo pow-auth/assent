@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.1.16 (TBA)
+
+**Warning:** This release has breaking changes.
+
+All `get_user/2` functions has been renamed to `fetch_user/2` as they return `{:ok, res}`/`{:error, res}` tuples.
+
+* `Assent.OAuth.get/4` removed in favor of `Assent.OAuth.request/6`
+* `Assent.OAuth2.get_access_token/3` renamed to `Assent.OAuth2.grant_access_token/3`
+* `Assent.OAuth2.get/4` removed in favor of `Assent.OAuth2.request/6`
+
 ## v0.1.15 (2020-10-18)
 
 * `Assent.Strategy.OIDC.validate_id_token/2` has a bug fixed where `alg` was not validated correctly
