@@ -40,7 +40,7 @@ defmodule Assent.HTTPAdapter do
   `Assent`.
   """
   @spec user_agent_header() :: {binary(), binary()}
-  def user_agent_header() do
+  def user_agent_header do
     version = Application.spec(:assent, :vsn) || "0.0.0"
 
     {"User-Agent", "Assent-#{version}"}

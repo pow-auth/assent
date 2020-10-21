@@ -1,7 +1,7 @@
 defmodule Assent.Strategy.OIDCTest do
   use Assent.Test.OIDCTestCase
 
-  alias Assent.{RequestError, Strategy.OIDC}
+  alias Assent.{JWTAdapter.AssentJWT, RequestError, Strategy.OIDC}
 
   describe "authorize_url/2" do
     test "generates url and state", %{config: config, bypass: bypass} do
@@ -114,7 +114,7 @@ defmodule Assent.Strategy.OIDCTest do
         |> Keyword.put(:private_key_id, "key_id")
 
       expect_oidc_access_token_request(bypass, [id_token_opts: [claims: @user_claims, iss: "http://localhost"]], fn _conn, params ->
-        assert {:ok, jwt} = Assent.JWTAdapter.AssentJWT.verify(params["client_assertion"], @public_rsa_key, json_library: Jason)
+        assert {:ok, jwt} = AssentJWT.verify(params["client_assertion"], @public_rsa_key, json_library: Jason)
         assert jwt.header["alg"] == "RS256"
         assert jwt.header["typ"] == "JWT"
         assert jwt.header["kid"] == "key_id"

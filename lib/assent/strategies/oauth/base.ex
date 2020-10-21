@@ -64,7 +64,6 @@ defmodule Assent.Strategy.OAuth.Base do
     end
   end
 
-
   @spec authorize_url(Keyword.t(), module()) :: {:ok, %{url: binary()}} | {:error, term()}
   def authorize_url(config, strategy) do
     config

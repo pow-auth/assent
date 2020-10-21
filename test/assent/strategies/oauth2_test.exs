@@ -1,7 +1,7 @@
 defmodule Assent.Strategy.OAuth2Test do
   use Assent.Test.OAuth2TestCase
 
-  alias Assent.{CallbackCSRFError, CallbackError, Config.MissingKeyError, MissingParamError, RequestError, Strategy.OAuth2}
+  alias Assent.{CallbackCSRFError, CallbackError, Config.MissingKeyError, JWTAdapter.AssentJWT, MissingParamError, RequestError, Strategy.OAuth2}
 
   @client_id "id"
   @client_secret "secret"
@@ -238,7 +238,7 @@ defmodule Assent.Strategy.OAuth2Test do
         assert params["redirect_uri"] == "http://localhost:4000/auth/callback"
         assert params["client_assertion_type"] == "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
 
-        assert {:ok, jwt} = Assent.JWTAdapter.AssentJWT.verify(params["client_assertion"], @client_secret, json_library: Jason)
+        assert {:ok, jwt} = AssentJWT.verify(params["client_assertion"], @client_secret, json_library: Jason)
         assert jwt.verified?
         assert jwt.header["alg"] == "HS256"
         assert jwt.header["typ"] == "JWT"
@@ -267,7 +267,7 @@ defmodule Assent.Strategy.OAuth2Test do
         assert params["redirect_uri"] == "http://localhost:4000/auth/callback"
         assert params["client_assertion_type"] == "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
 
-        assert {:ok, jwt} = Assent.JWTAdapter.AssentJWT.verify(params["client_assertion"], @public_key, json_library: Jason)
+        assert {:ok, jwt} = AssentJWT.verify(params["client_assertion"], @public_key, json_library: Jason)
         assert jwt.verified?
         assert jwt.header["alg"] == "RS256"
         assert jwt.header["typ"] == "JWT"
@@ -295,7 +295,7 @@ defmodule Assent.Strategy.OAuth2Test do
         |> Keyword.put(:private_key_id, @private_key_id)
 
       expect_oauth2_access_token_request(bypass, [], fn _conn, params ->
-        assert {:ok, jwt} = Assent.JWTAdapter.AssentJWT.verify(params["client_assertion"], @public_key, json_library: Jason)
+        assert {:ok, jwt} = AssentJWT.verify(params["client_assertion"], @public_key, json_library: Jason)
         assert jwt.verified?
         assert jwt.header["kid"] == @private_key_id
       end)

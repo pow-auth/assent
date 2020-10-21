@@ -72,7 +72,7 @@ defmodule Assent.HTTPAdapter.Mint do
     end
   end
 
-  defp monotonic_timestamp(), do: :erlang.monotonic_time(:millisecond)
+  defp monotonic_timestamp, do: :erlang.monotonic_time(:millisecond)
 
   defp handle_response(conn, request_ref, message, timeout, start_time, prev_responses) do
     case Mint.HTTP.stream(conn, message) do

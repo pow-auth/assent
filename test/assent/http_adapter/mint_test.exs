@@ -3,7 +3,7 @@ defmodule Assent.HTTPAdapter.MintTest do
   doctest Assent.HTTPAdapter.Mint
 
   alias Mint.TransportError
-  alias Assent.HTTPAdapter.{Mint, HTTPResponse}
+  alias Assent.HTTPAdapter.{HTTPResponse, Mint}
 
   @expired_certificate_url "https://expired.badssl.com"
   @hsts_certificate_url "https://hsts.badssl.com"

@@ -1,6 +1,7 @@
 defmodule Assent.Strategy.AppleTest do
   use Assent.Test.OIDCTestCase
 
+  alias Assent.JWTAdapter.AssentJWT
   alias Assent.Strategy.Apple
 
   @client_id "001473.fe6f6f83bf4b8e4590aacbabdcb8598bd0.2039"
@@ -98,7 +99,7 @@ defmodule Assent.Strategy.AppleTest do
   if :crypto.supports()[:curves] do
     test "callback/2", %{config: config, callback_params: params, bypass: bypass} do
       expect_oidc_access_token_request(bypass, [id_token: @id_token, uri: "/auth/token"], fn _conn, params ->
-        assert {:ok, jwt} = Assent.JWTAdapter.AssentJWT.verify(params["client_secret"], @public_key, json_library: Jason)
+        assert {:ok, jwt} = AssentJWT.verify(params["client_secret"], @public_key, json_library: Jason)
         assert jwt.verified?
         assert jwt.header["alg"] == "ES256"
         assert jwt.header["typ"] == "JWT"
