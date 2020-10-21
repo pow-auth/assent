@@ -55,7 +55,7 @@ defmodule Assent.Test.OAuthTestCase do
     end)
   end
 
-  defp handle_signed_request(conn, method, path, fun, opts \\ []) do
+  defp handle_signed_request(conn, method, path, fun, opts) do
     cond do
       invalid_oauth_access_token_request_signature?(conn, method, path, opts) ->
         conn
