@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.17 (2020-11-05)
+
+* Relax `mint` requirement
+
 ## v0.1.16 (2020-10-21)
 
 **Warning:** This release has breaking changes.
