@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.1.18 (TBA)
+## v0.1.18 (2020-11-08)
 
 * Removed `oauther` dependency
 
