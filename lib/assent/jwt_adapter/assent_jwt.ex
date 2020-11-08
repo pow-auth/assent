@@ -73,7 +73,7 @@ defmodule Assent.JWTAdapter.AssentJWT do
   defp sha2_alg("512"), do: {:ok, :sha512}
   defp sha2_alg(bit_size), do: {:error, "Invalid SHA-2 algorithm bit size: #{bit_size}"}
 
-   defp decode_pem(pem) do
+  defp decode_pem(pem) do
     case :public_key.pem_decode(pem) do
       [entry] -> {:ok, :public_key.pem_entry_decode(entry)}
       _any    -> {:error, "Private key should only have one entry"}

@@ -1,6 +1,6 @@
 defmodule Assent.Strategy.OAuth do
   @moduledoc """
-  OAuth strategy.
+  OAuth 1.0a strategy.
 
   `authorize_url/1` returns a map with a `:session_params` and `:url` key. The
   `:session_params` key carries a `:oauth_token_secret` value for the request.
@@ -8,8 +8,20 @@ defmodule Assent.Strategy.OAuth do
   ## Configuration
 
     - `:consumer_key` - The OAuth consumer key, required
-    - `:consumer_secret` - The OAuth consumer secret, required
     - `:site` - The domain of the OAuth server, required
+    - `:signature_method` -  The signature method, optional, defaults to
+      `:hmac_sha1`. The value may be one of the following:
+
+      - `:hmac_sha1` - Generates signature with HMAC-SHA1
+      - `:rsa_sha1` - Generates signature with RSA-SHA1
+      - `:plaintext` - Doesn't generate signature
+    - `:consumer_secret` - The OAuth consumer secret, required if
+      `:signature_method` is either `:hmac_sha1` or `:plaintext`
+    - `:private_key_path` - The path for the private key, required if
+      `:signature_method` is `:rsa_sha1` and `:private_key` hasn't been set
+    - `:private_key` - The private key content that can be defined instead of
+      `:private_key_path`, required if `:signature_method` is `:rsa_sha1` and
+      `:private_key_path` hasn't been set
 
   ## Usage
 
@@ -34,7 +46,7 @@ defmodule Assent.Strategy.OAuth do
   @behaviour Assent.Strategy
 
   alias Assent.Strategy, as: Helpers
-  alias Assent.{Config, HTTPAdapter.HTTPResponse, RequestError}
+  alias Assent.{Config, HTTPAdapter.HTTPResponse, JWTAdapter, RequestError}
 
   @doc """
   Generate authorization URL for request phase.
@@ -68,21 +80,13 @@ defmodule Assent.Strategy.OAuth do
     end
   end
 
-  defp get_request_token(config, params) do
-    with {:ok, site} <- Config.fetch(config, :site),
-         {:ok, consumer_key} <- Config.fetch(config, :consumer_key),
-         {:ok, consumer_secret} <- Config.fetch(config, :consumer_secret) do
-      request_token_url = Config.get(config, :request_token_url, "/oauth/request_token")
+  defp get_request_token(config, oauth_params) do
+    with {:ok, site} <- Config.fetch(config, :site) do
+      request_token_url = Config.get(config, :request_token_url, "/request_token")
       url               = process_url(site, request_token_url)
 
-      credentials =
-        OAuther.credentials([
-          consumer_key: consumer_key,
-          consumer_secret: consumer_secret
-        ])
-
       config
-      |> do_request(:post, site, url, credentials, params)
+      |> do_request(:post, site, url, [], oauth_params)
       |> Helpers.decode_response(config)
       |> process_token_response()
     end
@@ -96,20 +100,143 @@ defmodule Assent.Strategy.OAuth do
     end
   end
 
-  defp do_request(config, method, site, url, credentials, params, headers \\ []) do
+  defp do_request(config, method, site, url, params, oauth_params, headers \\ [], token_secret \\ nil) do
     params =
       params
       |> Enum.to_list()
       |> Enum.map(fn {key, value} -> {to_string(key), value} end)
 
-    signed_params        = OAuther.sign(Atom.to_string(method), url, params, credentials)
-    {header, req_params} = OAuther.header(signed_params)
-    req_headers          = request_headers(method, [header] ++ headers)
-    req_body             = request_body(method, req_params)
-    params               = url_params(method, params)
-    url                  = Helpers.to_url(site, url, params)
+    signature_method = Config.get(config, :signature_method, :hmac_sha1)
 
-    Helpers.request(method, url, req_body, req_headers, config)
+    with {:ok, oauth_params} <- gen_oauth_params(config, signature_method, oauth_params),
+         {:ok, signed_header} <- signed_header(config, signature_method, method, url, oauth_params, params, token_secret) do
+      req_headers   = request_headers(method, [signed_header] ++ headers)
+      req_body      = request_body(method, params)
+      query_params  = url_params(method, params)
+      url           = Helpers.to_url(site, url, query_params)
+
+      Helpers.request(method, url, req_body, req_headers, config)
+    end
+  end
+
+  defp gen_oauth_params(config, signature_method, oauth_params) do
+    with {:ok, consumer_key} <- Config.fetch(config, :consumer_key) do
+      params =
+        [
+          {"oauth_consumer_key", consumer_key},
+          {"oauth_nonce", gen_nonce()},
+          {"oauth_signature_method", to_signature_method_string(signature_method)},
+          {"oauth_timestamp", timestamp()},
+          {"oauth_version", "1.0"}
+          | oauth_params
+        ]
+
+      {:ok, params}
+    end
+  end
+
+  defp signed_header(config, signature_method, method, url, oauth_params, params, token_secret) do
+    uri            = URI.parse(url)
+    query_params   = Map.to_list(URI.decode_query(uri.query || ""))
+    request_params = params ++ query_params ++ oauth_params
+
+    with {:ok, signature} <- gen_signature(config, method, uri, request_params, signature_method, token_secret) do
+      oauth_header_value =
+        [{"oauth_signature", signature} | oauth_params]
+        |> Enum.map(fn {key, value} ->
+          percent_encode(key) <> "=\"" <> percent_encode(value) <> "\""
+        end)
+        |> Enum.join(", ")
+
+      {:ok, {"Authorization", "OAuth " <> oauth_header_value}}
+    end
+  end
+
+  defp gen_nonce do
+    16
+    |> :crypto.strong_rand_bytes()
+    |> Base.encode64(padding: false)
+  end
+
+  defp to_signature_method_string(:hmac_sha1), do: "HMAC-SHA1"
+  defp to_signature_method_string(:rsa_sha1), do: "RSA-SHA1"
+  defp to_signature_method_string(:plaintext), do: "PLAINTEXT"
+
+  defp timestamp, do: to_string(:os.system_time(:second))
+
+  defp gen_signature(config, method, uri, request_params, :hmac_sha1, token_secret) do
+    with {:ok, shared_secret} <- encoded_shared_secret(config, token_secret) do
+      text = signature_base_string(method, uri, request_params)
+
+      signature =
+        :sha
+        |> :crypto.hmac(shared_secret, text)
+        |> Base.encode64()
+
+      {:ok, signature}
+    end
+  end
+  defp gen_signature(config, method, uri, request_params, :rsa_sha1, _token_secret) do
+    with {:ok, pem} <- JWTAdapter.load_private_key(config),
+         {:ok, private_key} <- decode_pem(pem) do
+      signature =
+        method
+        |> signature_base_string(uri, request_params)
+        |> :public_key.sign(:sha, private_key)
+        |> Base.encode64()
+
+      {:ok, signature}
+    end
+  end
+  defp gen_signature(config, _method, _url, _request_params, :plaintext, token_secret),
+    do: encoded_shared_secret(config, token_secret)
+
+  defp encoded_shared_secret(config, token_secret) do
+    with {:ok, consumer_secret} <- Config.fetch(config, :consumer_secret) do
+      shared_secret =
+        [consumer_secret, token_secret || ""]
+        |> Enum.map(&percent_encode/1)
+        |> Enum.join("&")
+
+      {:ok, shared_secret}
+    end
+  end
+
+  defp percent_encode(value) do
+    value
+    |> to_string()
+    |> URI.encode(&URI.char_unreserved?/1)
+  end
+
+  defp signature_base_string(method, uri, request_params) do
+    method =
+      method
+      |> to_string()
+      |> String.upcase()
+
+    base_string_uri =
+      %{uri | query: nil, host: uri.host}
+      |> URI.to_string()
+      |> String.downcase()
+
+    normalized_request_params =
+      request_params
+      |> Enum.map(fn {key, value} ->
+        percent_encode(key) <> "=" <> percent_encode(value)
+      end)
+      |> Enum.sort()
+      |> Enum.join("&")
+
+    [method, base_string_uri, normalized_request_params]
+    |> Enum.map(&percent_encode/1)
+    |> Enum.join("&")
+  end
+
+  defp decode_pem(pem) do
+    case :public_key.pem_decode(pem) do
+      [entry] -> {:ok, :public_key.pem_entry_decode(entry)}
+      _any    -> {:error, "Private key should only have one entry"}
+    end
   end
 
   defp request_headers(:post, headers), do: [{"content-type", "application/x-www-form-urlencoded"}] ++ headers
@@ -122,7 +249,7 @@ defmodule Assent.Strategy.OAuth do
   defp url_params(_method, params), do: params
 
   defp process_token_response({:ok, %HTTPResponse{status: 200, body: body} = response}) when is_binary(body), do: process_token_response({:ok, %{response | body: URI.decode_query(body)}})
-  defp process_token_response({:ok, %HTTPResponse{status: 200, body: %{"oauth_token" => _} = token}}), do: {:ok, token}
+  defp process_token_response({:ok, %HTTPResponse{status: 200, body: %{"oauth_token" => _, "oauth_token_secret" => _} = token}}), do: {:ok, token}
   defp process_token_response(any), do: process_response(any)
 
   defp process_response({:ok, %HTTPResponse{} = response}), do: {:error, RequestError.unexpected(response)}
@@ -133,7 +260,7 @@ defmodule Assent.Strategy.OAuth do
     with {:ok, site} <- Config.fetch(config, :site),
          {:ok, oauth_token} <- fetch_from_token(token, "oauth_token"),
          {:ok, oauth_token_secret} <- fetch_from_token(token, "oauth_token_secret") do
-      authorization_url = Config.get(config, :authorize_url, "/oauth/authenticate")
+      authorization_url = Config.get(config, :authorize_url, "/authorize")
       params            = authorization_params(config, oauth_token: oauth_token)
       url               = Helpers.to_url(site, authorization_url, params)
 
@@ -177,25 +304,13 @@ defmodule Assent.Strategy.OAuth do
   end
 
   defp get_access_token(config, oauth_token, oauth_verifier) do
-    with {:ok, site} <- Config.fetch(config, :site),
-         {:ok, consumer_key} <- Config.fetch(config, :consumer_key),
-         {:ok, consumer_secret} <- Config.fetch(config, :consumer_secret) do
-
-      access_token_url   = Config.get(config, :access_token_url, "/oauth/access_token")
+    with {:ok, site} <- Config.fetch(config, :site) do
+      access_token_url   = Config.get(config, :access_token_url, "/access_token")
       url                = process_url(site, access_token_url)
-      params             = [{"oauth_verifier", oauth_verifier}]
       oauth_token_secret = Kernel.get_in(config, [:session_params, :oauth_token_secret])
 
-      credentials =
-        OAuther.credentials([
-          consumer_key: consumer_key,
-          consumer_secret: consumer_secret,
-          token: oauth_token,
-          token_secret: oauth_token_secret
-        ])
-
       config
-      |> do_request(:post, site, url, credentials, params)
+      |> do_request(:post, site, url, [], [{"oauth_token", oauth_token}, {"oauth_verifier", oauth_verifier}], [], oauth_token_secret)
       |> Helpers.decode_response(config)
       |> process_token_response()
     end
@@ -207,22 +322,12 @@ defmodule Assent.Strategy.OAuth do
   @spec request(Config.t(), map(), atom(), binary(), map() | Keyword.t(), [{binary(), binary()}]) :: {:ok, map()} | {:error, term()}
   def request(config, token, method, url, params \\ [], headers \\ []) do
     with {:ok, site} <- Config.fetch(config, :site),
-         {:ok, consumer_key} <- Config.fetch(config, :consumer_key),
-         {:ok, consumer_secret} <- Config.fetch(config, :consumer_secret),
          {:ok, oauth_token} <- fetch_from_token(token, "oauth_token"),
          {:ok, oauth_token_secret} <- fetch_from_token(token, "oauth_token_secret") do
       url = process_url(site, url)
 
-      credentials =
-        OAuther.credentials([
-          consumer_key: consumer_key,
-          consumer_secret: consumer_secret,
-          token: oauth_token,
-          token_secret: oauth_token_secret
-        ])
-
       config
-      |> do_request(method, site, url, credentials, params, headers)
+      |> do_request(method, site, url, params, [{"oauth_token", oauth_token}], headers, oauth_token_secret)
       |> Helpers.decode_response(config)
     end
   end

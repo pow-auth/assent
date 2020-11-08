@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.18 (TBA)
+
+* Removed `oauther` dependency
+
 ## v0.1.17 (2020-11-05)
 
 * Relax `mint` requirement

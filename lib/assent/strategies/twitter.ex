@@ -20,6 +20,9 @@ defmodule Assent.Strategy.Twitter do
   def default_config(_config) do
     [
       site: "https://api.twitter.com",
+      request_token_url: "/oauth/request_token",
+      authorize_url: "/oauth/authenticate",
+      access_token_url: "/oauth/access_token",
       user_url: "/1.1/account/verify_credentials.json?include_entities=false&skip_status=true&include_email=true",
     ]
   end
