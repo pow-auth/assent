@@ -107,6 +107,15 @@ defmodule Assent.Strategy.OAuth2Test do
       assert error.message == "CSRF detected with param key \"state\""
     end
 
+    test "with custom state param", %{config: config, callback_params: params, bypass: bypass} do
+      config = Keyword.put(config, :authorization_params, %{state: "state_test_value"})
+
+      expect_oauth2_access_token_request(bypass, [])
+      expect_oauth2_user_request(bypass, %{})
+
+      assert {:ok, _any} = OAuth2.callback(config, params)
+    end
+
     test "with state param without state in session_params", %{config: config, callback_params: params, bypass: bypass} do
       config = Keyword.put(config, :session_params, %{})
 

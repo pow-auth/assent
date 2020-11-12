@@ -84,7 +84,7 @@ defmodule Assent.Strategy.OAuth2 do
     with {:ok, redirect_uri} <- Config.fetch(config, :redirect_uri),
          {:ok, site}         <- Config.fetch(config, :site),
          {:ok, client_id}    <- Config.fetch(config, :client_id) do
-      state         = gen_state()
+      state         = Config.get(config, :authorization_params, %{})[:state] || gen_state()
       params        = authorization_params(config, client_id, state, redirect_uri)
       authorize_url = Config.get(config, :authorize_url, "/oauth/authorize")
       url           = Helpers.to_url(site, authorize_url, params)
