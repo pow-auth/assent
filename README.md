@@ -46,6 +46,22 @@ end
 
 Run `mix deps.get` to install it.
 
+By default `:httpc` will be used for HTTP requests. To compile the app with `:httpc` support, please add `:inets` to `:extra_applications` in `mix.exs`:
+
+```elixir
+def application do
+  [
+    # ...
+    extra_applications: [
+      # ...
+      :inets
+    ]
+  ]
+end
+```
+
+This is not necessary if you'll use another HTTP adapter, such as Mint.
+
 ## Getting started
 
 A strategy consists of two phases; request and callback. In the request phase the user would normally be redirected to the provider for authentication, and then returned back to initiate the callback phase.

@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.19 (TBA)
+
+* Updated docs to detail `:inets` compilation
+
 ## v0.1.18 (2020-11-08)
 
 * Removed `oauther` dependency
