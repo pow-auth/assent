@@ -29,7 +29,7 @@ jobs:
           elixir-version: ${{matrix.elixir}}
       - run: mix deps.get
       - run: mix test
-      - run: MIX_ENV=test mix credo --ignore Credo.Check.Design.TagTODO
+      - run: MIX_ENV=test mix credo
   deploy:
     needs: test
     runs-on: ubuntu-latest

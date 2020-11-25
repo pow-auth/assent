@@ -32,19 +32,7 @@ defmodule Assent.HTTPAdapter.Mint do
   defp open_mint_conn("http", host, port, opts), do: open_mint_conn(:http, host, port, opts)
   defp open_mint_conn("https", host, port, opts), do: open_mint_conn(:https, host, port, opts)
   defp open_mint_conn(scheme, host, port, opts) when is_atom(scheme) do
-    # TODO: Remove when Mint has been fixed
-    # Mint <= 1.0.0 doesn't handle certificates for wildcard domain with SAN extension
-    hostname_match_check =
-      try do
-        case scheme do
-          :https -> [customize_hostname_check: [match_fun: :public_key.pkix_verify_hostname_match_fun(:https)]]
-          _any   -> []
-        end
-      rescue
-        _e in UndefinedFunctionError -> []
-      end
-
-    transport_opts = Keyword.get(opts, :transport_opts, []) ++ hostname_match_check
+    transport_opts = Keyword.get(opts, :transport_opts, [])
     opts           = Keyword.put(opts, :transport_opts, transport_opts)
 
     Mint.HTTP.connect(scheme, host, port, opts)
