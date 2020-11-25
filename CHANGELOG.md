@@ -3,6 +3,7 @@
 ## v0.1.19 (TBA)
 
 * Updated docs to detail `:inets` compilation
+* `Assent.OAuth2.authorize_url/1` now returns the state, if defined, from `authorization_params`
 
 ## v0.1.18 (2020-11-08)
 
