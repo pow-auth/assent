@@ -57,6 +57,16 @@ defmodule Assent.Strategy.OAuth2Test do
     assert url =~ "http://localhost:#{bypass.port}/oauth/authorize?client_id=#{@client_id}&redirect_uri=http%3A%2F%2Flocalhost%3A4000%2Fauth%2Fcallback&response_type=code&state=#{state}"
   end
 
+  test "authorize_url/2 with state in authorization_param", %{config: config} do
+    assert {:ok, %{session_params: %{state: state}}} =
+      config
+      |> Keyword.put(:client_id, @client_id)
+      |> Keyword.put(:authorization_params, state: "state_test_value")
+      |> OAuth2.authorize_url()
+
+    assert state == "state_test_value"
+  end
+
   describe "callback/2" do
     setup %{config: config} do
       config =
@@ -105,15 +115,6 @@ defmodule Assent.Strategy.OAuth2Test do
 
       assert {:error, %CallbackCSRFError{} = error} = OAuth2.callback(config, params)
       assert error.message == "CSRF detected with param key \"state\""
-    end
-
-    test "with custom state param", %{config: config, callback_params: params, bypass: bypass} do
-      config = Keyword.put(config, :authorization_params, %{state: "state_test_value"})
-
-      expect_oauth2_access_token_request(bypass, [])
-      expect_oauth2_user_request(bypass, %{})
-
-      assert {:ok, _any} = OAuth2.callback(config, params)
     end
 
     test "with state param without state in session_params", %{config: config, callback_params: params, bypass: bypass} do

@@ -84,25 +84,33 @@ defmodule Assent.Strategy.OAuth2 do
     with {:ok, redirect_uri} <- Config.fetch(config, :redirect_uri),
          {:ok, site}         <- Config.fetch(config, :site),
          {:ok, client_id}    <- Config.fetch(config, :client_id) do
-      state         = Config.get(config, :authorization_params, %{})[:state] || gen_state()
-      params        = authorization_params(config, client_id, state, redirect_uri)
+      params        = authorization_params(config, client_id, redirect_uri)
       authorize_url = Config.get(config, :authorize_url, "/oauth/authorize")
       url           = Helpers.to_url(site, authorize_url, params)
 
-      {:ok, %{url: url, session_params: %{state: state}}}
+      {:ok, %{url: url, session_params: %{state: params[:state]}}}
     end
   end
 
-  defp authorization_params(config, client_id, state, redirect_uri) do
+  defp authorization_params(config, client_id, redirect_uri) do
     params = Config.get(config, :authorization_params, [])
 
     [
       response_type: "code",
       client_id: client_id,
-      state: state,
+      state: gen_state(),
       redirect_uri: redirect_uri]
     |> Keyword.merge(params)
     |> List.keysort(0)
+  end
+
+  defp gen_state do
+    24
+    |> :crypto.strong_rand_bytes()
+    |> :erlang.bitstring_to_list()
+    |> Enum.map(fn x -> :erlang.integer_to_binary(x, 16) end)
+    |> Enum.join()
+    |> String.downcase()
   end
 
   @doc """
@@ -348,13 +356,4 @@ defmodule Assent.Strategy.OAuth2 do
   defp process_user_response({:ok, %HTTPResponse{status: 200, body: user}}), do: {:ok, user}
   defp process_user_response({:error, %HTTPResponse{status: 401}}), do: {:error, %RequestError{message: "Unauthorized token"}}
   defp process_user_response(any), do: process_response(any)
-
-  defp gen_state do
-    24
-    |> :crypto.strong_rand_bytes()
-    |> :erlang.bitstring_to_list()
-    |> Enum.map(fn x -> :erlang.integer_to_binary(x, 16) end)
-    |> Enum.join()
-    |> String.downcase()
-  end
 end
