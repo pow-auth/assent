@@ -114,8 +114,39 @@ defmodule Assent.Strategy do
   def to_url(site, uri, params \\ [])
   def to_url(site, uri, []), do: endpoint(site, uri)
   def to_url(site, uri, params) do
-    endpoint(site, uri) <> "?" <> URI.encode_query(params)
+    endpoint(site, uri) <> "?" <> encode_query(params)
   end
+
+  defp encode_query(enumerable) do
+    enumerable
+    |> Enum.map(&encode_pair(&1, ""))
+    |> List.flatten()
+    |> Enum.join("&")
+  end
+
+  defp encode_pair({key, value}, "") do
+    key = encode_value(key)
+
+    encode_pair(value, key)
+  end
+  defp encode_pair({key, value}, encoded_key) do
+    key = encoded_key <> "[" <> encode_value(key) <> "]"
+
+    encode_pair(value, key)
+  end
+  defp encode_pair([{_key, _value} | _rest] = values, encoded_key) do
+    Enum.map(values, &encode_pair(&1, encoded_key))
+  end
+  defp encode_pair(values, encoded_key) when is_list(values) do
+    key = encoded_key <> "[]"
+
+    Enum.map(values, &encode_pair(&1, key))
+  end
+  defp encode_pair(value, encoded_key) do
+    encoded_key <> "=" <> encode_value(value)
+  end
+
+  defp encode_value(value), do: URI.encode_www_form(Kernel.to_string(value))
 
   defp endpoint(site, <<"/"::utf8, _::binary>> = uri),
     do: site <> uri

@@ -84,6 +84,10 @@ defmodule Assent.StrategyTest do
     assert Strategy.verify_jwt(@token, @secret, json_library: CustomJSONLibrary) == {:ok, :decoded}
   end
 
+  test "to_url/3" do
+    assert Strategy.to_url("http://localhost", "/path", [a: 1, b: [c: 2, d: [e: 3]], f: [4, 5]]) == "http://localhost/path?a=1&b[c]=2&b[d][e]=3&f[]=4&f[]=5"
+  end
+
   test "normalize_userinfo/2" do
     user  = %{"email" => "foo@example.com", "name" => nil, "nickname" => "foo"}
     extra = %{"a" => "1"}

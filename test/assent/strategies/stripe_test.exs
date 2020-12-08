@@ -3,18 +3,19 @@ defmodule Assent.Strategy.StripeTest do
 
   alias Assent.Strategy.Stripe
 
+  # From https://stripe.com/docs/api/accounts/retrieve
   @user_response %{
     "id" => "acct_1032D82eZvKYlo2C",
     "object" => "account",
     "business_profile" => %{
       "mcc" => nil,
-      "name" => "Stripe",
+      "name" => "Stripe.com",
       "product_description" => nil,
       "support_address" => nil,
       "support_email" => nil,
       "support_phone" => nil,
       "support_url" => nil,
-      "url" => "www.stripe.com"
+      "url" => nil
     },
     "business_type" => nil,
     "capabilities" => %{
@@ -101,31 +102,28 @@ defmodule Assent.Strategy.StripeTest do
 
   @user  %{
     "email" => "site@stripe.com",
-    "name" => "Stripe",
-    "website" => "www.stripe.com",
+    "name" => "Stripe.com",
     "sub" => "acct_1032D82eZvKYlo2C"
   }
 
-  test "authorize_url/2", %{config: config} do
-    assert {:ok, %{url: url}} = Stripe.authorize_url(config)
-    assert url =~ "/oauth/authorize?client_id="
+  setup %{config: config, bypass: bypass} do
+    config = Keyword.put(config, :token_url, "http://localhost:#{bypass.port}/oauth/token")
+
+    {:ok, config: config}
   end
 
-  describe "callback/2" do
-    setup %{config: config, bypass: bypass} do
-      config = Keyword.put(config, :user_url, "http://localhost:#{bypass.port}/v1/accounts")
+  test "authorize_url/2", %{config: config, bypass: bypass} do
+    assert {:ok, %{url: url}} = Stripe.authorize_url(config)
+    assert url =~ "http://localhost:#{bypass.port}/oauth/authorize?client_id="
+  end
 
-      {:ok, config: config}
-    end
+  test "callback/2", %{config: config, callback_params: params, bypass: bypass} do
+    expect_oauth2_access_token_request(bypass, [], fn _conn, params ->
+      assert params["client_secret"] == config[:client_secret]
+    end)
+    expect_oauth2_user_request(bypass, @user_response, uri: "/v1/account")
 
-    test "callback/2", %{config: config, callback_params: params, bypass: bypass} do
-      expect_oauth2_access_token_request(bypass, [], fn _conn, params ->
-        assert params["client_secret"] == config[:client_secret]
-      end)
-      expect_oauth2_user_request(bypass, @user_response, uri: "/v1/accounts")
-
-      assert {:ok, %{user: user}} = Stripe.callback(config, params)
-      assert user == @user
-    end
+    assert {:ok, %{user: user}} = Stripe.callback(config, params)
+    assert user == @user
   end
 end

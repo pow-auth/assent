@@ -1,6 +1,6 @@
 defmodule Assent.Strategy.Stripe do
   @moduledoc """
-  Stripe OAuth 2.0 strategy.
+  Stripe Connect OAuth 2.0 strategy.
 
   ## Usage
 
@@ -10,14 +10,33 @@ defmodule Assent.Strategy.Stripe do
       ]
 
   See `Assent.Strategy.OAuth2` for more.
+
+  ## Connect Express
+
+  This strategy uses Connect Standard by default. To use Connect Express, the
+  following config can be used:
+
+
+      config = [
+        client_id: "REPLACE_WITH_CLIENT_ID",
+        client_secret: "REPLACE_WITH_CLIENT_SECRET",
+        authorization_url: "https://connect.stripe.com/express/oauth/authorize"
+        # authorization_params: [
+        #   stripe_user: [business_type: "company", email: "user@example.com"],
+        #   suggested_capabilities: ["transfers"]
+        # ]
+      ]
+
   """
   use Assent.Strategy.OAuth2.Base
 
   @impl true
   def default_config(_config) do
     [
-      site: "https://connect.stripe.com",
-      user_url: "https://api.stripe.com/v1/accounts",
+      site: "https://api.stripe.com/",
+      authorization_url: "https://connect.stripe.com/oauth/authorize",
+      token_url: "https://connect.stripe.com/oauth/token",
+      user_url: "/v1/account",
       auth_method: :client_secret_post
     ]
 
@@ -26,10 +45,10 @@ defmodule Assent.Strategy.Stripe do
   @impl true
   def normalize(_config, user) do
     {:ok, %{
-      "sub"            => user["id"],
-      "name"           => Map.get(user, "business_profile", %{})["name"],
-      "email"          => user["email"],
-      "website"        => Map.get(user, "business_profile", %{})["url"]
+      "sub"     => user["id"],
+      "email"   => user["email"],
+      "name"    => Map.get(user, "business_profile", %{})["name"],
+      "website" => Map.get(user, "business_profile", %{})["url"]
     }}
   end
 end
