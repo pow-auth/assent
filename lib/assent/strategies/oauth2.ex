@@ -176,7 +176,7 @@ defmodule Assent.Strategy.OAuth2 do
     with {:ok, client_id}     <- Config.fetch(config, :client_id),
          {:ok, client_secret} <- Config.fetch(config, :client_secret) do
 
-      auth    = Base.url_encode64("#{client_id}:#{client_secret}", padding: false)
+      auth    = Base.encode64("#{client_id}:#{client_secret}")
       headers = [{"authorization", "Basic #{auth}"}]
       body    = []
 

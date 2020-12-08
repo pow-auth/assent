@@ -4,6 +4,7 @@
 
 * `Assent.Strategy.Stripe` added
 * `Assent.Strategy.to_url/3` now handles nested query params
+* `Assent.Strategy.OAuth2` no longer removes padding for base64 encoding authorization header
 
 ## v0.1.19 (2020-11-25)
 

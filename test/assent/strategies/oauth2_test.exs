@@ -3,8 +3,8 @@ defmodule Assent.Strategy.OAuth2Test do
 
   alias Assent.{CallbackCSRFError, CallbackError, Config.MissingKeyError, JWTAdapter.AssentJWT, MissingParamError, RequestError, Strategy.OAuth2}
 
-  @client_id "id"
-  @client_secret "secret"
+  @client_id "s6BhdRkqt3"
+  @client_secret "7Fjfp0ZBr1KtDRbnfVdmIw"
   @private_key_id "key_id"
   @private_key """
     -----BEGIN RSA PRIVATE KEY-----
@@ -211,7 +211,7 @@ defmodule Assent.Strategy.OAuth2Test do
 
       expect_oauth2_access_token_request(bypass, [], fn conn, params ->
         assert [{"authorization", "Basic " <> token} | _rest] = conn.req_headers
-        assert Base.url_decode64(token, padding: false) == {:ok, "#{@client_id}:#{@client_secret}"}
+        assert Base.url_decode64(token) == {:ok, "#{@client_id}:#{@client_secret}"}
 
         assert params["grant_type"] == "authorization_code"
         assert params["code"] == "code_test_value"
