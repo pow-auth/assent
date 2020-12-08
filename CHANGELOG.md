@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.20 (TBA)
+
+* `Assent.Strategy.Stripe` added
+* `Assent.Strategy.to_url/3` now handles nested query params
+
 ## v0.1.19 (2020-11-25)
 
 * Updated docs to detail `:inets` compilation

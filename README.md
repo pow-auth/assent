@@ -15,17 +15,18 @@ Multi-provider authentication framework.
   * Auth0 - `Assent.Strategy.Auth0`
   * Azure AD - `Assent.Strategy.AzureAD`
   * Basecamp - `Assent.Strategy.Basecamp`
-  * Discord - `Assent.Strategy.Discord`
   * DigitalOcean - `Assent.Strategy.DigitalOcean`
+  * Discord - `Assent.Strategy.Discord`
   * Facebook - `Assent.Strategy.Facebook`
   * Github - `Assent.Strategy.Github`
   * Gitlab - `Assent.Strategy.Gitlab`
   * Google - `Assent.Strategy.Google`
   * Instagram - `Assent.Strategy.Instagram`
+  * LINE Login - `Assent.Strategy.LINE`
   * Slack - `Assent.Strategy.Slack`
+  * Stripe Connect - `Assent.Strategy.Stripe`
   * Twitter - `Assent.Strategy.Twitter`
   * VK - `Assent.Strategy.VK`
-  * LINE Login - `Assent.Strategy.LINE`
 
 ## Installation
 
