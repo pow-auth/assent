@@ -20,7 +20,7 @@ defmodule Assent.Strategy.Stripe do
       config = [
         client_id: "REPLACE_WITH_CLIENT_ID",
         client_secret: "REPLACE_WITH_CLIENT_SECRET",
-        authorization_url: "https://connect.stripe.com/express/oauth/authorize"
+        authorize_url: "https://connect.stripe.com/express/oauth/authorize"
         # authorization_params: [
         #   stripe_user: [business_type: "company", email: "user@example.com"],
         #   suggested_capabilities: ["transfers"]
@@ -34,7 +34,7 @@ defmodule Assent.Strategy.Stripe do
   def default_config(_config) do
     [
       site: "https://api.stripe.com/",
-      authorization_url: "https://connect.stripe.com/oauth/authorize",
+      authorize_url: "https://connect.stripe.com/oauth/authorize",
       token_url: "https://connect.stripe.com/oauth/token",
       user_url: "/v1/account",
       auth_method: :client_secret_post

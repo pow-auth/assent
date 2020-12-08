@@ -111,9 +111,9 @@ defmodule Assent.Strategy.StripeTest do
     {:ok, config: config}
   end
 
-  test "authorize_url/2", %{config: config, bypass: bypass} do
+  test "authorize_url/2", %{config: config} do
     assert {:ok, %{url: url}} = Stripe.authorize_url(config)
-    assert url =~ "http://localhost:#{bypass.port}/oauth/authorize?client_id="
+    assert url =~ "/oauth/authorize?client_id="
   end
 
   test "callback/2", %{config: config, callback_params: params, bypass: bypass} do
