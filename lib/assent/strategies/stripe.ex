@@ -45,10 +45,8 @@ defmodule Assent.Strategy.Stripe do
   @impl true
   def normalize(_config, user) do
     {:ok, %{
-      "sub"     => user["id"],
-      "email"   => user["email"],
-      "name"    => Map.get(user, "business_profile", %{})["name"],
-      "website" => Map.get(user, "business_profile", %{})["url"]
+      "sub"   => user["id"],
+      "email" => user["email"]
     }}
   end
 end

@@ -102,7 +102,6 @@ defmodule Assent.Strategy.StripeTest do
 
   @user  %{
     "email" => "site@stripe.com",
-    "name" => "Stripe.com",
     "sub" => "acct_1032D82eZvKYlo2C"
   }
 
