@@ -26,6 +26,7 @@ Multi-provider authentication framework.
   * Twitter - `Assent.Strategy.Twitter`
   * VK - `Assent.Strategy.VK`
   * LINE Login - `Assent.Strategy.LINE`
+  * Stripe Connect - `Assent.Strategy.Stripe`
 
 ## Installation
 
