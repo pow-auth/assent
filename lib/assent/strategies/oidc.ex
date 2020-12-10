@@ -233,11 +233,20 @@ defmodule Assent.Strategy.OIDC do
     end
   end
 
+  @doc """
+  Validates the ID token.
+
+  The OpenID configuration will be dynamically fetched if not set in the
+  config.
+
+  The ID Token will be validated per
+  [OpenID Connect Core 1.0 rules](https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation).
+  """
   @spec validate_id_token(Config.t(), binary()) :: {:ok, map()} | {:error, term()}
   def validate_id_token(config, id_token) do
     expected_alg = Config.get(config, :id_token_signed_response_alg, "RS256")
 
-    with {:ok, openid_config} <- Config.fetch(config, :openid_configuration),
+    with {:ok, openid_config} <- openid_configuration(config),
          {:ok, client_id}     <- Config.fetch(config, :client_id),
          {:ok, issuer}        <- fetch_from_openid_config(openid_config, "issuer"),
          {:ok, jwt}           <- verify_jwt(id_token, openid_config, config),
@@ -368,9 +377,18 @@ defmodule Assent.Strategy.OIDC do
     do: {:error, "`nonce` included in ID Token but doesn't exist in session params"}
   defp validate_for_nonce(_any, _jwt), do: :ok
 
+  @doc """
+  Fetches claims from userinfo endpoint.
+
+  The userinfo will be fetched from the `userinfo_endpoint` OpenID
+  configuration.
+
+  The returned claims will be validated against the `id_token` verifying that
+  `sub` is equal.
+  """
   @spec fetch_userinfo(Config.t(), map()) :: {:ok, map()} | {:error, term()}
   def fetch_userinfo(config, token) do
-    with {:ok, openid_config} <- Config.fetch(config, :openid_configuration),
+    with {:ok, openid_config} <- openid_configuration(config),
          {:ok, userinfo_url}  <- fetch_from_openid_config(openid_config, "userinfo_endpoint"),
          {:ok, claims}        <- fetch_from_userinfo_endpoint(config, openid_config, token, userinfo_url),
          :ok                  <- validate_userinfo_sub(config, token["id_token"], claims) do
