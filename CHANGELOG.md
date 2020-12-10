@@ -5,6 +5,8 @@
 * `Assent.Strategy.Stripe` added
 * `Assent.Strategy.to_url/3` now handles nested query params
 * `Assent.Strategy.OAuth2` no longer removes padding for base64 encoding authorization header
+* `Assent.Strategy.OIDC.validate_id_token/2` now supports dynamic OpenID configuration
+* `Assent.Strategy.OIDC.fetch_userinfo/2` now supports dynamic OpenID configuration
 
 ## v0.1.19 (2020-11-25)
 

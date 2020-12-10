@@ -187,11 +187,12 @@ defmodule Assent.Strategy.OIDCTest do
       {:ok, id_token: id_token, config: config}
     end
 
-    test "with no `:openid_configuration`", %{config: config, id_token: id_token} do
+    test "with no openid configuration", %{config: config, id_token: id_token, bypass: bypass} do
       config = Keyword.delete(config, :openid_configuration)
 
-      assert {:error, %Assent.Config.MissingKeyError{} = error} = OIDC.validate_id_token(config, id_token)
-      assert error.message == "Key `:openid_configuration` not found in config"
+      expect_openid_config_request(bypass, [], status_code: 500)
+
+      assert {:error, %Assent.RequestError{error: :invalid_server_response}} = OIDC.validate_id_token(config, id_token)
     end
 
     test "with no `:client_id`", %{config: config, id_token: id_token} do
@@ -386,11 +387,11 @@ defmodule Assent.Strategy.OIDCTest do
       {:ok, config: config, access_token: access_token}
     end
 
-    test "with no `:openid_configuration`", %{config: config, access_token: access_token} do
+    test "with no openid configuration", %{config: config, access_token: access_token, bypass: bypass} do
       config = Keyword.delete(config, :openid_configuration)
+      expect_openid_config_request(bypass, [], status_code: 500)
 
-      assert {:error, %Assent.Config.MissingKeyError{} = error} = OIDC.fetch_userinfo(config, access_token)
-      assert error.message == "Key `:openid_configuration` not found in config"
+      assert {:error, %Assent.RequestError{error: :invalid_server_response}} = OIDC.fetch_userinfo(config, access_token)
     end
 
     test "with missing `userinfo_endpoint` in OpenID configuration", %{config: config, access_token: access_token} do
