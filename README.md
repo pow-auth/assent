@@ -1,6 +1,11 @@
 # Assent
 
-![Build Status](https://img.shields.io/github/workflow/status/pow-auth/assent/CI/master) [![hex.pm](https://img.shields.io/hexpm/v/assent.svg?style=flat)](https://hex.pm/packages/assent)
+[![CI](https://github.com/pow-auth/assent/workflows/CI/badge.svg)](https://github.com/pow-auth/assent/actions?query=workflow%3ACI)
+[![Module Version](https://img.shields.io/hexpm/v/assent.svg)](https://hex.pm/packages/assent)
+[![Hex Docs](https://img.shields.io/badge/hex-docs-lightgreen.svg)](https://hexdocs.pm/assent/)
+[![Total Download](https://img.shields.io/hexpm/dt/assent.svg)](https://hex.pm/packages/assent)
+[![License](https://img.shields.io/hexpm/l/assent.svg)](https://github.com/pow-auth/assent/blob/master/LICENSE)
+[![Last Updated](https://img.shields.io/github/last-commit/pow-auth/assent.svg)](https://github.com/pow-auth/assent/commits/master)
 
 Multi-provider authentication framework.
 
@@ -244,7 +249,7 @@ config = [
 
 (The MIT License)
 
-Copyright (c) 2019 Dan Schultzer & the Contributors
+Copyright (c) 2019-present Dan Schultzer & the Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the 'Software'), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
