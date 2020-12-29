@@ -49,7 +49,7 @@ defmodule Assent.MixProject do
       {:cowboy, "~> 2.8", only: :test, override: true},
       {:cowlib, "~> 2.9", only: :test, override: true},
       {:ranch, "~> 1.7", only: :test, override: true},
-      {:bypass, "~> 2.0.0", only: :test}
+      {:bypass, "~> 2.1", only: :test}
     ]
   end
 
