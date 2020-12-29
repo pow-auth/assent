@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.21 (TBA)
+
+* `Assent.Strategy.OAuth` now handles missing params in callback phase
+* `Assent.Strategy.Twitter` now handles access denied callback
+
 ## v0.1.20 (2020-12-10)
 
 * `Assent.Strategy.Stripe` added
