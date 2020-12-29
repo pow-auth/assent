@@ -15,7 +15,9 @@ defmodule Assent.HTTPAdapter do
   """
 
   defmodule HTTPResponse do
-    @moduledoc "Documentation for HTTPResponse"
+    @moduledoc """
+    Struct used by HTTP adapters to normalize HTTP responses.
+    """
 
     @type header :: {binary(), binary()}
     @type t      :: %__MODULE__{
