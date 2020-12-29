@@ -1,11 +1,7 @@
 # Assent
 
-[![CI](https://github.com/pow-auth/assent/workflows/CI/badge.svg)](https://github.com/pow-auth/assent/actions?query=workflow%3ACI)
-[![Module Version](https://img.shields.io/hexpm/v/assent.svg)](https://hex.pm/packages/assent)
-[![Hex Docs](https://img.shields.io/badge/hex-docs-lightgreen.svg)](https://hexdocs.pm/assent/)
-[![Total Download](https://img.shields.io/hexpm/dt/assent.svg)](https://hex.pm/packages/assent)
-[![License](https://img.shields.io/hexpm/l/assent.svg)](https://github.com/pow-auth/assent/blob/master/LICENSE)
-[![Last Updated](https://img.shields.io/github/last-commit/pow-auth/assent.svg)](https://github.com/pow-auth/assent/commits/master)
+[![Github CI](https://github.com/pow-auth/assent/workflows/CI/badge.svg)](https://github.com/pow-auth/assent/actions?query=workflow%3ACI)
+[![hex.pm](https://img.shields.io/hexpm/v/assent.svg)](https://hex.pm/packages/assent)
 
 Multi-provider authentication framework.
 
