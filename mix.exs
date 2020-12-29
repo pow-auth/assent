@@ -1,6 +1,7 @@
 defmodule Assent.MixProject do
   use Mix.Project
 
+  @source_url "https://github.com/pow-auth/assent"
   @version "0.1.20"
 
   def project do
@@ -43,7 +44,7 @@ defmodule Assent.MixProject do
       {:credo, "~> 1.1", only: [:dev, :test]},
       {:jason, "~> 1.0", only: [:dev, :test]},
 
-      {:ex_doc, "~> 0.21", only: :dev},
+      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
 
       {:cowboy, "~> 2.8", only: :test, override: true},
       {:cowlib, "~> 2.9", only: :test, override: true},
@@ -59,7 +60,7 @@ defmodule Assent.MixProject do
     [
       maintainers: ["Dan Shultzer"],
       licenses: ["MIT"],
-      links: %{github: "https://github.com/pow-auth/assent"},
+      links: %{gitHub: @source_url},
       files: ~w(lib LICENSE mix.exs README.md)
     ]
   end
@@ -69,13 +70,16 @@ defmodule Assent.MixProject do
       source_ref: "v#{@version}",
       main: "README",
       canonical: "http://hexdocs.pm/assent",
-      source_url: "https://github.com/pow-auth/assent",
+      source_url: @source_url,
       extras: [
         "README.md": [filename: "README"],
         "CHANGELOG.md": [filename: "CHANGELOG"],
       ],
       groups_for_modules: [
         Strategies: ~r/^Assent.Strategy/
+      ],
+      skip_undefined_reference_warnings_on: [
+        "CHANGELOG.md"
       ]
     ]
   end

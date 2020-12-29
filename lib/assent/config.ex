@@ -29,7 +29,7 @@ defmodule Assent.Config do
   @doc """
   Fetches the JSON library in config.
 
-  If not found in provided config, this will attempt to load the json library
+  If not found in provided config, this will attempt to load the JSON library
   from global application environment for `:assent` or `:phoenix`. Defaults to
   `Poison`.
   """

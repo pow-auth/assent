@@ -15,7 +15,9 @@ defmodule Assent.HTTPAdapter do
   """
 
   defmodule HTTPResponse do
-    @moduledoc false
+    @moduledoc """
+    Struct used by HTTP adapters to normalize HTTP responses.
+    """
 
     @type header :: {binary(), binary()}
     @type t      :: %__MODULE__{
@@ -37,7 +39,7 @@ defmodule Assent.HTTPAdapter do
   Sets a user agent header
 
   The header value will be `Assent-VERSION` with VERSION being the `:vsn` of
-  `Assent`.
+  `:assent` app.
   """
   @spec user_agent_header() :: {binary(), binary()}
   def user_agent_header do
