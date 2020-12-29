@@ -1,7 +1,7 @@
 defmodule Assent.Strategy.OAuthTest do
   use Assent.Test.OAuthTestCase
 
-  alias Assent.{Config.MissingKeyError, RequestError, Strategy.OAuth}
+  alias Assent.{Config.MissingKeyError, MissingParamError, RequestError, Strategy.OAuth}
 
   @private_key """
     -----BEGIN RSA PRIVATE KEY-----
@@ -261,6 +261,22 @@ defmodule Assent.Strategy.OAuthTest do
       config = Keyword.put(config, :user_url, "/api/user")
 
       {:ok, config: config}
+    end
+
+    test "with missing oauth_token param", %{config: config, callback_params: params} do
+      params = Map.delete(params, "oauth_token")
+
+      assert {:error, %MissingParamError{} = error} = OAuth.callback(config, params)
+      assert error.message == "Expected \"oauth_token\" to exist in params, but only found the following keys: [\"oauth_verifier\"]"
+      assert error.params == %{"oauth_verifier" => "hfdp7dh39dks9884"}
+    end
+
+    test "with missing oauth_verifier param", %{config: config, callback_params: params} do
+      params = Map.delete(params, "oauth_verifier")
+
+      assert {:error, %MissingParamError{} = error} = OAuth.callback(config, params)
+      assert error.message == "Expected \"oauth_verifier\" to exist in params, but only found the following keys: [\"oauth_token\"]"
+      assert error.params == %{"oauth_token" => "hh5s93j4hdidpola"}
     end
 
     test "with missing `:site` config", %{config: config, callback_params: callback_params} do

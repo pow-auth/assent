@@ -46,7 +46,7 @@ defmodule Assent.Strategy.OAuth do
   @behaviour Assent.Strategy
 
   alias Assent.Strategy, as: Helpers
-  alias Assent.{Config, HTTPAdapter.HTTPResponse, JWTAdapter, RequestError}
+  alias Assent.{Config, HTTPAdapter.HTTPResponse, JWTAdapter, MissingParamError, RequestError}
 
   @doc """
   Generate authorization URL for request phase.
@@ -296,12 +296,20 @@ defmodule Assent.Strategy.OAuth do
   """
   @impl true
   @spec callback(Config.t(), map(), atom()) :: {:ok, %{user: map(), token: map()}} | {:error, term()}
-  def callback(config, %{"oauth_token" => oauth_token, "oauth_verifier" => oauth_verifier}, strategy \\ __MODULE__) do
-    with {:ok, token} <- get_access_token(config, oauth_token, oauth_verifier),
-         {:ok, user}  <- strategy.fetch_user(config, token) do
+  def callback(config, params, strategy \\ __MODULE__) do
+    with {:ok, oauth_token}    <- fetch_oauth_token(params),
+         {:ok, oauth_verifier} <- fetch_oauth_verifier(params),
+         {:ok, token}          <- get_access_token(config, oauth_token, oauth_verifier),
+         {:ok, user}           <- strategy.fetch_user(config, token) do
       {:ok, %{user: user, token: token}}
     end
   end
+
+  defp fetch_oauth_token(%{"oauth_token" => code}), do: {:ok, code}
+  defp fetch_oauth_token(params), do: {:error, MissingParamError.new("oauth_token", params)}
+
+  defp fetch_oauth_verifier(%{"oauth_verifier" => code}), do: {:ok, code}
+  defp fetch_oauth_verifier(params), do: {:error, MissingParamError.new("oauth_verifier", params)}
 
   defp get_access_token(config, oauth_token, oauth_verifier) do
     with {:ok, site} <- Config.fetch(config, :site) do

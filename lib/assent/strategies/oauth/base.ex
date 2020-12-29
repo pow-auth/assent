@@ -61,6 +61,7 @@ defmodule Assent.Strategy.OAuth.Base do
       def fetch_user(config, token), do: OAuth.fetch_user(config, token)
 
       defoverridable unquote(__MODULE__)
+      defoverridable Assent.Strategy
     end
   end
 
