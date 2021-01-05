@@ -320,11 +320,11 @@ defmodule Assent.Strategy.OAuth2 do
 
   Uses `request/6` to fetch the user data.
   """
-  @spec fetch_user(Config.t(), map(), map() | Keyword.t()) :: {:ok, map()} | {:error, term()}
-  def fetch_user(config, token, params \\ []) do
+  @spec fetch_user(Config.t(), map(), map() | Keyword.t(), [{binary(), binary()}]) :: {:ok, map()} | {:error, term()}
+  def fetch_user(config, token, params \\ [], headers \\ []) do
     with {:ok, user_url} <- Config.fetch(config, :user_url) do
       config
-      |> request(token, :get, user_url, params)
+      |> request(token, :get, user_url, params, headers)
       |> process_user_response()
     end
   end
