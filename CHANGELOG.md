@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.22 (TBA)
+
+* `Assent.Strategy.OAuth2.fetch_user/4` now accepts headers in arguments
+
 ## v0.1.21 (2020-12-29)
 
 * `Assent.Strategy.OAuth` now handles missing params in callback phase
