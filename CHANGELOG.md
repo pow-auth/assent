@@ -3,6 +3,7 @@
 ## v0.1.22 (TBA)
 
 * `Assent.Strategy.OAuth2.fetch_user/4` now accepts headers in arguments
+* `Assent.Strategy.AzureAD` bug fixed so it now uses the `RS256` alg
 
 ## v0.1.21 (2020-12-29)
 
