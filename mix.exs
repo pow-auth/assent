@@ -2,7 +2,7 @@ defmodule Assent.MixProject do
   use Mix.Project
 
   @source_url "https://github.com/pow-auth/assent"
-  @version "0.1.21"
+  @version "0.1.22"
 
   def project do
     [
