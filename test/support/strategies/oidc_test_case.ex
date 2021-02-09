@@ -125,6 +125,8 @@ defmodule Assent.Test.OIDCTestCase do
       |> Plug.Conn.put_resp_content_type("application/json")
       |> Plug.Conn.send_resp(200, Jason.encode!(%{"keys" => keys}))
     end)
+
+    keys
   end
 
   @spec expect_oidc_userinfo_request(Bypass.t(), map() | binary(), Keyword.t()) :: :ok
