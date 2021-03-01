@@ -95,7 +95,7 @@ defmodule Assent.Strategy.AppleTest do
         }
       }
 
-      expect_oidc_access_token_request(bypass, id_token_opts: [claims: @id_token_claims, kid: @jwk["kid"]], uri: "/auth/token", params: %{user: user, access_token: "access_token"})
+      expect_oidc_access_token_request(bypass, id_token_opts: [claims: @id_token_claims, kid: @jwk["kid"]], uri: "/auth/token", additional_params: %{user: user})
       expect_oidc_jwks_uri_request(bypass, uri: "/auth/keys", keys: [@jwk])
 
       assert {:ok, %{user: user}} = Apple.callback(config, params)

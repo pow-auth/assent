@@ -153,6 +153,14 @@ defmodule Assent.Strategy.OIDCTest do
       assert OIDC.callback(config, params) == {:error, "The ID Token is not a valid JWT"}
     end
 
+    test "with missing id_token", %{config: config, openid_config: openid_config, callback_params: params, bypass: bypass} do
+      expect_openid_config_request(bypass, openid_config)
+
+      expect_oidc_access_token_request(bypass, uri: "/dynamic/token/path", params: %{access_token: "access_token", renewal_token: "renewal_token"})
+
+      assert OIDC.callback(config, params) ==  {:error, "The `id_token` key not found in token params, only found these keys: access_token, renewal_token"}
+    end
+
     test "with valid id_token", %{config: config, openid_config: openid_config, callback_params: params, bypass: bypass} do
       expect_openid_config_request(bypass, openid_config)
 
