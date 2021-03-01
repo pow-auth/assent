@@ -118,8 +118,8 @@ defmodule Assent.Strategy.Facebook do
   end
 
   defp appsecret_proof(access_token, client_secret) do
-    :sha256
-    |> :crypto.hmac(client_secret, access_token["access_token"])
+    :hmac
+    |> :crypto.mac(:sha256, client_secret, access_token["access_token"])
     |> Base.encode16(case: :lower)
   end
 end

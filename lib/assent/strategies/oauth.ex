@@ -169,8 +169,8 @@ defmodule Assent.Strategy.OAuth do
       text = signature_base_string(method, uri, request_params)
 
       signature =
-        :sha
-        |> :crypto.hmac(shared_secret, text)
+        :hmac
+        |> :crypto.mac(:sha, shared_secret, text)
         |> Base.encode64()
 
       {:ok, signature}

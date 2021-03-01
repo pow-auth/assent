@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.23 (TBA)
+
+Updated to support OTP 24 and no longer support OTP < 22.1
+
 ## v0.1.22 (2021-01-08)
 
 * `Assent.Strategy.OAuth2.fetch_user/4` now accepts headers in arguments

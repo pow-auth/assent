@@ -64,6 +64,8 @@ end
 
 This is not necessary if you'll use another HTTP adapter, such as Mint.
 
+Assent requires Erlang OTP 22.1 or greater.
+
 ## Getting started
 
 A strategy consists of two phases; request and callback. In the request phase the user would normally be redirected to the provider for authentication, and then returned back to initiate the callback phase.

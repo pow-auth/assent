@@ -125,7 +125,7 @@ defmodule Assent.Strategy.OAuthTest do
         assert oauth_params["oauth_version"] == "1.0"
 
         assert {:ok, decoded_signature} = Base.decode64(URI.decode(signature))
-        assert :crypto.hmac(:sha, "#{config[:consumer_secret]}&", signature_base_string) == decoded_signature
+        assert :crypto.mac(:hmac, :sha, "#{config[:consumer_secret]}&", signature_base_string) == decoded_signature
         assert String.to_integer(timestamp) <= DateTime.to_unix(DateTime.utc_now())
       end)
 
@@ -141,7 +141,7 @@ defmodule Assent.Strategy.OAuthTest do
 
         assert conn.query_params == %{"a" => "1", "b" => "2", "c" => "3"}
         assert {:ok, decoded_signature} = Base.decode64(URI.decode(oauth_params["oauth_signature"]))
-        assert :crypto.hmac(:sha, "#{config[:consumer_secret]}&", signature_base_string) == decoded_signature
+        assert :crypto.mac(:hmac, :sha, "#{config[:consumer_secret]}&", signature_base_string) == decoded_signature
       end)
 
       assert {:ok, _res} = OAuth.authorize_url(config)
@@ -331,7 +331,7 @@ defmodule Assent.Strategy.OAuthTest do
         assert oauth_params["oauth_verifier"] == callback_params["oauth_verifier"]
 
         assert {:ok, decoded_signature} = Base.decode64(URI.decode(signature))
-        assert :crypto.hmac(:sha, "#{config[:consumer_secret]}&#{config[:session_params][:oauth_token_secret]}", signature_base_string) == decoded_signature
+        assert :crypto.mac(:hmac, :sha, "#{config[:consumer_secret]}&#{config[:session_params][:oauth_token_secret]}", signature_base_string) == decoded_signature
       end)
 
       expect_oauth_user_request(bypass, %{email: nil})
@@ -397,7 +397,7 @@ defmodule Assent.Strategy.OAuthTest do
         assert oauth_params["oauth_version"] == "1.0"
 
         assert {:ok, decoded_signature} = Base.decode64(URI.decode(signature))
-        assert :crypto.hmac(:sha, shared_secret, signature_base_string) == decoded_signature
+        assert :crypto.mac(:hmac, :sha, shared_secret, signature_base_string) == decoded_signature
         assert String.to_integer(timestamp) <= DateTime.to_unix(DateTime.utc_now())
       end)
 
@@ -413,7 +413,7 @@ defmodule Assent.Strategy.OAuthTest do
 
         assert conn.params["a"] == "1"
         assert {:ok, decoded_signature} = Base.decode64(URI.decode(oauth_params["oauth_signature"]))
-        assert :crypto.hmac(:sha, shared_secret, signature_base_string) == decoded_signature
+        assert :crypto.mac(:hmac, :sha, shared_secret, signature_base_string) == decoded_signature
       end)
 
       assert {:ok, response} = OAuth.request(config, token, :get, "/info", a: 1)
@@ -428,7 +428,7 @@ defmodule Assent.Strategy.OAuthTest do
 
         assert Plug.Conn.get_req_header(conn, "b") == ["2"]
         assert {:ok, decoded_signature} = Base.decode64(URI.decode(oauth_params["oauth_signature"]))
-        assert :crypto.hmac(:sha, shared_secret, signature_base_string) == decoded_signature
+        assert :crypto.mac(:hmac, :sha, shared_secret, signature_base_string) == decoded_signature
       end)
 
       assert {:ok, response} = OAuth.request(config, token, :get, "/info", [a: 1], [{"b", "2"}])
@@ -443,7 +443,7 @@ defmodule Assent.Strategy.OAuthTest do
         signature_base_string = gen_signature_base_string("GET&http%3A%2F%2Flocalhost%3A#{bypass.port}%2Finfo&", oauth_params)
 
         assert {:ok, decoded_signature} = Base.decode64(URI.decode(oauth_params["oauth_signature"]))
-        assert :crypto.hmac(:sha, shared_secret, signature_base_string) == decoded_signature
+        assert :crypto.mac(:hmac, :sha, shared_secret, signature_base_string) == decoded_signature
       end)
 
       assert {:ok, response} = OAuth.request(config, token, :get, "/INFO")
@@ -496,7 +496,7 @@ defmodule Assent.Strategy.OAuthTest do
       signature_base_string = gen_signature_base_string("POST&http%3A%2F%2Flocalhost%3A#{bypass.port}%2Finfo&", oauth_params)
 
       assert {:ok, decoded_signature} = Base.decode64(URI.decode(oauth_params["oauth_signature"]))
-      assert :crypto.hmac(:sha, shared_secret, signature_base_string) == decoded_signature
+      assert :crypto.mac(:hmac, :sha, shared_secret, signature_base_string) == decoded_signature
     end, "POST")
 
     assert {:ok, response} = OAuth.request(config, token, :post, "/info")
@@ -509,7 +509,7 @@ defmodule Assent.Strategy.OAuthTest do
 
       assert params == %{"a" => "1"}
       assert {:ok, decoded_signature} = Base.decode64(URI.decode(oauth_params["oauth_signature"]))
-      assert :crypto.hmac(:sha, shared_secret, signature_base_string) == decoded_signature
+      assert :crypto.mac(:hmac, :sha, shared_secret, signature_base_string) == decoded_signature
     end, "POST")
 
     assert {:ok, response} = OAuth.request(config, token, :post, "/info", [a: 1])
