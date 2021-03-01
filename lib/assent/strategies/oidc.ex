@@ -228,8 +228,16 @@ defmodule Assent.Strategy.OIDC do
   """
   @spec fetch_user(Config.t(), map()) :: {:ok, map()} | {:error, term()}
   def fetch_user(config, token) do
-    with {:ok, jwt} <- validate_id_token(config, token["id_token"]) do
+    with {:ok, id_token} <- fetch_id_token(token),
+         {:ok, jwt}      <- validate_id_token(config, id_token) do
       Helpers.normalize_userinfo(jwt.claims)
+    end
+  end
+
+  defp fetch_id_token(token) do
+    case Map.fetch(token, "id_token") do
+      {:ok, id_token} -> {:ok, id_token}
+      :error          -> {:error, "The `id_token` key not found in token params, only found these keys: #{Enum.join(Map.keys(token), ", ")}"}
     end
   end
 

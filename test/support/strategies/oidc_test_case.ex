@@ -104,8 +104,8 @@ defmodule Assent.Test.OIDCTestCase do
 
     params =
       opts
-      |> Keyword.get(:params, %{access_token: "access_token"})
-      |> Map.put_new(:id_token, id_token)
+      |> Keyword.get(:params, %{access_token: "access_token", id_token: id_token})
+      |> Map.merge(Keyword.get(opts, :additional_params, %{}))
 
     opts =
       opts
