@@ -40,7 +40,7 @@ defmodule Assent.JWTAdapter.AssentJWT do
 
   defp sign_message(message, "HS" <> sha_bit_size, secret) do
     with {:ok, sha_alg} <- sha2_alg(sha_bit_size) do
-      {:ok, :crypto.hmac(sha_alg, secret, message)}
+      {:ok, :crypto.mac(:hmac, sha_alg, secret, message)}
     end
   end
 
