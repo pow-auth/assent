@@ -4,25 +4,28 @@ defmodule Assent.StrategyTest do
 
   alias Assent.Strategy
 
-  test "decode_response/1" do
+  test "decode_response/2" do
     expected = %{"a" => "1", "b" => "2"}
 
     headers = [{"content-type", "application/json"}]
     body = Jason.encode!(expected)
-    assert Strategy.decode_response({nil, %{body: body, headers: headers}}, []) == {nil, %{body: expected, headers: headers}}
+    assert Strategy.decode_response({:ok, %{body: body, headers: headers}}, []) == {:ok, %{body: expected, headers: headers}}
+    assert Strategy.decode_response({:error, %{body: body, headers: headers}}, []) == {:error, %{body: expected, headers: headers}}
 
     headers = [{"content-type", "application/json; charset=utf-8"}]
-    assert Strategy.decode_response({nil, %{body: body, headers: headers}}, []) == {nil, %{body: expected, headers: headers}}
+    assert Strategy.decode_response({:ok, %{body: body, headers: headers}}, []) == {:ok, %{body: expected, headers: headers}}
 
     headers = [{"content-type", "text/javascript"}]
-    assert Strategy.decode_response({nil, %{body: body, headers: headers}}, []) == {nil, %{body: expected, headers: headers}}
+    assert Strategy.decode_response({:ok, %{body: body, headers: headers}}, []) == {:ok, %{body: expected, headers: headers}}
 
     headers = [{"content-type", "application/x-www-form-urlencoded"}]
     body = URI.encode_query(expected)
-    assert Strategy.decode_response({nil, %{body: body, headers: headers}}, []) == {nil, %{body: expected, headers: headers}}
+    assert Strategy.decode_response({:ok, %{body: body, headers: headers}}, []) == {:ok, %{body: expected, headers: headers}}
 
     headers = [{"content-type", "application/x-www-form-urlencoded; charset=utf-8"}]
-    assert Strategy.decode_response({nil, %{body: body, headers: headers}}, []) == {nil, %{body: expected, headers: headers}}
+    assert Strategy.decode_response({:ok, %{body: body, headers: headers}}, []) == {:ok, %{body: expected, headers: headers}}
+
+    assert Strategy.decode_response({:error, "error reason"}, []) == {:error, "error reason"}
   end
 
   defmodule JSONMock do

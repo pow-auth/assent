@@ -65,14 +65,14 @@ defmodule Assent.Strategy do
   @doc """
   Decodes a request response.
   """
-  @spec decode_response({atom(), any()}, Config.t()) :: {atom(), any()}
-  def decode_response({status, %{body: body, headers: headers} = resp}, config) do
+  @spec decode_response({:ok, HTTPResponse.t()} | {:error, HTTPResponse.t()} | {:error. term()}, Config.t()) :: {:ok, HTTPResponse.t()} | {:error, HTTPResponse.t()} | {:error, term()}
+  def decode_response({ok_or_error, %{body: body, headers: headers} = resp}, config) do
     case decode_body(headers, body, config) do
-      {:ok, body}     -> {status, %{resp | body: body}}
+      {:ok, body}     -> {ok_or_error, %{resp | body: body}}
       {:error, error} -> {:error, error}
     end
   end
-  def decode_response(any, _config), do: any
+  def decode_response({:error, reason}, _config), do: {:error, reason}
 
   defp decode_body(headers, body, config) do
     case List.keyfind(headers, "content-type", 0) do
