@@ -14,7 +14,7 @@ jobs:
       matrix:
         include:
           - elixir: 1.11
-            otp: 23.0
+            otp: 23.2
             deploy: true
           - elixir: 1.11
             otp: 22.3
@@ -23,7 +23,7 @@ jobs:
     name: OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/setup-elixir@v1
+      - uses: erlef/setup-elixir@v1
         with:
           otp-version: ${{matrix.otp}}
           elixir-version: ${{matrix.elixir}}
@@ -39,7 +39,7 @@ jobs:
       HEX_API_KEY: ${{secrets.HEX_API_KEY}}
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/setup-elixir@v1
+      - uses: erlef/setup-elixir@v1
         with:
           otp-version: 23.0
           elixir-version: 1.11
