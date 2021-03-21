@@ -5,17 +5,16 @@ defmodule Assent.HTTPAdapter.MintTest do
   alias Mint.TransportError
   alias Assent.HTTPAdapter.{HTTPResponse, Mint}
 
-  @expired_certificate_url "https://expired.badssl.com"
+  @wrong_host_certificate_url "https://wrong.host.badssl.com"
   @hsts_certificate_url "https://hsts.badssl.com"
   @unreachable_http_url "http://localhost:8888/"
 
   describe "request/4" do
     test "handles SSL" do
       assert {:ok, %HTTPResponse{status: 200}} = Mint.request(:get, @hsts_certificate_url, nil, [])
-      assert {:error, %TransportError{reason: error}} = Mint.request(:get, @expired_certificate_url, nil, [])
-      assert expired?(error)
+      assert {:error, %TransportError{reason: {:tls_alert, {:handshake_failure, _error}}}} = Mint.request(:get, @wrong_host_certificate_url, nil, [])
 
-      assert {:ok, %HTTPResponse{status: 200}} = Mint.request(:get, @expired_certificate_url, nil, [], transport_opts: [verify: :verify_none])
+      assert {:ok, %HTTPResponse{status: 200}} = Mint.request(:get, @wrong_host_certificate_url, nil, [], transport_opts: [verify: :verify_none])
 
       assert {:error, %TransportError{reason: :econnrefused}} = Mint.request(:get, @unreachable_http_url, nil, [])
     end
@@ -57,8 +56,4 @@ defmodule Assent.HTTPAdapter.MintTest do
       assert {:ok, %HTTPResponse{status: 200}} = Mint.request(:post, "http://localhost:#{bypass.port}/post", "a=1&b=2", [{"content-type", "application/x-www-form-urlencoded"}])
     end
   end
-
-  defp expired?({:tls_alert, {:certificate_expired, _error}}), do: true
-  defp expired?({:tls_alert, 'certificate expired'}), do: true # For OTP version < 22
-  defp expired?(_any), do: false
 end
