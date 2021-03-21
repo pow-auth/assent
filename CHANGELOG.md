@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.24 (TBA)
+
+* `Assent.Strategy.OIDC.Base.authorize_url/2` now has correct type specs
+
 ## v0.1.23 (2021-03-01)
 
 Updated to support OTP 24 and no longer support OTP < 22.1
