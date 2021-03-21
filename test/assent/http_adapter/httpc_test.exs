@@ -5,18 +5,18 @@ defmodule Assent.HTTPAdapter.HttpcTest do
   alias ExUnit.CaptureIO
   alias Assent.HTTPAdapter.{Httpc, HTTPResponse}
 
-  @expired_certificate_url "https://expired.badssl.com"
+  @wrong_host_certificate_url "https://wrong.host.badssl.com"
   @hsts_certificate_url "https://hsts.badssl.com"
   @unreachable_http_url "http://localhost:8888/"
 
   describe "request/4" do
     test "handles SSL" do
       assert {:ok, %HTTPResponse{status: 200}} = Httpc.request(:get, @hsts_certificate_url, nil, [])
-      assert {:error, {:failed_connect, error}} = Httpc.request(:get, @expired_certificate_url, nil, [])
-      assert expired?(fetch_inet_error(error))
+      assert {:error, {:failed_connect, error}} = Httpc.request(:get, @wrong_host_certificate_url, nil, [])
+      assert {:tls_alert, {:handshake_failure, _error}} = fetch_inet_error(error)
 
       assert CaptureIO.capture_io(:stderr, fn ->
-        assert {:ok, %HTTPResponse{status: 200}} = Httpc.request(:get, @expired_certificate_url, nil, [], ssl: [])
+        assert {:ok, %HTTPResponse{status: 200}} = Httpc.request(:get, @wrong_host_certificate_url, nil, [], ssl: [])
       end) =~ "This request will NOT be verified for valid SSL certificate"
 
       assert {:error, {:failed_connect, error}} = Httpc.request(:get, @unreachable_http_url, nil, [])
@@ -54,8 +54,4 @@ defmodule Assent.HTTPAdapter.HttpcTest do
   end
 
   defp fetch_inet_error([_, {:inet, [:inet], error}]), do: error
-
-  defp expired?({:tls_alert, 'certificate expired'}), do: true # for :ssl < 9.2
-  defp expired?({:tls_alert, {:certificate_expired, _error}}), do: true
-  defp expired?(_any), do: false
-  end
+end
