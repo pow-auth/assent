@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.1.24 (TBA)
+## v0.1.24 (2021-03-22)
 
 * `Assent.Strategy.OIDC.Base.authorize_url/2` now has correct type specs
 
