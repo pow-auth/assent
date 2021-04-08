@@ -87,15 +87,15 @@ defmodule Assent.Strategy.AppleTest do
     test "callback/2 with name scope", %{config: config, callback_params: params, bypass: bypass} do
       expected_user = Map.merge(@user, %{"given_name" => "John", "family_name" => "Doe"})
 
-      user = %{
-        email: "john.doe@example.com",
-        name: %{
+      encoded_user =
+        Jason.encode!(%{name: %{
           firstName: "John",
           lastName: "Doe"
-        }
-      }
+        }})
 
-      expect_oidc_access_token_request(bypass, id_token_opts: [claims: @id_token_claims, kid: @jwk["kid"]], uri: "/auth/token", additional_params: %{user: user})
+      params = Map.put(params, "user", encoded_user)
+
+      expect_oidc_access_token_request(bypass, id_token_opts: [claims: @id_token_claims, kid: @jwk["kid"]], uri: "/auth/token")
       expect_oidc_jwks_uri_request(bypass, uri: "/auth/keys", keys: [@jwk])
 
       assert {:ok, %{user: user}} = Apple.callback(config, params)

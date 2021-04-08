@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.25 (TBA)
+
+* `Assent.Strategy.Apple` has been fixed to handle the JSON encoded user in callback params
+
 ## v0.1.24 (2021-03-22)
 
 * `Assent.Strategy.OIDC.Base.authorize_url/2` now has correct type specs

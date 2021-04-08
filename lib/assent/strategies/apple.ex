@@ -71,9 +71,11 @@ defmodule Assent.Strategy.Apple do
   @doc false
   @impl true
   def callback(config, params) do
-    with {:ok, client_secret} <- gen_client_secret(config) do
+    with {:ok, client_secret} <- gen_client_secret(config),
+         {:ok, user_info}     <- decode_user_params(config, params) do
       config
       |> Config.put(:client_secret, client_secret)
+      |> Config.put(:user, user_info)
       |> Base.callback(params, __MODULE__)
     end
   end
@@ -111,17 +113,16 @@ defmodule Assent.Strategy.Apple do
     end
   end
 
+  defp decode_user_params(config, %{"user" => user}), do: Helpers.decode_json(user, config)
+  defp decode_user_params(_config, %{}), do: {:ok, %{}}
+
   @impl true
   def fetch_user(config, token) do
-    case OIDC.fetch_user(config, token) do
-      {:ok, user}     -> {:ok, merge_with_user_info(user, token)}
-      {:error, error} -> {:error, error}
+    with {:ok, user} <- OIDC.fetch_user(config, token),
+         {:ok, user_info} <- Config.fetch(config, :user) do
+      {:ok, Map.merge(user, user_info)}
     end
   end
-
-  defp merge_with_user_info(user, %{"user" => user_info}),
-    do: Map.merge(user_info, user)
-  defp merge_with_user_info(user, _any), do: user
 
   @impl true
   def normalize(_config, user) do
