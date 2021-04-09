@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.1.25 (TBA)
+## v0.1.25 (2021-04-09)
 
 * `Assent.Strategy.Apple` has been fixed to handle the JSON encoded user in callback params
 
