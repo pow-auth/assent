@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.1.26 (TBA)
+## v0.1.26 (2021-05-27)
 
 * `Assent.constant_time_compare/2` no longer outputs a deprecation warning for OTP 24
 
