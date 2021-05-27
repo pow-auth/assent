@@ -81,16 +81,16 @@ defmodule Assent do
 
   @doc false
   @spec constant_time_compare(binary(), binary()) :: boolean()
-  def constant_time_compare(left, right) when byte_size(left) == byte_size(right) do
-    constant_time_compare(left, right, 0) == 0
+  def constant_time_compare(left, right) when is_binary(left) and is_binary(right) do
+    byte_size(left) == byte_size(right) and constant_time_compare(left, right, 0)
   end
-  def constant_time_compare(_hash, _secret_hash), do: false
 
-  def constant_time_compare(<<x, left::binary>>, <<y, right::binary>>, acc) do
-    xorred = x ^^^ y
+  defp constant_time_compare(<<x, left::binary>>, <<y, right::binary>>, acc) do
+    xorred = bxor(x, y)
     constant_time_compare(left, right, acc ||| xorred)
   end
-  def constant_time_compare(<<>>, <<>>, acc) do
-    acc
+
+  defp constant_time_compare(<<>>, <<>>, acc) do
+    acc === 0
   end
 end

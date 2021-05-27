@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.26 (TBA)
+
+* `Assent.constant_time_compare/2` no longer outputs a deprecation warning for OTP 24
+
 ## v0.1.25 (2021-04-09)
 
 * `Assent.Strategy.Apple` has been fixed to handle the JSON encoded user in callback params
