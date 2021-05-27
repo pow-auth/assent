@@ -2,7 +2,7 @@ defmodule Assent.HTTPAdapter.HttpcTest do
   use ExUnit.Case
   doctest Assent.HTTPAdapter.Httpc
 
-  alias ExUnit.CaptureIO
+  alias ExUnit.{CaptureIO, CaptureLog}
   alias Assent.HTTPAdapter.{Httpc, HTTPResponse}
 
   @wrong_host_certificate_url "https://wrong.host.badssl.com"
@@ -15,9 +15,12 @@ defmodule Assent.HTTPAdapter.HttpcTest do
       assert {:error, {:failed_connect, error}} = Httpc.request(:get, @wrong_host_certificate_url, nil, [])
       assert {:tls_alert, {:handshake_failure, _error}} = fetch_inet_error(error)
 
-      assert CaptureIO.capture_io(:stderr, fn ->
-        assert {:ok, %HTTPResponse{status: 200}} = Httpc.request(:get, @wrong_host_certificate_url, nil, [], ssl: [])
-      end) =~ "This request will NOT be verified for valid SSL certificate"
+      # For OTP 24 "Authenticity is not established by certificate path validation" warning
+      CaptureLog.capture_log(fn ->
+        assert CaptureIO.capture_io(:stderr, fn ->
+          assert {:ok, %HTTPResponse{status: 200}} = Httpc.request(:get, @wrong_host_certificate_url, nil, [], ssl: [])
+        end) =~ "This request will NOT be verified for valid SSL certificate"
+      end)
 
       assert {:error, {:failed_connect, error}} = Httpc.request(:get, @unreachable_http_url, nil, [])
       assert fetch_inet_error(error) == :econnrefused

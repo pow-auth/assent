@@ -2,6 +2,7 @@ defmodule Assent.HTTPAdapter.MintTest do
   use ExUnit.Case
   doctest Assent.HTTPAdapter.Mint
 
+  alias ExUnit.CaptureLog
   alias Mint.TransportError
   alias Assent.HTTPAdapter.{HTTPResponse, Mint}
 
@@ -14,7 +15,10 @@ defmodule Assent.HTTPAdapter.MintTest do
       assert {:ok, %HTTPResponse{status: 200}} = Mint.request(:get, @hsts_certificate_url, nil, [])
       assert {:error, %TransportError{reason: {:tls_alert, {:handshake_failure, _error}}}} = Mint.request(:get, @wrong_host_certificate_url, nil, [])
 
-      assert {:ok, %HTTPResponse{status: 200}} = Mint.request(:get, @wrong_host_certificate_url, nil, [], transport_opts: [verify: :verify_none])
+      # For OTP 24 "Authenticity is not established by certificate path validation" warning
+      CaptureLog.capture_log(fn ->
+        assert {:ok, %HTTPResponse{status: 200}} = Mint.request(:get, @wrong_host_certificate_url, nil, [], transport_opts: [verify: :verify_none])
+      end)
 
       assert {:error, %TransportError{reason: :econnrefused}} = Mint.request(:get, @unreachable_http_url, nil, [])
     end
