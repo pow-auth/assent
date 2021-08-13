@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.27 (TBA)
+
+* `Assent.Strategy.OIDC` bug fixed for `normalize/2` macro callback
+
 ## v0.1.26 (2021-05-27)
 
 * `Assent.constant_time_compare/2` no longer outputs a deprecation warning for OTP 24
