@@ -20,7 +20,7 @@ defmodule Assent.Strategy.OIDC.Base do
   alias Assent.Strategy.OIDC
 
   @callback default_config(Keyword.t()) :: Keyword.t()
-  @callback normalize(Keyword.t(), map()) :: {:ok, map()} | {:error, term()}
+  @callback normalize(Keyword.t(), map()) :: {:ok, map()} | {:ok, map(), map()} | {:error, term()}
   @callback fetch_user(Keyword.t(), map()) :: {:ok, map()} | {:error, term()}
 
   @doc false
