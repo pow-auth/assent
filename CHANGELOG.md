@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.1.27 (TBA)
+## v0.1.27 (2021-08-21)
 
 * `Assent.Strategy.OIDC` bug fixed for `normalize/2` macro callback
 
