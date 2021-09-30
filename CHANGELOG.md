@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.1.28 (TBA)
+## v0.1.28 (2021-09-30)
 
 * `Assent.Strategy.OIDC` bug fixed so it handles unreachable urls correctly
 
