@@ -69,6 +69,16 @@ defmodule Assent.Strategy.OAuthTest do
       assert OAuth.authorize_url(config) == {:error, %MissingKeyError{message: "Key `:consumer_secret` not found in config"}}
     end
 
+    test "with unreachable request token url", %{config: config, bypass: bypass} do
+      Bypass.down(bypass)
+
+      assert {:error, %RequestError{} = error} = OAuth.authorize_url(config)
+      assert error.error == :unreachable
+      assert error.message =~ "Server was unreachable with Assent.HTTPAdapter.Httpc."
+      assert error.message =~ "{:failed_connect, "
+      assert error.message =~ "URL: http://localhost:#{bypass.port}/request_token"
+    end
+
     test "with unexpected succesful response", %{config: config, bypass: bypass} do
       expect_oauth_request_token_request(bypass, params: %{"error_code" => 215, "error_message" => "Bad Authentication data."})
 
@@ -285,7 +295,17 @@ defmodule Assent.Strategy.OAuthTest do
       assert OAuth.callback(config, callback_params) == {:error, %MissingKeyError{message: "Key `:site` not found in config"}}
     end
 
-    test "bubbles up access token error response", %{config: config, callback_params: callback_params, bypass: bypass} do
+    test "with unreachable token url", %{config: config, callback_params: callback_params, bypass: bypass} do
+      Bypass.down(bypass)
+
+      assert {:error, %RequestError{} = error} = OAuth.callback(config, callback_params)
+      assert error.error == :unreachable
+      assert error.message =~ "Server was unreachable with Assent.HTTPAdapter.Httpc."
+      assert error.message =~ "{:failed_connect, "
+      assert error.message =~ "URL: http://localhost:#{bypass.port}/access_token"
+    end
+
+    test "with token url error response", %{config: config, callback_params: callback_params, bypass: bypass} do
       expect_oauth_access_token_request(bypass, status_code: 500, params: %{error: "Unknown error"})
 
       assert {:error, %RequestError{} = error} = OAuth.callback(config, callback_params)

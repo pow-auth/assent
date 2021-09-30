@@ -136,6 +136,16 @@ defmodule Assent.Strategy.OAuth2Test do
       assert {:ok, _any} = OAuth2.callback(config, params)
     end
 
+    test "with unreachable token url", %{config: config, callback_params: params, bypass: bypass} do
+      Bypass.down(bypass)
+
+      assert {:error, %RequestError{} = error} = OAuth2.callback(config, params)
+      assert error.error == :unreachable
+      assert error.message =~ "Server was unreachable with Assent.HTTPAdapter.Httpc."
+      assert error.message =~ "{:failed_connect"
+      assert error.message =~ "URL: http://localhost:#{bypass.port}/oauth/token"
+    end
+
     test "with access token error with 200 response", %{config: config, callback_params: params, bypass: bypass} do
       expect_oauth2_access_token_request(bypass, params: %{"error" => "error", "error_description" => "Error description"})
 

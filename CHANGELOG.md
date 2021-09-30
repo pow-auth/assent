@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.28 (TBA)
+
+* `Assent.Strategy.OIDC` bug fixed so it handles unreachable urls correctly
+
 ## v0.1.27 (2021-08-21)
 
 * `Assent.Strategy.OIDC` bug fixed for `normalize/2` macro callback
