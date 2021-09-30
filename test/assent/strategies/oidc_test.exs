@@ -145,6 +145,32 @@ defmodule Assent.Strategy.OIDCTest do
       {:ok, config: config, openid_config: openid_config}
     end
 
+    test "with unreachable openid config url", %{config: config, callback_params: params, bypass: bypass} do
+      Bypass.down(bypass)
+
+      assert {:error, %RequestError{} = error} = OIDC.callback(config, params)
+      assert error.error == :unreachable
+      assert error.message =~ "Server was unreachable with Assent.HTTPAdapter.Httpc."
+      assert error.message =~ "{:failed_connect"
+      assert error.message =~ "URL: http://localhost:#{bypass.port}/.well-known/openid-configuration"
+    end
+
+    test "with unexpected openid config url response", %{config: config, openid_config: openid_config, callback_params: params, bypass: bypass} do
+      expect_openid_config_request(bypass, openid_config, status_code: 201)
+
+      assert {:error, %RequestError{} = error} = OIDC.callback(config, params)
+      assert error.error == :unexpected_response
+      assert error.message =~ "An unexpected success response was received:"
+    end
+
+    test "with 404 openid config url", %{config: config, openid_config: openid_config, callback_params: params, bypass: bypass} do
+      expect_openid_config_request(bypass, openid_config, status_code: 404)
+
+      assert {:error, %RequestError{} = error} = OIDC.callback(config, params)
+      assert error.error == :invalid_server_response
+      assert error.message =~ "Server responded with status: 404"
+    end
+
     test "with invalid id_token", %{config: config, openid_config: openid_config, callback_params: params, bypass: bypass} do
       expect_openid_config_request(bypass, openid_config)
 
@@ -200,7 +226,7 @@ defmodule Assent.Strategy.OIDCTest do
 
       expect_openid_config_request(bypass, [], status_code: 500)
 
-      assert {:error, %Assent.RequestError{error: :invalid_server_response}} = OIDC.validate_id_token(config, id_token)
+      assert {:error, %RequestError{error: :invalid_server_response}} = OIDC.validate_id_token(config, id_token)
     end
 
     test "with no `:client_id`", %{config: config, id_token: id_token} do
@@ -333,12 +359,30 @@ defmodule Assent.Strategy.OIDCTest do
       assert OIDC.validate_id_token(config, id_token) == {:error, "`jwks_uri` not found in OpenID configuration"}
     end
 
+    test "with unreachable `jwk_uri` url",  %{config: config, id_token: id_token, bypass: bypass} do
+      Bypass.down(bypass)
+
+      assert {:error, %RequestError{} = error} = OIDC.validate_id_token(config, id_token)
+      assert error.error == :unreachable
+      assert error.message =~ "Server was unreachable with Assent.HTTPAdapter.Httpc."
+      assert error.message =~ "{:failed_connect"
+      assert error.message =~ "URL: http://localhost:#{bypass.port}/jwks_uri.json"
+    end
+
+    test "with unexpected `jwk_uri` url response", %{config: config, id_token: id_token, bypass: bypass} do
+      expect_oidc_jwks_uri_request(bypass, status_code: 201)
+
+      assert {:error, %RequestError{} = error} = OIDC.validate_id_token(config, id_token)
+      assert error.error == :unexpected_response
+      assert error.message =~ "An unexpected success response was received:"
+    end
+
     test "with 404 `jwks_uri` url", %{config: config, id_token: id_token, bypass: bypass} do
       Bypass.expect_once(bypass, "GET", "/jwks_uri.json", fn conn ->
         Plug.Conn.send_resp(conn, 404, "")
       end)
 
-      assert {:error, %Assent.RequestError{} = error} = OIDC.validate_id_token(config, id_token)
+      assert {:error, %RequestError{} = error} = OIDC.validate_id_token(config, id_token)
       assert error.error == :invalid_server_response
       assert error.message =~ "Server responded with status: 404"
     end
@@ -399,7 +443,7 @@ defmodule Assent.Strategy.OIDCTest do
       config = Keyword.delete(config, :openid_configuration)
       expect_openid_config_request(bypass, [], status_code: 500)
 
-      assert {:error, %Assent.RequestError{error: :invalid_server_response}} = OIDC.fetch_userinfo(config, access_token)
+      assert {:error, %RequestError{error: :invalid_server_response}} = OIDC.fetch_userinfo(config, access_token)
     end
 
     test "with missing `userinfo_endpoint` in OpenID configuration", %{config: config, access_token: access_token} do
@@ -418,6 +462,14 @@ defmodule Assent.Strategy.OIDCTest do
       assert error.message =~ "Server was unreachable with Assent.HTTPAdapter.Httpc."
       assert error.message =~ "{:failed_connect"
       assert error.message =~ "URL: http://localhost:8888/userinfo"
+    end
+
+    test "with unexpected `userinfo_endpoint` url response", %{config: config, access_token: access_token, bypass: bypass} do
+      expect_oidc_userinfo_request(bypass, gen_id_token(alg: "HS256"), status_code: 201)
+
+      assert {:error, %RequestError{} = error} = OIDC.fetch_userinfo(config, access_token)
+      assert error.error == :unexpected_response
+      assert error.message =~ "An unexpected success response was received:"
     end
 
     test "with unauthorized `userinfo_endpoint`", %{config: config, access_token: access_token, bypass: bypass} do

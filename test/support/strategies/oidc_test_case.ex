@@ -114,13 +114,14 @@ defmodule Assent.Test.OIDCTestCase do
 
   @spec expect_oidc_jwks_uri_request(Bypass.t(), Keyword.t()) :: :ok
   def expect_oidc_jwks_uri_request(bypass, opts \\ []) do
-    uri  = Keyword.get(opts, :uri, "/jwks_uri.json")
-    keys = opts[:keys] || gen_keys(opts)
+    uri         = Keyword.get(opts, :uri, "/jwks_uri.json")
+    keys        = opts[:keys] || gen_keys(opts)
+    status_code = Keyword.get(opts, :status_code, 200)
 
     Bypass.expect_once(bypass, "GET", uri, fn conn ->
       conn
       |> Plug.Conn.put_resp_content_type("application/json")
-      |> Plug.Conn.send_resp(200, Jason.encode!(%{"keys" => keys}))
+      |> Plug.Conn.send_resp(status_code, Jason.encode!(%{"keys" => keys}))
     end)
 
     keys

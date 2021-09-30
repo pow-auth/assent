@@ -112,18 +112,16 @@ defmodule Assent.Strategy.OIDC do
       :get
       |> Helpers.request(url, nil, [], config)
       |> Helpers.decode_response(config)
-      |> case do
-        {:ok, %HTTPResponse{status: 200, body: configuration}} ->
-          {:ok, configuration}
-
-        {:error, %RequestError{} = error} ->
-          {:error, error}
-
-        {:error, response} ->
-          {:error, RequestError.invalid(response)}
-      end
+      |> process_openid_configuration_response()
     end
   end
+
+  defp process_openid_configuration_response({:ok, %HTTPResponse{status: 200, body: configuration}}), do: {:ok, configuration}
+  defp process_openid_configuration_response(any), do: process_response(any)
+
+  defp process_response({:ok, %HTTPResponse{} = response}), do: {:error, RequestError.unexpected(response)}
+  defp process_response({:error, %HTTPResponse{} = response}), do: {:error, RequestError.invalid(response)}
+  defp process_response({:error, error}), do: {:error, error}
 
   defp fetch_from_openid_config(config, key) do
     case Map.fetch(config, key) do
@@ -305,17 +303,12 @@ defmodule Assent.Strategy.OIDC do
     :get
     |> Helpers.request(uri, nil, [], config)
     |> Helpers.decode_response(config)
-    |> case do
-      {:ok, %HTTPResponse{status: 200, body: %{"keys" => keys}}} ->
-        {:ok, keys}
-
-      {:ok, _any} ->
-        {:ok, []}
-
-      {:error, response} ->
-        {:error, RequestError.invalid(response)}
-    end
+    |> process_public_keys_response()
   end
+
+  defp process_public_keys_response({:ok, %HTTPResponse{status: 200, body: %{"keys" => keys}}}), do: {:ok, keys}
+  defp process_public_keys_response({:ok, %HTTPResponse{status: 200}}), do: {:ok, []}
+  defp process_public_keys_response(any), do: process_response(any)
 
   defp find_key(%{"kid" => kid}, [%{"kid" => kid} = key | _keys]), do: {:ok, key}
   defp find_key(%{"kid" => _kid} = header, [%{"kid" => _other} | keys]), do: find_key(header, keys)
@@ -428,10 +421,6 @@ defmodule Assent.Strategy.OIDC do
       {:ok, jwt.claims}
     end
   end
-
-  defp process_response({:ok, %HTTPResponse{} = response}), do: {:error, RequestError.unexpected(response)}
-  defp process_response({:error, %HTTPResponse{} = response}), do: {:error, RequestError.invalid(response)}
-  defp process_response({:error, error}), do: {:error, error}
 
   defp validate_userinfo_sub(config, id_token, claims) when is_binary(id_token) do
     with {:ok, jwt} <- validate_id_token(config, id_token) do
