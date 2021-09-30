@@ -116,6 +116,9 @@ defmodule Assent.Strategy.OIDC do
         {:ok, %HTTPResponse{status: 200, body: configuration}} ->
           {:ok, configuration}
 
+        {:error, %RequestError{} = error} ->
+          {:error, error}
+
         {:error, response} ->
           {:error, RequestError.invalid(response)}
       end
