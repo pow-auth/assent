@@ -1,6 +1,6 @@
 defmodule Assent.Strategy.Slack do
   @moduledoc """
-  Slack OAuth 2.0 strategy.
+  Slack OAuth 2.0 OpenID Connect strategy.
 
   The Slack user endpoint does not provide data on email verification, email is
   considered unverified.
@@ -32,7 +32,7 @@ defmodule Assent.Strategy.Slack do
   Instead you should set `team: TEAM_ID` in the `authorization_params` keyword
   list.
   """
-  use Assent.Strategy.OAuth2.Base
+  use Assent.Strategy.OIDC.Base
 
   alias Assent.Config
 
@@ -40,32 +40,16 @@ defmodule Assent.Strategy.Slack do
   def default_config(config) do
     [
       site: "https://slack.com",
-      token_url: "/api/oauth.access",
-      user_url: "/api/users.identity",
       authorization_params: authorization_params(config),
-      auth_method: :client_secret_post
+      client_authentication_method: "client_secret_post"
     ]
   end
 
   defp authorization_params(config) do
-    default = [scope: "identity.basic identity.email identity.avatar identity.team"]
+    default = [scope: "openid email profile"]
     case Config.fetch(config, :team_id) do
       {:ok, team_id} -> Config.put(default, :team, team_id)
       _error         -> default
     end
   end
-
-  @impl true
-  def normalize(_config, identity) do
-    {:ok, %{
-      "sub"                => uid(identity),
-      "name"               => identity["user"]["name"],
-      "picture"            => identity["user"]["image_48"],
-      "email"              => identity["user"]["email"]
-    }, %{
-      "slack_team" => identity["team"]
-    }}
-  end
-
-  defp uid(%{"user" => %{"id" => id}, "team" => %{"id" => team_id}}), do: "#{id}-#{team_id}"
 end
