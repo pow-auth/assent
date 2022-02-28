@@ -30,7 +30,7 @@ defmodule Assent.Strategy.OAuth.Base do
             # },
             # # Provider specific data not part of the standard claims spec
             # %{
-            #  "bio" => user["bio"]
+            #  "https://example.com/bio" => user["bio"]
             }
           }
         end
