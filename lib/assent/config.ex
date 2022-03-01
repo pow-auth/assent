@@ -4,6 +4,8 @@ defmodule Assent.Config do
   """
 
   defmodule MissingKeyError do
+    @type t :: %__MODULE__{}
+
     defexception [:message]
   end
 
