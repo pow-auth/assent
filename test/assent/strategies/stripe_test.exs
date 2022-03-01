@@ -1,7 +1,7 @@
 defmodule Assent.Strategy.StripeTest do
   use Assent.Test.OAuth2TestCase
 
-  alias Assent.Strategy.Stripe
+  alias Assent.{Strategy.Stripe, TestServer}
 
   # From https://stripe.com/docs/api/accounts/retrieve
   @user_response %{
@@ -105,8 +105,8 @@ defmodule Assent.Strategy.StripeTest do
     "sub" => "acct_1032D82eZvKYlo2C"
   }
 
-  setup %{config: config, bypass: bypass} do
-    config = Keyword.put(config, :token_url, "http://localhost:#{bypass.port}/oauth/token")
+  setup %{config: config} do
+    config = Keyword.put(config, :token_url, TestServer.url("/oauth/token"))
 
     {:ok, config: config}
   end
@@ -116,11 +116,11 @@ defmodule Assent.Strategy.StripeTest do
     assert url =~ "/oauth/authorize?client_id="
   end
 
-  test "callback/2", %{config: config, callback_params: params, bypass: bypass} do
-    expect_oauth2_access_token_request(bypass, [], fn _conn, params ->
+  test "callback/2", %{config: config, callback_params: params} do
+    expect_oauth2_access_token_request([], fn _conn, params ->
       assert params["client_secret"] == config[:client_secret]
     end)
-    expect_oauth2_user_request(bypass, @user_response, uri: "/v1/account")
+    expect_oauth2_user_request(@user_response, uri: "/v1/account")
 
     assert {:ok, %{user: user}} = Stripe.callback(config, params)
     assert user == @user

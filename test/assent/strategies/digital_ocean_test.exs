@@ -1,7 +1,7 @@
 defmodule Assent.Strategy.DigitalOceanTest do
   use Assent.Test.OAuth2TestCase
 
-  alias Assent.Strategy.DigitalOcean
+  alias Assent.{Strategy.DigitalOcean, TestServer}
 
   # From https://developers.digitalocean.com/documentation/v2/#account
   @user_response %{
@@ -29,18 +29,18 @@ defmodule Assent.Strategy.DigitalOceanTest do
   end
 
   describe "callback/2" do
-    setup %{config: config, bypass: bypass} do
-      config = Keyword.put(config, :token_url, "http://localhost:#{bypass.port}/v1/oauth/token")
+    setup %{config: config} do
+      config = Keyword.put(config, :token_url, TestServer.url("/v1/oauth/token"))
 
       {:ok, config: config}
     end
 
-    test "normalizes data", %{config: config, callback_params: params, bypass: bypass} do
-      expect_oauth2_access_token_request(bypass, [uri: "/v1/oauth/token"], fn _conn, params ->
+    test "normalizes data", %{config: config, callback_params: params} do
+      expect_oauth2_access_token_request([uri: "/v1/oauth/token"], fn _conn, params ->
         assert params["client_secret"] == config[:client_secret]
       end)
 
-      expect_oauth2_user_request(bypass, @user_response, uri: "/v2/account")
+      expect_oauth2_user_request(@user_response, uri: "/v2/account")
 
       assert {:ok, %{user: user}} = DigitalOcean.callback(config, params)
       assert user == @user

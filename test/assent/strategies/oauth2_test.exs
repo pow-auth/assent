@@ -1,7 +1,7 @@
 defmodule Assent.Strategy.OAuth2Test do
   use Assent.Test.OAuth2TestCase
 
-  alias Assent.{CallbackCSRFError, CallbackError, Config.MissingKeyError, JWTAdapter.AssentJWT, MissingParamError, RequestError, Strategy.OAuth2}
+  alias Assent.{CallbackCSRFError, CallbackError, Config.MissingKeyError, JWTAdapter.AssentJWT, MissingParamError, RequestError, Strategy.OAuth2, TestServer}
 
   @client_id "s6BhdRkqt3"
   @client_secret "7Fjfp0ZBr1KtDRbnfVdmIw"
@@ -47,14 +47,14 @@ defmodule Assent.Strategy.OAuth2Test do
     -----END PUBLIC KEY-----
     """
 
-  test "authorize_url/2", %{config: config, bypass: bypass} do
+  test "authorize_url/2", %{config: config} do
     assert {:ok, %{url: url, session_params: %{state: state}}} =
       config
       |> Keyword.put(:client_id, @client_id)
       |> OAuth2.authorize_url()
 
     refute is_nil(state)
-    assert url =~ "http://localhost:#{bypass.port}/oauth/authorize?client_id=#{@client_id}&redirect_uri=http%3A%2F%2Flocalhost%3A4000%2Fauth%2Fcallback&response_type=code&state=#{state}"
+    assert url =~ TestServer.url("/oauth/authorize?client_id=#{@client_id}&redirect_uri=http%3A%2F%2Flocalhost%3A4000%2Fauth%2Fcallback&response_type=code&state=#{state}")
   end
 
   test "authorize_url/2 with state in authorization_param", %{config: config} do
@@ -117,37 +117,37 @@ defmodule Assent.Strategy.OAuth2Test do
       assert error.message == "CSRF detected with param key \"state\""
     end
 
-    test "with state param without state in session_params", %{config: config, callback_params: params, bypass: bypass} do
+    test "with state param without state in session_params", %{config: config, callback_params: params} do
       config = Keyword.put(config, :session_params, %{})
 
-      expect_oauth2_access_token_request(bypass, [])
-      expect_oauth2_user_request(bypass, %{})
+      expect_oauth2_access_token_request([])
+      expect_oauth2_user_request(%{})
 
       assert {:ok, _any} = OAuth2.callback(config, params)
     end
 
-    test "without state in params and session params", %{config: config, callback_params: params, bypass: bypass} do
+    test "without state in params and session params", %{config: config, callback_params: params} do
       config = Keyword.put(config, :session_params, %{})
       params = Map.delete(params, "state")
 
-      expect_oauth2_access_token_request(bypass, [])
-      expect_oauth2_user_request(bypass, %{})
+      expect_oauth2_access_token_request([])
+      expect_oauth2_user_request(%{})
 
       assert {:ok, _any} = OAuth2.callback(config, params)
     end
 
-    test "with unreachable token url", %{config: config, callback_params: params, bypass: bypass} do
-      Bypass.down(bypass)
+    test "with unreachable token url", %{config: config, callback_params: params} do
+      TestServer.down()
 
       assert {:error, %RequestError{} = error} = OAuth2.callback(config, params)
       assert error.error == :unreachable
       assert error.message =~ "Server was unreachable with Assent.HTTPAdapter.Httpc."
       assert error.message =~ "{:failed_connect"
-      assert error.message =~ "URL: http://localhost:#{bypass.port}/oauth/token"
+      assert error.message =~ "URL: #{TestServer.url("/oauth/token")}"
     end
 
-    test "with access token error with 200 response", %{config: config, callback_params: params, bypass: bypass} do
-      expect_oauth2_access_token_request(bypass, params: %{"error" => "error", "error_description" => "Error description"})
+    test "with access token error with 200 response", %{config: config, callback_params: params} do
+      expect_oauth2_access_token_request(params: %{"error" => "error", "error_description" => "Error description"})
 
       assert {:error, %RequestError{} = error} = OAuth2.callback(config, params)
       assert error.error == :unexpected_response
@@ -155,8 +155,8 @@ defmodule Assent.Strategy.OAuth2Test do
       assert error.message =~ "%{\"error\" => \"error\", \"error_description\" => \"Error description\"}"
     end
 
-    test "with access token error with 500 response", %{config: config, callback_params: params, bypass: bypass} do
-      expect_oauth2_access_token_request(bypass, status_code: 500, params: %{error: "Error"})
+    test "with access token error with 500 response", %{config: config, callback_params: params} do
+      expect_oauth2_access_token_request(status_code: 500, params: %{error: "Error"})
 
       assert {:error, %RequestError{} = error} = OAuth2.callback(config, params)
       assert error.error == :invalid_server_response
@@ -164,25 +164,25 @@ defmodule Assent.Strategy.OAuth2Test do
       assert error.message =~ "%{\"error\" => \"Error\"}"
     end
 
-    test "with missing `:user_url`", %{config: config, callback_params: params, bypass: bypass} do
+    test "with missing `:user_url`", %{config: config, callback_params: params} do
       config = Keyword.delete(config, :user_url)
 
-      expect_oauth2_access_token_request(bypass)
+      expect_oauth2_access_token_request()
 
       assert {:error, %MissingKeyError{} = error} = OAuth2.callback(config, params)
       assert error.message == "Key `:user_url` not found in config"
     end
 
-    test "with invalid token type", %{config: config, callback_params: params, bypass: bypass} do
-      expect_oauth2_access_token_request(bypass, params: %{access_token: "access_token", token_type: "invalid"})
+    test "with invalid token type", %{config: config, callback_params: params} do
+      expect_oauth2_access_token_request(params: %{access_token: "access_token", token_type: "invalid"})
 
       assert OAuth2.callback(config, params) == {:error, "Authorization with token type `invalid` not supported"}
     end
 
-    test "with unreachable `:user_url`", %{config: config, callback_params: params, bypass: bypass} do
+    test "with unreachable `:user_url`", %{config: config, callback_params: params} do
       config = Keyword.put(config, :user_url, "http://localhost:8888/api/user")
 
-      expect_oauth2_access_token_request(bypass)
+      expect_oauth2_access_token_request()
 
       assert {:error, %RequestError{} = error} = OAuth2.callback(config, params)
       assert error.error == :unreachable
@@ -191,9 +191,9 @@ defmodule Assent.Strategy.OAuth2Test do
       assert error.message =~ "URL: http://localhost:8888/api/user"
     end
 
-    test "with unauthorized `:user_url`", %{config: config, callback_params: params, bypass: bypass} do
-      expect_oauth2_access_token_request(bypass)
-      expect_oauth2_user_request(bypass, %{"error" => "Unauthorized"}, status_code: 401)
+    test "with unauthorized `:user_url`", %{config: config, callback_params: params} do
+      expect_oauth2_access_token_request()
+      expect_oauth2_user_request(%{"error" => "Unauthorized"}, status_code: 401)
 
       assert {:error, %RequestError{} = error} = OAuth2.callback(config, params)
       assert error.message == "Unauthorized token"
@@ -202,8 +202,8 @@ defmodule Assent.Strategy.OAuth2Test do
 
     @user_api_params %{name: "Dan Schultzer", email: "foo@example.com", uid: "1"}
 
-    test "with no auth method", %{config: config, callback_params: params, bypass: bypass} do
-      expect_oauth2_access_token_request(bypass, [], fn _conn, params ->
+    test "with no auth method", %{config: config, callback_params: params} do
+      expect_oauth2_access_token_request([], fn _conn, params ->
         assert params["grant_type"] == "authorization_code"
         assert params["code"] == "code_test_value"
         assert params["redirect_uri"] == "http://localhost:4000/auth/callback"
@@ -211,15 +211,15 @@ defmodule Assent.Strategy.OAuth2Test do
         refute params["client_secret"]
       end)
 
-      expect_oauth2_user_request(bypass, @user_api_params)
+      expect_oauth2_user_request(@user_api_params)
 
       assert {:ok, _any} = OAuth2.callback(config, params)
     end
 
-    test "with `:client_secret_basic` auth method", %{config: config, callback_params: params, bypass: bypass} do
+    test "with `:client_secret_basic` auth method", %{config: config, callback_params: params} do
       config = Keyword.put(config, :auth_method, :client_secret_basic)
 
-      expect_oauth2_access_token_request(bypass, [], fn conn, params ->
+      expect_oauth2_access_token_request([], fn conn, params ->
         assert [{"authorization", "Basic " <> token} | _rest] = conn.req_headers
         assert Base.url_decode64(token) == {:ok, "#{@client_id}:#{@client_secret}"}
 
@@ -228,15 +228,15 @@ defmodule Assent.Strategy.OAuth2Test do
         assert params["redirect_uri"] == "http://localhost:4000/auth/callback"
       end)
 
-      expect_oauth2_user_request(bypass, @user_api_params)
+      expect_oauth2_user_request(@user_api_params)
 
       assert {:ok, _any} = OAuth2.callback(config, params)
     end
 
-    test "with `:client_secret_post` auth method", %{config: config, callback_params: params, bypass: bypass} do
+    test "with `:client_secret_post` auth method", %{config: config, callback_params: params} do
       config = Keyword.put(config, :auth_method, :client_secret_post)
 
-      expect_oauth2_access_token_request(bypass, [], fn _conn, params ->
+      expect_oauth2_access_token_request([], fn _conn, params ->
         assert params["grant_type"] == "authorization_code"
         assert params["code"] == "code_test_value"
         assert params["redirect_uri"] == "http://localhost:4000/auth/callback"
@@ -244,15 +244,15 @@ defmodule Assent.Strategy.OAuth2Test do
         assert params["client_secret"] == @client_secret
       end)
 
-      expect_oauth2_user_request(bypass, @user_api_params)
+      expect_oauth2_user_request(@user_api_params)
 
       assert {:ok, _any} = OAuth2.callback(config, params)
     end
 
-    test "with `:client_secret_jwt` auth method", %{config: config, callback_params: params, bypass: bypass} do
+    test "with `:client_secret_jwt` auth method", %{config: config, callback_params: params} do
       config = Keyword.put(config, :auth_method, :client_secret_jwt)
 
-      expect_oauth2_access_token_request(bypass, [], fn _conn, params ->
+      expect_oauth2_access_token_request([], fn _conn, params ->
         assert params["grant_type"] == "authorization_code"
         assert params["code"] == "code_test_value"
         assert params["redirect_uri"] == "http://localhost:4000/auth/callback"
@@ -264,16 +264,16 @@ defmodule Assent.Strategy.OAuth2Test do
         assert jwt.header["typ"] == "JWT"
         assert jwt.claims["iss"] == @client_id
         assert jwt.claims["sub"] == @client_id
-        assert jwt.claims["aud"] == "http://localhost:#{bypass.port}"
+        assert jwt.claims["aud"] == TestServer.url()
         assert jwt.claims["exp"] > DateTime.to_unix(DateTime.utc_now())
       end)
 
-      expect_oauth2_user_request(bypass, @user_api_params)
+      expect_oauth2_user_request(@user_api_params)
 
       assert {:ok, _any} = OAuth2.callback(config, params)
     end
 
-    test "with `:private_key_jwt` auth method", %{config: config, callback_params: params, bypass: bypass} do
+    test "with `:private_key_jwt` auth method", %{config: config, callback_params: params} do
       config =
         config
         |> Keyword.delete(:client_secret)
@@ -281,7 +281,7 @@ defmodule Assent.Strategy.OAuth2Test do
         |> Keyword.put(:private_key, @private_key)
         |> Keyword.put(:private_key_id, @private_key_id)
 
-      expect_oauth2_access_token_request(bypass, [], fn _conn, params ->
+      expect_oauth2_access_token_request([], fn _conn, params ->
         assert params["grant_type"] == "authorization_code"
         assert params["code"] == "code_test_value"
         assert params["redirect_uri"] == "http://localhost:4000/auth/callback"
@@ -294,16 +294,16 @@ defmodule Assent.Strategy.OAuth2Test do
         assert jwt.header["kid"] == @private_key_id
         assert jwt.claims["iss"] == @client_id
         assert jwt.claims["sub"] == @client_id
-        assert jwt.claims["aud"] == "http://localhost:#{bypass.port}"
+        assert jwt.claims["aud"] == TestServer.url()
         assert jwt.claims["exp"] > DateTime.to_unix(DateTime.utc_now())
       end)
 
-      expect_oauth2_user_request(bypass, @user_api_params)
+      expect_oauth2_user_request(@user_api_params)
 
       assert {:ok, _any} = OAuth2.callback(config, params)
     end
 
-    test "with `:private_key_jwt` auth method with private key as file", %{config: config, callback_params: params, bypass: bypass} do
+    test "with `:private_key_jwt` auth method with private key as file", %{config: config, callback_params: params} do
       File.mkdir("tmp/")
       File.write!("tmp/private-key.pem", @private_key)
 
@@ -314,20 +314,20 @@ defmodule Assent.Strategy.OAuth2Test do
         |> Keyword.put(:private_key_path, "tmp/private-key.pem")
         |> Keyword.put(:private_key_id, @private_key_id)
 
-      expect_oauth2_access_token_request(bypass, [], fn _conn, params ->
+      expect_oauth2_access_token_request([], fn _conn, params ->
         assert {:ok, jwt} = AssentJWT.verify(params["client_assertion"], @public_key, json_library: Jason)
         assert jwt.verified?
         assert jwt.header["kid"] == @private_key_id
       end)
 
-      expect_oauth2_user_request(bypass, @user_api_params)
+      expect_oauth2_user_request(@user_api_params)
 
       assert {:ok, _any} = OAuth2.callback(config, params)
     end
 
-    test "normalizes data", %{config: config, callback_params: params, bypass: bypass} do
-      expect_oauth2_access_token_request(bypass)
-      expect_oauth2_user_request(bypass, @user_api_params)
+    test "normalizes data", %{config: config, callback_params: params} do
+      expect_oauth2_access_token_request()
+      expect_oauth2_user_request(@user_api_params)
 
       assert {:ok, %{user: user, token: token}} = OAuth2.callback(config, params)
       assert user == %{"email" => "foo@example.com", "name" => "Dan Schultzer", "uid" => "1"}
@@ -349,8 +349,8 @@ defmodule Assent.Strategy.OAuth2Test do
       assert OAuth2.refresh_access_token(config, %{}) == {:error, "No `refresh_token` in token map"}
     end
 
-    test "with refresh token error with 200 response", %{config: config, bypass: bypass} do
-      expect_oauth2_access_token_request(bypass, params: %{"error" => "error", "error_description" => "Error description"})
+    test "with refresh token error with 200 response", %{config: config} do
+      expect_oauth2_access_token_request(params: %{"error" => "error", "error_description" => "Error description"})
 
       assert {:error, %RequestError{} = error} = OAuth2.refresh_access_token(config, %{"refresh_token" => "refresh_token_test_value"})
       assert error.error == :unexpected_response
@@ -358,8 +358,8 @@ defmodule Assent.Strategy.OAuth2Test do
       assert error.message =~ "%{\"error\" => \"error\", \"error_description\" => \"Error description\"}"
     end
 
-    test "with fresh token error with 500 response", %{config: config, bypass: bypass} do
-      expect_oauth2_access_token_request(bypass, status_code: 500, params: %{error: "Error"})
+    test "with fresh token error with 500 response", %{config: config} do
+      expect_oauth2_access_token_request(status_code: 500, params: %{error: "Error"})
 
       assert {:error, %RequestError{} = error} = OAuth2.refresh_access_token(config, %{"refresh_token" => "refresh_token_test_value"})
       assert error.error == :invalid_server_response
@@ -367,8 +367,8 @@ defmodule Assent.Strategy.OAuth2Test do
       assert error.message =~ "%{\"error\" => \"Error\"}"
     end
 
-    test "returns token", %{config: config, bypass: bypass} do
-      expect_oauth2_access_token_request(bypass, [], fn _conn, params ->
+    test "returns token", %{config: config} do
+      expect_oauth2_access_token_request([], fn _conn, params ->
         assert params["grant_type"] == "refresh_token"
         assert params["refresh_token"] == "refresh_token_test_value"
         assert params["client_id"] == @client_id
@@ -379,8 +379,8 @@ defmodule Assent.Strategy.OAuth2Test do
       assert token == %{"access_token" => "access_token"}
     end
 
-    test "with additional params", %{config: config, bypass: bypass} do
-      expect_oauth2_access_token_request(bypass, [], fn _conn, params ->
+    test "with additional params", %{config: config} do
+      expect_oauth2_access_token_request([], fn _conn, params ->
         assert params["grant_type"] == "refresh_token"
         assert params["refresh_token"] == "refresh_token_test_value"
         assert params["scope"] == "test"
@@ -412,20 +412,20 @@ defmodule Assent.Strategy.OAuth2Test do
       assert OAuth2.request(config, Map.put(token, "token_type", "invalid"), :get, "/info") == {:error, "Authorization with token type `invalid` not supported"}
     end
 
-    test "gets", %{config: config, token: token, bypass: bypass} do
-      expect_oauth2_api_request(bypass, "/info", %{"success" => true})
+    test "gets", %{config: config, token: token} do
+      expect_oauth2_api_request("/info", %{"success" => true})
 
       assert {:ok, response} = OAuth2.request(config, token, :get, "/info")
       assert response.body == %{"success" => true}
 
-      expect_oauth2_api_request(bypass, "/info", %{"success" => true}, [], fn conn ->
+      expect_oauth2_api_request("/info", %{"success" => true}, [], fn conn ->
         assert conn.params["a"] == "1"
       end)
 
       assert {:ok, response} = OAuth2.request(config, token, :get, "/info", a: 1)
       assert response.body == %{"success" => true}
 
-      expect_oauth2_api_request(bypass, "/info", %{"success" => true}, [], fn conn ->
+      expect_oauth2_api_request("/info", %{"success" => true}, [], fn conn ->
         assert Plug.Conn.get_req_header(conn, "b") == ["2"]
       end)
 
@@ -433,28 +433,28 @@ defmodule Assent.Strategy.OAuth2Test do
       assert response.body == %{"success" => true}
     end
 
-    test "with `token_type=bearer` in token", %{config: config, token: token, bypass: bypass} do
-      expect_oauth2_api_request(bypass, "/info", %{"success" => true})
+    test "with `token_type=bearer` in token", %{config: config, token: token} do
+      expect_oauth2_api_request("/info", %{"success" => true})
       assert {:ok, response} = OAuth2.request(config, Map.put(token, "token_type", "bearer"), :get, "/info")
       assert response.body == %{"success" => true}
     end
 
-    test "with `token_type=Bearer` in token", %{config: config, token: token, bypass: bypass} do
-      expect_oauth2_api_request(bypass, "/info", %{"success" => true})
+    test "with `token_type=Bearer` in token", %{config: config, token: token} do
+      expect_oauth2_api_request("/info", %{"success" => true})
       assert {:ok, response} = OAuth2.request(config, Map.put(token, "token_type", "Bearer"), :get, "/info")
       assert response.body == %{"success" => true}
     end
   end
 
-  test "request/6 as POST request", %{config: config, bypass: bypass} do
+  test "request/6 as POST request", %{config: config} do
     token = %{"access_token" => "access_token"}
 
-    expect_oauth2_api_request(bypass, "/info", %{"success" => true}, [], nil, "POST")
+    expect_oauth2_api_request("/info", %{"success" => true}, [], nil, "POST")
 
     assert {:ok, response} = OAuth2.request(config, token, :post, "/info")
     assert response.body == %{"success" => true}
 
-    expect_oauth2_api_request(bypass, "/info", %{"success" => true}, [], fn conn ->
+    expect_oauth2_api_request("/info", %{"success" => true}, [], fn conn ->
       {:ok, body, _conn} = Plug.Conn.read_body(conn, [])
       params = URI.decode_query(body)
 

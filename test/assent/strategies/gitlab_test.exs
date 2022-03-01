@@ -53,11 +53,11 @@ defmodule Assent.Strategy.GitlabTest do
     assert url =~ "/oauth/authorize?client_id="
   end
 
-  test "callback/2", %{config: config, callback_params: params, bypass: bypass} do
-    expect_oauth2_access_token_request(bypass, [uri: "/oauth/token"], fn _conn, params ->
+  test "callback/2", %{config: config, callback_params: params} do
+    expect_oauth2_access_token_request([uri: "/oauth/token"], fn _conn, params ->
       assert params["client_secret"] == config[:client_secret]
     end)
-    expect_oauth2_user_request(bypass, @user_response, uri: "/api/v4/user")
+    expect_oauth2_user_request(@user_response, uri: "/api/v4/user")
 
     assert {:ok, %{user: user}} = Gitlab.callback(config, params)
     assert user == @user

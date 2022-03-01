@@ -108,8 +108,7 @@ defmodule Assent.Strategy.OAuth2 do
     24
     |> :crypto.strong_rand_bytes()
     |> :erlang.bitstring_to_list()
-    |> Enum.map(fn x -> :erlang.integer_to_binary(x, 16) end)
-    |> Enum.join()
+    |> Enum.map_join(fn x -> :erlang.integer_to_binary(x, 16) end)
     |> String.downcase()
   end
 

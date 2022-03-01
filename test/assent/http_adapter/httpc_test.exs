@@ -4,6 +4,7 @@ defmodule Assent.HTTPAdapter.HttpcTest do
 
   alias ExUnit.{CaptureIO, CaptureLog}
   alias Assent.HTTPAdapter.{Httpc, HTTPResponse}
+  alias Assent.TestServer
 
   @wrong_host_certificate_url "https://wrong.host.badssl.com"
   @hsts_certificate_url "https://hsts.badssl.com"
@@ -27,21 +28,17 @@ defmodule Assent.HTTPAdapter.HttpcTest do
     end
 
     test "handles query in URL" do
-      bypass = Bypass.open()
-
-      Bypass.expect_once(bypass, "GET", "/get", fn conn ->
+      TestServer.expect("GET", "/get", fn conn ->
         assert conn.query_string == "a=1"
 
         Plug.Conn.send_resp(conn, 200, "")
       end)
 
-      assert {:ok, %HTTPResponse{status: 200}} = Httpc.request(:get, "http://localhost:#{bypass.port}/get?a=1", nil, [])
+      assert {:ok, %HTTPResponse{status: 200}} = Httpc.request(:get, TestServer.url("/get?a=1"), nil, [])
     end
 
     test "handles POST" do
-      bypass = Bypass.open()
-
-      Bypass.expect_once(bypass, "POST", "/post", fn conn ->
+      TestServer.expect("POST", "/post", fn conn ->
         {:ok, body, conn} = Plug.Conn.read_body(conn, [])
         params = URI.decode_query(body)
 
@@ -52,7 +49,7 @@ defmodule Assent.HTTPAdapter.HttpcTest do
         Plug.Conn.send_resp(conn, 200, "")
       end)
 
-      assert {:ok, %HTTPResponse{status: 200}} = Httpc.request(:post, "http://localhost:#{bypass.port}/post", "a=1&b=2", [{"content-type", "application/x-www-form-urlencoded"}])
+      assert {:ok, %HTTPResponse{status: 200}} = Httpc.request(:post, TestServer.url("/post"), "a=1&b=2", [{"content-type", "application/x-www-form-urlencoded"}])
     end
   end
 

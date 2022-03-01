@@ -126,9 +126,8 @@ defmodule Assent.JWTAdapter.AssentJWT do
 
   defp decode_base64_json(encoded, opts) do
     with {:ok, json_library} <- Config.fetch(opts, :json_library),
-         {:ok, json}         <- Base.url_decode64(encoded, padding: false),
-         {:ok, map}          <- json_library.decode(json) do
-      {:ok, map}
+         {:ok, json}         <- Base.url_decode64(encoded, padding: false) do
+      json_library.decode(json)
     end
   end
 

@@ -1,7 +1,7 @@
 defmodule Assent.Strategy.VKTest do
   use Assent.Test.OAuth2TestCase
 
-  alias Assent.Strategy.VK
+  alias Assent.{Strategy.VK, TestServer}
 
   # From https://vk.com/dev/first_guide
   @users_response [
@@ -29,16 +29,16 @@ defmodule Assent.Strategy.VKTest do
   end
 
   describe "callback/2" do
-    setup %{config: config, bypass: bypass} do
-      config = Keyword.put(config, :token_url, "http://localhost:#{bypass.port}/access_token")
+    setup %{config: config} do
+      config = Keyword.put(config, :token_url, TestServer.url("/access_token"))
 
       {:ok, config: config}
     end
 
-    test "normalizes data", %{config: config, callback_params: params, bypass: bypass} do
-      expect_oauth2_access_token_request(bypass, uri: "/access_token", params: @token_response)
+    test "normalizes data", %{config: config, callback_params: params} do
+      expect_oauth2_access_token_request(uri: "/access_token", params: @token_response)
 
-      expect_oauth2_user_request(bypass, %{"response" => @users_response}, [uri: "/method/users.get"], fn conn ->
+      expect_oauth2_user_request(%{"response" => @users_response}, [uri: "/method/users.get"], fn conn ->
         conn = Plug.Conn.fetch_query_params(conn)
 
         assert conn.params["access_token"] == "access_token"
@@ -51,8 +51,8 @@ defmodule Assent.Strategy.VKTest do
       assert user == @user
     end
 
-    test "handles error", %{config: config, callback_params: params, bypass: bypass} do
-      Bypass.down(bypass)
+    test "handles error", %{config: config, callback_params: params} do
+      TestServer.down()
 
       assert {:error, %Assent.RequestError{error: :unreachable}} = VK.callback(config, params)
     end

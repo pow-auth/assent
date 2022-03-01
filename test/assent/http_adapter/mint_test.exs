@@ -5,6 +5,7 @@ defmodule Assent.HTTPAdapter.MintTest do
   alias ExUnit.CaptureLog
   alias Mint.TransportError
   alias Assent.HTTPAdapter.{HTTPResponse, Mint}
+  alias Assent.TestServer
 
   @wrong_host_certificate_url "https://wrong.host.badssl.com"
   @hsts_certificate_url "https://hsts.badssl.com"
@@ -25,28 +26,30 @@ defmodule Assent.HTTPAdapter.MintTest do
 
     if :crypto.supports()[:curves] do
       test "handles http/2" do
-        assert {:ok, %HTTPResponse{status: 200}} = Mint.request(:get, "https://http2.golang.org/", nil, [])
+        TestServer.setup(scheme: :https)
+
+        TestServer.expect("GET", "/", fn conn ->
+          Plug.Conn.send_resp(conn, 200, to_string(Plug.Conn.get_http_protocol(conn)))
+        end)
+
+        assert {:ok, %HTTPResponse{status: 200, body: "HTTP/2"}} = Mint.request(:get, TestServer.url(), nil, [], transport_opts: [cacertfile: TestServer.cacertfile()])
       end
     else
       IO.warn("No support curve algorithms, can't test in #{__MODULE__}")
     end
 
     test "handles query in URL" do
-      bypass = Bypass.open()
-
-      Bypass.expect_once(bypass, "GET", "/get", fn conn ->
+      TestServer.expect("GET", "/get", fn conn ->
         assert conn.query_string == "a=1"
 
         Plug.Conn.send_resp(conn, 200, "")
       end)
 
-      assert {:ok, %HTTPResponse{status: 200}} = Mint.request(:get, "http://localhost:#{bypass.port}/get?a=1", nil, [])
+      assert {:ok, %HTTPResponse{status: 200}} = Mint.request(:get, TestServer.url("/get?a=1"), nil, [])
     end
 
     test "handles POST" do
-      bypass = Bypass.open()
-
-      Bypass.expect_once(bypass, "POST", "/post", fn conn ->
+      TestServer.expect("POST", "/post", fn conn ->
         {:ok, body, conn} = Plug.Conn.read_body(conn, [])
         params = URI.decode_query(body)
 
@@ -57,7 +60,7 @@ defmodule Assent.HTTPAdapter.MintTest do
         Plug.Conn.send_resp(conn, 200, "")
       end)
 
-      assert {:ok, %HTTPResponse{status: 200}} = Mint.request(:post, "http://localhost:#{bypass.port}/post", "a=1&b=2", [{"content-type", "application/x-www-form-urlencoded"}])
+      assert {:ok, %HTTPResponse{status: 200}} = Mint.request(:post, TestServer.url("/post"), "a=1&b=2", [{"content-type", "application/x-www-form-urlencoded"}])
     end
   end
 end
