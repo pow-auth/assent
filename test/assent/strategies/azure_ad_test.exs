@@ -22,7 +22,11 @@ defmodule Assent.Strategy.AzureADTest do
   @user %{
     "name" => "Abe Lincoln",
     "preferred_username" => "AbeLi@microsoft.com",
-    "sub" => "AAAAAAAAAAAAAAAAAAAAAIkzqFVrSaSaFHy782bbtaQ"
+    "sub" => "AAAAAAAAAAAAAAAAAAAAAIkzqFVrSaSaFHy782bbtaQ",
+    "aio" => "Df2UVXL1ix!lMCWMSOJBcFatzcGfvFGhjKv8q5g0x732dR5MB5BisvGQO7YWByjd8iQDLq!eGbIDakyp5mnOrcdqHeYSnltepQmRp6AIZ8jY",
+    "oid" => "00000000-0000-0000-66f3-3332eca7ea81",
+    "tid" => "3338040d-6c67-4c5b-b112-36a304b66dad",
+    "ver" => "2.0"
   }
 
   test "authorize_url/2", %{config: config} do

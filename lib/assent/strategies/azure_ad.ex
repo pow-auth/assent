@@ -46,7 +46,4 @@ defmodule Assent.Strategy.AzureAD do
       client_authentication_method: "client_secret_post"
     ]
   end
-
-  @impl true
-  def normalize(_config, user), do: {:ok, user}
 end

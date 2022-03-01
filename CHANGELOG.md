@@ -3,6 +3,7 @@
 ## v0.1.29 (TBA)
 
 * `Assent.Strategy.OIDC.fetch_user/2` now removes the ID token specific keys from the user claims instead of normalizing
+* `Assent.Strategy.OIDC.Base` now adds `normalize/2` to the macro that will include the full user claims in the user params
 
 ## v0.1.28 (2021-09-30)
 
