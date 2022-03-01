@@ -31,12 +31,12 @@ defmodule Assent.Strategy.LINETest do
     assert url =~ "response_type=code"
   end
 
-  test "callback/2", %{config: config, callback_params: params, bypass: bypass} do
+  test "callback/2", %{config: config, callback_params: params} do
     openid_config  = Map.merge(config[:openid_configuration], %{"issuer" => "https://access.line.me"})
     session_params = Map.put(config[:session_params], :nonce, "0987654asdf")
     config         = Keyword.merge(config, openid_configuration: openid_config, client_id: "1234567890", session_params: session_params)
 
-    expect_oidc_access_token_request(bypass, id_token: @id_token)
+    expect_oidc_access_token_request(id_token: @id_token)
 
     assert {:ok, %{user: user}} = LINE.callback(config, params)
     assert user == @user

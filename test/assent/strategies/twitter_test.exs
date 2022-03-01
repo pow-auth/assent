@@ -1,7 +1,7 @@
 defmodule Assent.Strategy.TwitterTest do
   use Assent.Test.OAuthTestCase
 
-  alias Assent.{CallbackError, Strategy.Twitter}
+  alias Assent.{CallbackError, Strategy.Twitter, TestServer}
 
   # From https://developer.twitter.com/en/docs/accounts-and-users/manage-account-settings/api-reference/get-account-verify_credentials
   @user_response %{
@@ -132,22 +132,22 @@ defmodule Assent.Strategy.TwitterTest do
     {:ok, config: config, callback_params: callback_params}
   end
 
-  test "authorize_url/2", %{config: config, bypass: bypass} do
-    expect_oauth_request_token_request(bypass, uri: "/oauth/request_token", params: %{oauth_token: "NPcudxy0yU5T3tBzho7iCotZ3cnetKwcTIRlX0iwRl0", oauth_token_secret: "veNRnAWe6inFuo8o2u8SLLZLjolYDmDP7SzL0YfYI", oauth_callback_confirmed: true})
+  test "authorize_url/2", %{config: config} do
+    expect_oauth_request_token_request(uri: "/oauth/request_token", params: %{oauth_token: "NPcudxy0yU5T3tBzho7iCotZ3cnetKwcTIRlX0iwRl0", oauth_token_secret: "veNRnAWe6inFuo8o2u8SLLZLjolYDmDP7SzL0YfYI", oauth_callback_confirmed: true})
 
     assert {:ok, %{url: url, session_params: %{oauth_token_secret: oauth_token_secret}}} = Twitter.authorize_url(config)
-    assert url == "http://localhost:#{bypass.port}/oauth/authenticate?oauth_token=NPcudxy0yU5T3tBzho7iCotZ3cnetKwcTIRlX0iwRl0"
+    assert url == TestServer.url("/oauth/authenticate?oauth_token=NPcudxy0yU5T3tBzho7iCotZ3cnetKwcTIRlX0iwRl0")
     refute is_nil(oauth_token_secret)
   end
 
-  test "callback/2", %{config: config, callback_params: params, bypass: bypass} do
-    expect_oauth_access_token_request(bypass, [uri: "/oauth/access_token", params: %{oauth_token: "7588892-kagSNqWge8gB1WwE3plnFsJHAZVfxWD7Vb57p0b4", oauth_token_secret: "PbKfYqSryyeKDWz4ebtY3o5ogNLG11WJuZBc9fQrQo"}], fn _conn, oauth_params ->
+  test "callback/2", %{config: config, callback_params: params} do
+    expect_oauth_access_token_request([uri: "/oauth/access_token", params: %{oauth_token: "7588892-kagSNqWge8gB1WwE3plnFsJHAZVfxWD7Vb57p0b4", oauth_token_secret: "PbKfYqSryyeKDWz4ebtY3o5ogNLG11WJuZBc9fQrQo"}], fn _conn, oauth_params ->
       assert oauth_params["oauth_consumer_key"] == "cChZNFj6T5R0TigYB9yd1w"
       assert oauth_params["oauth_token"] == "NPcudxy0yU5T3tBzho7iCotZ3cnetKwcTIRlX0iwRl0"
       assert oauth_params["oauth_verifier"] == "uw7NjWHT6OJ1MpJOXsHfNxoAhPKpgI8BlYDhxEjIBY"
     end)
 
-    expect_oauth_user_request(bypass, @user_response, uri: "/1.1/account/verify_credentials.json", params: [include_entities: false, skip_status: true, include_email: true])
+    expect_oauth_user_request(@user_response, uri: "/1.1/account/verify_credentials.json", params: [include_entities: false, skip_status: true, include_email: true])
 
     assert {:ok, %{user: user}} = Twitter.callback(config, params)
     assert user == @user

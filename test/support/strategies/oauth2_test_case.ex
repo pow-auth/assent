@@ -2,12 +2,13 @@ defmodule Assent.Test.OAuth2TestCase do
   @moduledoc false
   use ExUnit.CaseTemplate
 
+  alias Assent.TestServer
+
   setup _tags do
     params = %{"code" => "code_test_value", "state" => "state_test_value"}
-    bypass = Bypass.open()
-    config = [client_id: "id", client_secret: "secret", site: "http://localhost:#{bypass.port}", redirect_uri: "http://localhost:4000/auth/callback", session_params: %{state: "state_test_value"}]
+    config = [client_id: "id", client_secret: "secret", site: TestServer.url(), redirect_uri: "http://localhost:4000/auth/callback", session_params: %{state: "state_test_value"}]
 
-    {:ok, callback_params: params, config: config, bypass: bypass}
+    {:ok, callback_params: params, config: config}
   end
 
   using do
@@ -20,14 +21,14 @@ defmodule Assent.Test.OAuth2TestCase do
 
   alias Plug.Conn
 
-  @spec expect_oauth2_access_token_request(Bypass.t(), Keyword.t(), function() | nil) :: :ok
-  def expect_oauth2_access_token_request(bypass, opts \\ [], assert_fn \\ nil) do
+  @spec expect_oauth2_access_token_request(Keyword.t(), function() | nil) :: :ok
+  def expect_oauth2_access_token_request(opts \\ [], assert_fn \\ nil) do
     access_token = Keyword.get(opts, :access_token, "access_token")
     token_params = Keyword.get(opts, :params, %{access_token: access_token})
     uri          = Keyword.get(opts, :uri, "/oauth/token")
     status_code  = Keyword.get(opts, :status_code, 200)
 
-    Bypass.expect_once(bypass, "POST", uri, fn conn ->
+    TestServer.expect("POST", uri, fn conn ->
       {:ok, body, _conn} = Plug.Conn.read_body(conn, [])
       params = URI.decode_query(body)
 
@@ -37,19 +38,19 @@ defmodule Assent.Test.OAuth2TestCase do
     end)
   end
 
-  @spec expect_oauth2_user_request(Bypass.t(), map(), Keyword.t(), function() | nil) :: :ok
-  def expect_oauth2_user_request(bypass, user_params, opts \\ [], assert_fn \\ nil) do
+  @spec expect_oauth2_user_request(map(), Keyword.t(), function() | nil) :: :ok
+  def expect_oauth2_user_request(user_params, opts \\ [], assert_fn \\ nil) do
     uri = Keyword.get(opts, :uri, "/api/user")
 
-    expect_oauth2_api_request(bypass, uri, user_params, opts, assert_fn)
+    expect_oauth2_api_request(uri, user_params, opts, assert_fn)
   end
 
-  @spec expect_oauth2_api_request(Bypass.t(), binary(), map(), Keyword.t(), function() | nil) :: :ok
-  def expect_oauth2_api_request(bypass, uri, response, opts \\ [], assert_fn \\ nil, method \\ "GET") do
+  @spec expect_oauth2_api_request(binary(), map(), Keyword.t(), function() | nil) :: :ok
+  def expect_oauth2_api_request(uri, response, opts \\ [], assert_fn \\ nil, method \\ "GET") do
     access_token = Keyword.get(opts, :access_token, "access_token")
     status_code  = Keyword.get(opts, :status_code, 200)
 
-    Bypass.expect_once(bypass, method, uri, fn conn ->
+    TestServer.expect(method, uri, fn conn ->
       if assert_fn, do: assert_fn.(conn)
 
       assert_bearer_token_in_header(conn, access_token)

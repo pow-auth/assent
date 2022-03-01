@@ -1,7 +1,7 @@
 defmodule Assent.Strategy.InstagramTest do
   use Assent.Test.OAuth2TestCase
 
-  alias Assent.Strategy.Instagram
+  alias Assent.{Strategy.Instagram, TestServer}
 
   # From https://developers.facebook.com/docs/instagram-basic-display-api/reference/user
   @user_response %{
@@ -19,18 +19,18 @@ defmodule Assent.Strategy.InstagramTest do
   end
 
   describe "callback/2" do
-    setup %{config: config, bypass: bypass} do
-      config = Keyword.put(config, :token_url, "http://localhost:#{bypass.port}/oauth/access_token")
+    setup %{config: config} do
+      config = Keyword.put(config, :token_url, TestServer.url("/oauth/access_token"))
 
       {:ok, config: config}
     end
 
-    test "normalizes data", %{config: config, callback_params: params, bypass: bypass} do
-      expect_oauth2_access_token_request(bypass, [uri: "/oauth/access_token", params: %{access_token: "access_token", user: @user_response}], fn _conn, params ->
+    test "normalizes data", %{config: config, callback_params: params} do
+      expect_oauth2_access_token_request([uri: "/oauth/access_token", params: %{access_token: "access_token", user: @user_response}], fn _conn, params ->
         assert params["client_secret"] == config[:client_secret]
       end)
 
-      expect_oauth2_user_request(bypass, @user_response, [uri: "/me"], fn conn ->
+      expect_oauth2_user_request(@user_response, [uri: "/me"], fn conn ->
         conn = Plug.Conn.fetch_query_params(conn)
 
         assert conn.params["access_token"] == "access_token"
@@ -41,8 +41,8 @@ defmodule Assent.Strategy.InstagramTest do
       assert user == @user
     end
 
-    test "handles error", %{config: config, callback_params: params, bypass: bypass} do
-      Bypass.down(bypass)
+    test "handles error", %{config: config, callback_params: params} do
+      TestServer.down()
 
       assert {:error, %Assent.RequestError{error: :unreachable}} = Instagram.callback(config, params)
     end

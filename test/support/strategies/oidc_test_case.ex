@@ -2,7 +2,7 @@ defmodule Assent.Test.OIDCTestCase do
   @moduledoc false
   use ExUnit.CaseTemplate
 
-  alias Assent.Test.OAuth2TestCase
+  alias Assent.{Test.OAuth2TestCase, TestServer}
   alias Plug.Conn
 
   @private_key """
@@ -56,22 +56,21 @@ defmodule Assent.Test.OIDCTestCase do
 
   setup _tags do
     params = %{"code" => "test_code_value", "state" => "test_state_value"}
-    bypass = Bypass.open()
     config = [
       client_id: @client_id,
       openid_configuration: %{
         "issuer" => "http://localhost",
-        "authorization_endpoint" => "http://localhost:#{bypass.port}/oauth/authorize",
-        "token_endpoint" => "http://localhost:#{bypass.port}/oauth/token",
-        "userinfo_endpoint" => "http://localhost:#{bypass.port}/userinfo",
-        "jwks_uri" => "http://localhost:#{bypass.port}/jwks_uri.json"
+        "authorization_endpoint" => TestServer.url("/oauth/authorize"),
+        "token_endpoint" => TestServer.url("/oauth/token"),
+        "userinfo_endpoint" => TestServer.url("/userinfo"),
+        "jwks_uri" => TestServer.url("/jwks_uri.json")
       },
       client_secret: @client_secret,
-      site: "http://localhost:#{bypass.port}",
+      site: TestServer.url(),
       redirect_uri: "http://localhost:4000/auth/callback",
       session_params: %{state: "test_state_value"}]
 
-    {:ok, callback_params: params, config: config, bypass: bypass}
+    {:ok, callback_params: params, config: config}
   end
 
   using do
@@ -83,22 +82,22 @@ defmodule Assent.Test.OIDCTestCase do
     end
   end
 
-  @spec expect_openid_config_request(Bypass.t(), map()) :: :ok
-  def expect_openid_config_request(bypass, openid_config, opts \\ []) do
+  @spec expect_openid_config_request(map()) :: :ok
+  def expect_openid_config_request(openid_config, opts \\ []) do
     uri          = Keyword.get(opts, :uri, "/.well-known/openid-configuration")
     status_code  = Keyword.get(opts, :status_code, 200)
 
-    Bypass.expect_once(bypass, "GET", uri, fn conn ->
+    TestServer.expect("GET", uri, fn conn ->
       send_json_resp(conn, openid_config, status_code)
     end)
   end
 
-  @spec expect_oidc_access_token_request(Bypass.t(), Keyword.t(), function() | nil) :: :ok
-  def expect_oidc_access_token_request(bypass, opts \\ [], assert_fn \\ nil) do
+  @spec expect_oidc_access_token_request(Keyword.t(), function() | nil) :: :ok
+  def expect_oidc_access_token_request(opts \\ [], assert_fn \\ nil) do
     id_token = Keyword.get_lazy(opts, :id_token, fn ->
       opts
       |> Keyword.get(:id_token_opts, [])
-      |> Keyword.put_new(:iss, "http://localhost:#{bypass.port}")
+      |> Keyword.put_new(:iss, TestServer.url())
       |> gen_id_token()
     end)
 
@@ -109,16 +108,16 @@ defmodule Assent.Test.OIDCTestCase do
       |> Keyword.drop([:id_token, :id_token_opts])
       |> Keyword.put(:params, params)
 
-    OAuth2TestCase.expect_oauth2_access_token_request(bypass, opts, assert_fn)
+    OAuth2TestCase.expect_oauth2_access_token_request(opts, assert_fn)
   end
 
-  @spec expect_oidc_jwks_uri_request(Bypass.t(), Keyword.t()) :: :ok
-  def expect_oidc_jwks_uri_request(bypass, opts \\ []) do
+  @spec expect_oidc_jwks_uri_request(Keyword.t()) :: :ok
+  def expect_oidc_jwks_uri_request(opts \\ []) do
     uri         = Keyword.get(opts, :uri, "/jwks_uri.json")
     keys        = opts[:keys] || gen_keys(opts)
     status_code = Keyword.get(opts, :status_code, 200)
 
-    Bypass.expect_once(bypass, "GET", uri, fn conn ->
+    TestServer.expect("GET", uri, fn conn ->
       conn
       |> Plug.Conn.put_resp_content_type("application/json")
       |> Plug.Conn.send_resp(status_code, Jason.encode!(%{"keys" => keys}))
@@ -127,19 +126,19 @@ defmodule Assent.Test.OIDCTestCase do
     keys
   end
 
-  @spec expect_oidc_userinfo_request(Bypass.t(), map() | binary(), Keyword.t()) :: :ok
-  def expect_oidc_userinfo_request(bypass, claims_or_jwt, opts \\ [])
-  def expect_oidc_userinfo_request(bypass, claims, opts) when is_map(claims) do
+  @spec expect_oidc_userinfo_request(map() | binary(), Keyword.t()) :: :ok
+  def expect_oidc_userinfo_request(claims_or_jwt, opts \\ [])
+  def expect_oidc_userinfo_request(claims, opts) when is_map(claims) do
     opts = Keyword.put_new(opts, :uri, "/userinfo")
 
-    OAuth2TestCase.expect_oauth2_user_request(bypass, claims, opts)
+    OAuth2TestCase.expect_oauth2_user_request(claims, opts)
   end
-  def expect_oidc_userinfo_request(bypass, jwt, opts) when is_binary(jwt) do
+  def expect_oidc_userinfo_request(jwt, opts) when is_binary(jwt) do
     uri          = Keyword.get(opts, :uri, "/userinfo")
     access_token = Keyword.get(opts, :access_token, "access_token")
     status_code  = Keyword.get(opts, :status_code, 200)
 
-    Bypass.expect_once(bypass, "GET", uri, fn conn ->
+    TestServer.expect("GET", uri, fn conn ->
       assert {"authorization", "Bearer #{access_token}"} in conn.req_headers
 
       conn

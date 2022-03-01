@@ -1,7 +1,7 @@
 defmodule Assent.Strategy.GithubTest do
   use Assent.Test.OAuth2TestCase
 
-  alias Assent.Strategy.Github
+  alias Assent.{Strategy.Github, TestServer}
 
   # From https://developer.github.com/v3/users/
   @user_response %{
@@ -74,18 +74,18 @@ defmodule Assent.Strategy.GithubTest do
   end
 
   describe "callback/2" do
-    setup %{config: config, bypass: bypass} do
-      config = Keyword.put(config, :token_url, "http://localhost:#{bypass.port}/login/oauth/access_token")
+    setup %{config: config} do
+      config = Keyword.put(config, :token_url, TestServer.url("/login/oauth/access_token"))
 
       {:ok, config: config}
     end
 
-    test "normalizes data", %{config: config, callback_params: params, bypass: bypass} do
-      expect_oauth2_access_token_request(bypass, [uri: "/login/oauth/access_token"], fn _conn, params ->
+    test "normalizes data", %{config: config, callback_params: params} do
+      expect_oauth2_access_token_request([uri: "/login/oauth/access_token"], fn _conn, params ->
         assert params["client_secret"] == config[:client_secret]
       end)
-      expect_oauth2_user_request(bypass, @user_response, uri: "/user")
-      expect_oauth2_api_request(bypass, "/user/emails", @emails_response)
+      expect_oauth2_user_request(@user_response, uri: "/user")
+      expect_oauth2_api_request("/user/emails", @emails_response)
 
       assert {:ok, %{user: user}} = Github.callback(config, params)
       assert user == @user

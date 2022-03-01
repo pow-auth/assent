@@ -2,7 +2,7 @@ defmodule Assent.Strategy.AppleTest do
   use Assent.Test.OIDCTestCase
 
   alias Assent.JWTAdapter.AssentJWT
-  alias Assent.Strategy.Apple
+  alias Assent.{Strategy.Apple, TestServer}
 
   @client_id "001473.fe6f6f83bf4b8e4590aacbabdcb8598bd0.2039"
   @team_id "app.test.client"
@@ -65,8 +65,8 @@ defmodule Assent.Strategy.AppleTest do
   end
 
   if :crypto.supports()[:curves] do
-    test "callback/2", %{config: config, callback_params: params, bypass: bypass} do
-      expect_oidc_access_token_request(bypass, [id_token_opts: [claims: @id_token_claims], uri: "/auth/token"], fn _conn, params ->
+    test "callback/2", %{config: config, callback_params: params} do
+      expect_oidc_access_token_request([id_token_opts: [claims: @id_token_claims], uri: "/auth/token"], fn _conn, params ->
         assert {:ok, jwt} = AssentJWT.verify(params["client_secret"], @public_key, json_library: Jason)
         assert jwt.verified?
         assert jwt.header["alg"] == "ES256"
@@ -74,17 +74,17 @@ defmodule Assent.Strategy.AppleTest do
         assert jwt.header["kid"] == @private_key_id
         assert jwt.claims["iss"] == @team_id
         assert jwt.claims["sub"] == @client_id
-        assert jwt.claims["aud"] == "http://localhost:#{bypass.port}"
+        assert jwt.claims["aud"] == TestServer.url()
         assert jwt.claims["exp"] > DateTime.to_unix(DateTime.utc_now())
       end)
 
-      expect_oidc_jwks_uri_request(bypass, uri: "/auth/keys", keys: [@jwk])
+      expect_oidc_jwks_uri_request(uri: "/auth/keys", keys: [@jwk])
 
       assert {:ok, %{user: user}} = Apple.callback(config, params)
       assert user == @user
     end
 
-    test "callback/2 with name scope", %{config: config, callback_params: params, bypass: bypass} do
+    test "callback/2 with name scope", %{config: config, callback_params: params} do
       expected_user = Map.merge(@user, %{"given_name" => "John", "family_name" => "Doe"})
 
       encoded_user =
@@ -95,8 +95,8 @@ defmodule Assent.Strategy.AppleTest do
 
       params = Map.put(params, "user", encoded_user)
 
-      expect_oidc_access_token_request(bypass, id_token_opts: [claims: @id_token_claims, kid: @jwk["kid"]], uri: "/auth/token")
-      expect_oidc_jwks_uri_request(bypass, uri: "/auth/keys", keys: [@jwk])
+      expect_oidc_access_token_request(id_token_opts: [claims: @id_token_claims, kid: @jwk["kid"]], uri: "/auth/token")
+      expect_oidc_jwks_uri_request(uri: "/auth/keys", keys: [@jwk])
 
       assert {:ok, %{user: user}} = Apple.callback(config, params)
       assert user == expected_user
