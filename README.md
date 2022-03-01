@@ -163,7 +163,7 @@ defmodule TestProvider do
       # },
       # # Provider specific data not part of the standard claims spec
       # %{
-      #   "test_provider_bio" => user["bio"]
+      #   "http://localhost:4000/bio" => user["bio"]
       }
     }
   end
