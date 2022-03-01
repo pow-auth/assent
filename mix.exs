@@ -48,6 +48,7 @@ defmodule Assent.MixProject do
 
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
 
+      {:mime, "~> 1.0", only: :test},
       {:plug_cowboy, "~> 2.0", only: :test},
       {:x509, "~> 0.6.0", only: :test}
     ]
