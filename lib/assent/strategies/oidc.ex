@@ -182,9 +182,6 @@ defmodule Assent.Strategy.OIDC do
   private key, the appropriate public key will be fetched from the `jwks_uri`
   setting in the OpenID configuration to verify the ID Token.
 
-  The userinfo will be fetched from the `userinfo_endpoint` if it exists in the
-  OpenID Configuration, otherwise the claims in the ID Token is used.
-
   The ID Token will be validated per
   [OpenID Connect Core 1.0 rules](https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation).
 
