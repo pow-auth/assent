@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.29 (TBA)
+
+* `Assent.Strategy.OIDC.fetch_user/2` now removes the ID token specific keys from the user claims instead of normalizing
+
 ## v0.1.28 (2021-09-30)
 
 * `Assent.Strategy.OIDC` bug fixed so it handles unreachable urls correctly

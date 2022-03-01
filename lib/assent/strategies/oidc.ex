@@ -218,8 +218,10 @@ defmodule Assent.Strategy.OIDC do
   defp to_client_auth_method("private_key_jwt"), do: {:ok, :private_key_jwt}
   defp to_client_auth_method(method), do: {:error, "Invalid client authentication method: #{method}"}
 
+  @id_token_keys ~w(iss aud exp iat auth_time nonce acr amr azp at_hash c_hash sub_jwk)
+
   @doc """
-  Fetches user params and normalizes response.
+  Fetches user params from ID token.
 
   The ID Token is validated, and the claims is returned as the user params.
   Use `fetch_userinfo/2` to fetch the claims from the `userinfo` endpoint.
@@ -228,7 +230,7 @@ defmodule Assent.Strategy.OIDC do
   def fetch_user(config, token) do
     with {:ok, id_token} <- fetch_id_token(token),
          {:ok, jwt}      <- validate_id_token(config, id_token) do
-      Helpers.normalize_userinfo(jwt.claims)
+      {:ok, Map.drop(jwt.claims, @id_token_keys)}
     end
   end
 
