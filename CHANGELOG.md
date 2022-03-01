@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.2.0 (TBA)
+## v0.2.0 (2022-03-01)
 
 **This release consists of breaking changes.**
 
