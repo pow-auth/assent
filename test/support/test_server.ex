@@ -8,6 +8,14 @@ defmodule Assent.TestServer do
     request_timeout: 1000
   ]
 
+  @https_options [
+    verify: :verify_peer,
+    password: "cowboy",
+    keyfile: Path.expand("../fixtures/ssl/server_key_enc.pem", __DIR__),
+    certfile: Path.expand("../fixtures/ssl/valid.pem", __DIR__),
+    cacertfile: Path.expand("../fixtures/ssl/ca_and_chain.pem", __DIR__)
+  ]
+
   # API
 
   def expect(method, uri, callback_fn) do
@@ -24,12 +32,13 @@ defmodule Assent.TestServer do
     end
   end
 
-  defp setup do
+  def setup(opts \\ []) do
     port = open_port()
-    options = [port: port, protocol_options: @protocol_options]
+    opts = Keyword.merge([scheme: :http, port: port], opts)
+    cowboy_options = cowboy_options(opts)
 
-    {:ok, pid} = GenServer.start(__MODULE__.Instance, options)
-    {:ok, _} = Plug.Cowboy.http(__MODULE__.Plug, [pid], Keyword.put(options, :ref, cowboy_ref(pid)))
+    {:ok, pid} = GenServer.start(__MODULE__.Instance, opts)
+    {:ok, _} = apply(Plug.Cowboy, opts[:scheme], [__MODULE__.Plug, [pid], Keyword.put(cowboy_options, :ref, cowboy_ref(pid))])
 
     Process.put(:test_server, pid)
 
@@ -55,6 +64,15 @@ defmodule Assent.TestServer do
     port
   end
 
+  defp cowboy_options(opts) do
+    options = [port: opts[:port], protocol_options: @protocol_options]
+
+    case opts[:scheme] do
+      :https -> Keyword.merge(options, @https_options)
+      :http -> options
+    end
+  end
+
   defp cowboy_ref(pid) do
     port = GenServer.call(pid, :port)
     Module.concat(__MODULE__.Plug, "Server_#{port}")
@@ -62,8 +80,13 @@ defmodule Assent.TestServer do
 
   def url(uri \\ nil) do
     port = GenServer.call(get_or_set_pid(), :port)
+    scheme = GenServer.call(get_or_set_pid(), :scheme)
 
-    "http://localhost:#{port}#{uri}"
+    "#{scheme}://localhost:#{port}#{uri}"
+  end
+
+  def cacertfile do
+    Path.expand("../fixtures/ssl/ca_and_chain.pem", __DIR__)
   end
 
   def down do
@@ -89,6 +112,10 @@ defmodule Assent.TestServer do
 
     def handle_call(:port, _from, state) do
       {:reply, state.options[:port], state}
+    end
+
+    def handle_call(:scheme, _from, state) do
+      {:reply, state.options[:scheme], state}
     end
 
     def handle_call(:expectations, _from, state) do

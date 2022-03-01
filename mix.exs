@@ -21,7 +21,9 @@ defmodule Assent.MixProject do
       name: "Assent",
       docs: docs(),
 
-      xref: [exclude: [:certifi, :httpc, Mint.HTTP, JOSE.JWT, JOSE.JWK, JOSE.JWS, :ssl_verify_hostname]]
+      xref: [exclude: [:certifi, :httpc, Mint.HTTP, JOSE.JWT, JOSE.JWK, JOSE.JWS, :ssl_verify_hostname]],
+
+      aliases: aliases()
     ]
   end
 
@@ -46,10 +48,8 @@ defmodule Assent.MixProject do
 
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
 
-      {:cowboy, "~> 2.8", only: :test, override: true},
-      {:cowlib, "~> 2.9", only: :test, override: true},
-      {:ranch, "~> 1.7", only: :test, override: true},
-      {:plug_cowboy, "~> 2.0", only: :test}
+      {:plug_cowboy, "~> 2.0", only: :test},
+      {:x509, "~> 0.6.0", only: :test}
     ]
   end
 
@@ -84,6 +84,12 @@ defmodule Assent.MixProject do
       skip_undefined_reference_warnings_on: [
         "CHANGELOG.md"
       ]
+    ]
+  end
+
+  defp aliases do
+    [
+      test: ["x509.gen.suite -f -p cowboy -o test/fixtures/ssl", "test"]
     ]
   end
 end

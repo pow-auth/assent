@@ -26,7 +26,13 @@ defmodule Assent.HTTPAdapter.MintTest do
 
     if :crypto.supports()[:curves] do
       test "handles http/2" do
-        assert {:ok, %HTTPResponse{status: 200}} = Mint.request(:get, "https://http2.golang.org/", nil, [])
+        TestServer.setup(scheme: :https)
+
+        TestServer.expect("GET", "/", fn conn ->
+          Plug.Conn.send_resp(conn, 200, to_string(Plug.Conn.get_http_protocol(conn)))
+        end)
+
+        assert {:ok, %HTTPResponse{status: 200, body: "HTTP/2"}} = Mint.request(:get, TestServer.url(), nil, [], transport_opts: [cacertfile: TestServer.cacertfile()])
       end
     else
       IO.warn("No support curve algorithms, can't test in #{__MODULE__}")
