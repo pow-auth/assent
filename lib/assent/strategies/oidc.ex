@@ -218,7 +218,14 @@ defmodule Assent.Strategy.OIDC do
   defp to_client_auth_method("private_key_jwt"), do: {:ok, :private_key_jwt}
   defp to_client_auth_method(method), do: {:error, "Invalid client authentication method: #{method}"}
 
-  @id_token_keys ~w(iss aud exp iat auth_time nonce acr amr azp at_hash c_hash sub_jwk)
+  # https://openid.net/specs/draft-jones-json-web-token-07.html#ReservedClaimName
+  @reserved_jwt_names ~w(exp nbf iat iss aud prn jti typ)
+
+  # https://openid.net/specs/openid-connect-core-1_0.html#IDToken
+  @id_token_names ~w(iss sub aud exp iat auth_time nonce acr amr azp at_hash c_hash sub_jwk)
+
+  # All ID Token claim names to be excluded from the user params
+  @id_token_names_to_exclude Enum.uniq(@reserved_jwt_names ++ @id_token_names -- ~w(sub))
 
   @doc """
   Fetches user params from ID token.
@@ -230,7 +237,7 @@ defmodule Assent.Strategy.OIDC do
   def fetch_user(config, token) do
     with {:ok, id_token} <- fetch_id_token(token),
          {:ok, jwt}      <- validate_id_token(config, id_token) do
-      {:ok, Map.drop(jwt.claims, @id_token_keys)}
+      {:ok, Map.drop(jwt.claims, @id_token_names_to_exclude)}
     end
   end
 
