@@ -12,7 +12,7 @@ defmodule Assent.Config do
   @doc """
   Fetches the key value from the configuration.
   """
-  @spec fetch(t(), atom()) :: {:ok, any()} | {:error, %MissingKeyError{}}
+  @spec fetch(t(), atom()) :: {:ok, any()} | {:error, MissingKeyError.t()}
   def fetch(config, key) do
     case Keyword.fetch(config, key) do
       {:ok, value} -> {:ok, value}

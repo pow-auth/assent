@@ -142,11 +142,9 @@ defmodule Assent.Strategy.OAuth do
 
     with {:ok, signature} <- gen_signature(config, method, uri, request_params, signature_method, token_secret) do
       oauth_header_value =
-        [{"oauth_signature", signature} | oauth_params]
-        |> Enum.map(fn {key, value} ->
+        Enum.map_join([{"oauth_signature", signature} | oauth_params], ", ", fn {key, value} ->
           percent_encode(key) <> "=\"" <> percent_encode(value) <> "\""
         end)
-        |> Enum.join(", ")
 
       {:ok, {"Authorization", "OAuth " <> oauth_header_value}}
     end
@@ -193,10 +191,7 @@ defmodule Assent.Strategy.OAuth do
 
   defp encoded_shared_secret(config, token_secret) do
     with {:ok, consumer_secret} <- Config.fetch(config, :consumer_secret) do
-      shared_secret =
-        [consumer_secret, token_secret || ""]
-        |> Enum.map(&percent_encode/1)
-        |> Enum.join("&")
+      shared_secret = Enum.map_join([consumer_secret, token_secret || ""], "&", &percent_encode/1)
 
       {:ok, shared_secret}
     end
@@ -227,9 +222,7 @@ defmodule Assent.Strategy.OAuth do
       |> Enum.sort()
       |> Enum.join("&")
 
-    [method, base_string_uri, normalized_request_params]
-    |> Enum.map(&percent_encode/1)
-    |> Enum.join("&")
+    Enum.map_join([method, base_string_uri, normalized_request_params], "&", &percent_encode/1)
   end
 
   defp decode_pem(pem) do
