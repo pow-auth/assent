@@ -15,7 +15,4 @@ defmodule Assent.Strategy.LINE do
       id_token_signed_response_alg: "HS256"
     ]
   end
-
-  @impl true
-  def normalize(_config, user), do: {:ok, user}
 end

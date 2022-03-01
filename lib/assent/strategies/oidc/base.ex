@@ -40,6 +40,9 @@ defmodule Assent.Strategy.OIDC.Base do
       @impl unquote(__MODULE__)
       def fetch_user(config, token), do: OIDC.fetch_user(config, token)
 
+      @impl unquote(__MODULE__)
+      def normalize(_config, user), do: {:ok, user, user}
+
       defoverridable unquote(__MODULE__)
       defoverridable Assent.Strategy
     end

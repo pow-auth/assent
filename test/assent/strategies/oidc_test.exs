@@ -40,8 +40,8 @@ defmodule Assent.Strategy.OIDCTest do
       assert OIDC.callback(config, params) == {:error, "The ID Token is not a valid JWT"}
     end
 
-    @user_claims %{sub: "1", name: "Dan Schultzer", email: "foo@example.com", email_verified: true}
-    @user %{"email" => "foo@example.com", "name" => "Dan Schultzer", "sub" => "1", "email_verified" => true}
+    @user_claims %{sub: "1", name: "Dan Schultzer", email: "foo@example.com", email_verified: true, "http://localhost:4000/additional": "info"}
+    @user %{"email" => "foo@example.com", "name" => "Dan Schultzer", "sub" => "1", "email_verified" => true, "http://localhost:4000/additional" => "info"}
 
     test "with `client_secret_basic` authentication method", %{config: config, callback_params: params} do
       expect_oidc_access_token_request([id_token_opts: [claims: @user_claims, iss: "http://localhost"]], fn conn, _params ->
