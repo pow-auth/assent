@@ -9,16 +9,18 @@ defmodule Assent.TestServer do
   ]
 
   @https_options [
-    verify: :verify_peer,
-    password: "cowboy",
-    keyfile: Path.expand("../fixtures/ssl/server_key_enc.pem", __DIR__),
-    certfile: Path.expand("../fixtures/ssl/valid.pem", __DIR__),
-    cacertfile: Path.expand("../fixtures/ssl/ca_and_chain.pem", __DIR__)
+    keyfile: Path.expand("tmp/fixtures/ssl/server_key.pem"),
+    certfile: Path.expand("tmp/fixtures/ssl/valid.pem"),
+    cacertfile: Path.expand("tmp/fixtures/ssl/ca_and_chain.pem")
   ]
+
+  @cacertfile Path.expand("tmp/fixtures/ssl/cacerts.pem")
 
   # API
 
-  def expect(method, uri, callback_fn) do
+  def expect(method, uri, callback_fn \\ nil) do
+    callback_fn = callback_fn || &Plug.Conn.send_resp(&1, 200, to_string(Plug.Conn.get_http_protocol(&1)))
+
     case GenServer.call(get_or_set_pid(), {:put, method, uri, callback_fn}) do
       :ok -> :ok
       :error -> raise "Route expectation has already been set for #{method} #{uri}"
@@ -34,7 +36,7 @@ defmodule Assent.TestServer do
 
   def setup(opts \\ []) do
     port = open_port()
-    opts = Keyword.merge([scheme: :http, port: port], opts)
+    opts = Keyword.merge([scheme: :http, cert: :valid, port: port], opts)
     cowboy_options = cowboy_options(opts)
 
     {:ok, pid} = GenServer.start(__MODULE__.Instance, opts)
@@ -74,25 +76,42 @@ defmodule Assent.TestServer do
   end
 
   defp cowboy_ref(pid) do
-    port = GenServer.call(pid, :port)
+    port = fetch_option!(pid, :port)
     Module.concat(__MODULE__.Plug, "Server_#{port}")
   end
 
-  def url(uri \\ nil) do
-    port = GenServer.call(get_or_set_pid(), :port)
-    scheme = GenServer.call(get_or_set_pid(), :scheme)
-
-    "#{scheme}://localhost:#{port}#{uri}"
+  defp fetch_option!(pid, key) do
+    Keyword.fetch!(GenServer.call(pid, :opts), key)
   end
 
-  def cacertfile do
-    Path.expand("../fixtures/ssl/ca_and_chain.pem", __DIR__)
+  def url(uri) when is_binary(uri), do: url(uri, [])
+  def url(opts) when is_list(opts), do: url(nil, opts)
+  def url(uri \\ nil, opts \\ []) do
+    domain =
+      case opts[:domain] do
+        nil ->
+          "localhost"
+
+        domain ->
+          :inet_db.set_lookup([:file, :dns])
+          :inet_db.add_host({127, 0, 0, 1}, [String.to_charlist(domain)])
+
+          domain
+      end
+
+    port = fetch_option!(get_or_set_pid(), :port)
+    scheme = fetch_option!(get_or_set_pid(), :scheme)
+
+    "#{scheme}://#{domain}:#{port}#{uri}"
   end
+
+  def cacertfile, do: @cacertfile
 
   def down do
     pid = Process.get(:test_server)
+    ref = cowboy_ref(pid)
 
-    :ok = Plug.Cowboy.shutdown(cowboy_ref(pid))
+    :ok = Plug.Cowboy.shutdown(ref)
   end
 
   # GenServer instance
@@ -110,12 +129,8 @@ defmodule Assent.TestServer do
       {:ok, %{options: options, expectations: %{}}}
     end
 
-    def handle_call(:port, _from, state) do
-      {:reply, state.options[:port], state}
-    end
-
-    def handle_call(:scheme, _from, state) do
-      {:reply, state.options[:scheme], state}
+    def handle_call(:opts, _from, state) do
+      {:reply, state.options, state}
     end
 
     def handle_call(:expectations, _from, state) do

@@ -22,8 +22,6 @@ erl_crash.dump
 # Ignore package tarball (built via "mix hex.build").
 assent-*.tar
 
-test/fixtures/ssl
-
 .DS_Store
 /.elixir_ls
 /tmp

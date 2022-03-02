@@ -7,35 +7,50 @@ defmodule Assent.HTTPAdapter.MintTest do
   alias Assent.HTTPAdapter.{HTTPResponse, Mint}
   alias Assent.TestServer
 
-  @wrong_host_certificate_url "https://wrong.host.badssl.com"
-  @hsts_certificate_url "https://hsts.badssl.com"
-  @unreachable_http_url "http://localhost:8888/"
-
   describe "request/4" do
     test "handles SSL" do
-      assert {:ok, %HTTPResponse{status: 200}} = Mint.request(:get, @hsts_certificate_url, nil, [])
-      assert {:error, %TransportError{reason: {:tls_alert, {:handshake_failure, _error}}}} = Mint.request(:get, @wrong_host_certificate_url, nil, [])
+      TestServer.setup(scheme: :https)
+      TestServer.expect("GET", "/")
+
+      mint_opts = [transport_opts: [cacertfile: TestServer.cacertfile()], protocols: [:http1]]
+
+      assert {:ok, %HTTPResponse{status: 200, body: "HTTP/1.1"}} = Mint.request(:get, TestServer.url(), nil, [], mint_opts)
+    end
+
+    test "handles SSL with bad certificate" do
+      TestServer.setup(scheme: :https)
+      TestServer.expect("GET", "/")
+
+      mint_opts = [transport_opts: [cacertfile: TestServer.cacertfile()]]
+
+      assert {:error, %TransportError{reason: {:tls_alert, {:handshake_failure, _error}}}} = Mint.request(:get, TestServer.url(domain: "bad-host.localhost"), nil, [], mint_opts)
 
       # For OTP 24 "Authenticity is not established by certificate path validation" warning
       CaptureLog.capture_log(fn ->
-        assert {:ok, %HTTPResponse{status: 200}} = Mint.request(:get, @wrong_host_certificate_url, nil, [], transport_opts: [verify: :verify_none])
-      end)
+        mint_opts = put_in(mint_opts, [:transport_opts, :verify], :verify_none)
 
-      assert {:error, %TransportError{reason: :econnrefused}} = Mint.request(:get, @unreachable_http_url, nil, [])
+        assert {:ok, %HTTPResponse{status: 200}} = Mint.request(:get, TestServer.url(), nil, [], mint_opts)
+      end)
     end
 
     if :crypto.supports()[:curves] do
       test "handles http/2" do
         TestServer.setup(scheme: :https)
+        TestServer.expect("GET", "/")
 
-        TestServer.expect("GET", "/", fn conn ->
-          Plug.Conn.send_resp(conn, 200, to_string(Plug.Conn.get_http_protocol(conn)))
-        end)
+        mint_opts = [transport_opts: [cacertfile: TestServer.cacertfile()]]
 
-        assert {:ok, %HTTPResponse{status: 200, body: "HTTP/2"}} = Mint.request(:get, TestServer.url(), nil, [], transport_opts: [cacertfile: TestServer.cacertfile()])
+        assert {:ok, %HTTPResponse{status: 200, body: "HTTP/2"}} = Mint.request(:get, TestServer.url(), nil, [], mint_opts)
       end
     else
       IO.warn("No support curve algorithms, can't test in #{__MODULE__}")
+    end
+
+    test "handles unreachable host" do
+      TestServer.setup()
+      TestServer.down()
+
+      assert {:error, %TransportError{reason: :econnrefused}} = Mint.request(:get, TestServer.url(), nil, [])
     end
 
     test "handles query in URL" do

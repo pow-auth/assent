@@ -6,24 +6,39 @@ defmodule Assent.HTTPAdapter.HttpcTest do
   alias Assent.HTTPAdapter.{Httpc, HTTPResponse}
   alias Assent.TestServer
 
-  @wrong_host_certificate_url "https://wrong.host.badssl.com"
-  @hsts_certificate_url "https://hsts.badssl.com"
-  @unreachable_http_url "http://localhost:8888/"
-
   describe "request/4" do
     test "handles SSL" do
-      assert {:ok, %HTTPResponse{status: 200}} = Httpc.request(:get, @hsts_certificate_url, nil, [])
-      assert {:error, {:failed_connect, error}} = Httpc.request(:get, @wrong_host_certificate_url, nil, [])
+      TestServer.setup(scheme: :https)
+      TestServer.expect("GET", "/")
+
+      httpc_opts = Httpc.httpc_opts_with_cacertfile(TestServer.url(), TestServer.cacertfile())
+
+      assert {:ok, %HTTPResponse{status: 200, body: "HTTP/1.1"}} = Httpc.request(:get, TestServer.url(), nil, [], httpc_opts)
+    end
+
+    test "handles SSL with bad certificate" do
+      TestServer.setup(scheme: :https)
+      TestServer.expect("GET", "/")
+
+      bad_host_url = TestServer.url(domain: "bad-host.localhost")
+      httpc_opts = Httpc.httpc_opts_with_cacertfile(bad_host_url, TestServer.cacertfile())
+
+      assert {:error, {:failed_connect, error}} = Httpc.request(:get, bad_host_url, nil, [], httpc_opts)
       assert {:tls_alert, {:handshake_failure, _error}} = fetch_inet_error(error)
 
       # For OTP 24 "Authenticity is not established by certificate path validation" warning
       CaptureLog.capture_log(fn ->
         assert CaptureIO.capture_io(:stderr, fn ->
-          assert {:ok, %HTTPResponse{status: 200}} = Httpc.request(:get, @wrong_host_certificate_url, nil, [], ssl: [])
+          assert {:ok, %HTTPResponse{status: 200}} = Httpc.request(:get, TestServer.url(), nil, [], ssl: [])
         end) =~ "This request will NOT be verified for valid SSL certificate"
       end)
+    end
 
-      assert {:error, {:failed_connect, error}} = Httpc.request(:get, @unreachable_http_url, nil, [])
+    test "handles unreachable host" do
+      TestServer.setup()
+      TestServer.down()
+
+      assert {:error, {:failed_connect, error}} = Httpc.request(:get, TestServer.url(), nil, [])
       assert fetch_inet_error(error) == :econnrefused
     end
 
