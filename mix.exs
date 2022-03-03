@@ -90,7 +90,7 @@ defmodule Assent.MixProject do
 
   defp aliases do
     [
-      test: ["x509.gen.suite -f -p cowboy -o test/fixtures/ssl", "test"]
+      test: ["x509.gen.suite -f -o tmp/fixtures/ssl localhost", "test"]
     ]
   end
 end

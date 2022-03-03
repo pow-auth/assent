@@ -61,9 +61,9 @@ defmodule Assent.HTTPAdapter.Httpc do
   defp parse_httpc_opts(nil, url), do: default_httpc_opts(url)
   defp parse_httpc_opts(opts, _url), do: opts
 
-  defp default_httpc_opts(url) do
+  defp default_httpc_opts(url, cacertfile \\ nil) do
     case certifi_and_ssl_verify_fun_available?() do
-      true  -> [ssl: ssl_opts(url)]
+      true  -> [ssl: ssl_opts(url, cacertfile || :certifi.cacertfile())]
       false -> []
     end
   end
@@ -82,7 +82,7 @@ defmodule Assent.HTTPAdapter.Httpc do
     end
   end
 
-  defp ssl_opts(url) do
+  defp ssl_opts(url, cacertfile) do
     %{host: host} = URI.parse(url)
 
     # This handles certificates for wildcard domain with SAN extension for
@@ -97,7 +97,7 @@ defmodule Assent.HTTPAdapter.Httpc do
     [
       verify: :verify_peer,
       depth: 99,
-      cacerts: :certifi.cacerts(),
+      cacertfile: cacertfile,
       verify_fun: {&:ssl_verify_hostname.verify_fun/3, check_hostname: to_charlist(host)}
     ] ++ hostname_match_check
   end
@@ -110,5 +110,9 @@ defmodule Assent.HTTPAdapter.Httpc do
       nil -> IO.warn("This request will NOT be verified for valid SSL certificate")
       _   -> :ok
     end
+  end
+
+  if Mix.env() == :test do
+    def httpc_opts_with_cacertfile(url, cacertfile), do: default_httpc_opts(url, cacertfile)
   end
 end
