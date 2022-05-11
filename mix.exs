@@ -59,7 +59,7 @@ defmodule Assent.MixProject do
 
   defp package do
     [
-      maintainers: ["Dan Shultzer"],
+      maintainers: ["Dan Schultzer"],
       licenses: ["MIT"],
       links: %{
         "GitHub" => @source_url,
