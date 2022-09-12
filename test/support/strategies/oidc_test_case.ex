@@ -2,7 +2,7 @@ defmodule Assent.Test.OIDCTestCase do
   @moduledoc false
   use ExUnit.CaseTemplate
 
-  alias Assent.{Test.OAuth2TestCase, TestServer}
+  alias Assent.Test.OAuth2TestCase
   alias Plug.Conn
 
   @private_key """
@@ -55,6 +55,8 @@ defmodule Assent.Test.OIDCTestCase do
   }
 
   setup _tags do
+    TestServer.start()
+
     params = %{"code" => "test_code_value", "state" => "test_state_value"}
     config = [
       client_id: @client_id,
@@ -87,7 +89,7 @@ defmodule Assent.Test.OIDCTestCase do
     uri          = Keyword.get(opts, :uri, "/.well-known/openid-configuration")
     status_code  = Keyword.get(opts, :status_code, 200)
 
-    TestServer.expect("GET", uri, fn conn ->
+    TestServer.add(uri, via: :get, to: fn conn ->
       send_json_resp(conn, openid_config, status_code)
     end)
   end
@@ -117,7 +119,7 @@ defmodule Assent.Test.OIDCTestCase do
     keys        = opts[:keys] || gen_keys(opts)
     status_code = Keyword.get(opts, :status_code, 200)
 
-    TestServer.expect("GET", uri, fn conn ->
+    TestServer.add(uri, via: :get, to: fn conn ->
       conn
       |> Plug.Conn.put_resp_content_type("application/json")
       |> Plug.Conn.send_resp(status_code, Jason.encode!(%{"keys" => keys}))
@@ -138,7 +140,7 @@ defmodule Assent.Test.OIDCTestCase do
     access_token = Keyword.get(opts, :access_token, "access_token")
     status_code  = Keyword.get(opts, :status_code, 200)
 
-    TestServer.expect("GET", uri, fn conn ->
+    TestServer.add(uri, via: :get, to: fn conn ->
       assert {"authorization", "Bearer #{access_token}"} in conn.req_headers
 
       conn

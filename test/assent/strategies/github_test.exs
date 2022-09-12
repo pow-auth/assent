@@ -1,7 +1,7 @@
 defmodule Assent.Strategy.GithubTest do
   use Assent.Test.OAuth2TestCase
 
-  alias Assent.{Strategy.Github, TestServer}
+  alias Assent.Strategy.Github
 
   # From https://developer.github.com/v3/users/
   @user_response %{

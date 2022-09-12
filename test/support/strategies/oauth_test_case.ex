@@ -2,9 +2,9 @@ defmodule Assent.Test.OAuthTestCase do
   @moduledoc false
   use ExUnit.CaseTemplate
 
-  alias Assent.TestServer
-
   setup _context do
+    TestServer.start()
+
     params = %{"oauth_token" => "hh5s93j4hdidpola", "oauth_verifier" => "hfdp7dh39dks9884"}
     config = [consumer_key: "dpf43f3p2l4k3l03", consumer_secret: "kd94hf93k423kf44", site: TestServer.url(), redirect_uri: "http://localhost:4000/auth/callback", session_params: %{oauth_token_secret: "request_token_secret"}]
 
@@ -40,7 +40,7 @@ defmodule Assent.Test.OAuthTestCase do
         _any                                -> response
       end
 
-    TestServer.expect(method, uri, fn conn ->
+    TestServer.add(uri, via: method, to: fn conn ->
       if assert_fn, do: assert_fn.(conn, parse_auth_header(conn))
 
       conn

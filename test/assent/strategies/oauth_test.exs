@@ -1,7 +1,7 @@
 defmodule Assent.Strategy.OAuthTest do
   use Assent.Test.OAuthTestCase
 
-  alias Assent.{Config.MissingKeyError, MissingParamError, RequestError, Strategy.OAuth, TestServer}
+  alias Assent.{Config.MissingKeyError, MissingParamError, RequestError, Strategy.OAuth}
 
   @private_key """
     -----BEGIN RSA PRIVATE KEY-----
@@ -70,13 +70,14 @@ defmodule Assent.Strategy.OAuthTest do
     end
 
     test "with unreachable request token url", %{config: config} do
-      TestServer.down()
+      request_token_url = TestServer.url("/request_token")
+      TestServer.stop()
 
       assert {:error, %RequestError{} = error} = OAuth.authorize_url(config)
       assert error.error == :unreachable
       assert error.message =~ "Server was unreachable with Assent.HTTPAdapter.Httpc."
       assert error.message =~ "{:failed_connect, "
-      assert error.message =~ "URL: #{TestServer.url("/request_token")}"
+      assert error.message =~ "URL: #{request_token_url}"
     end
 
     test "with unexpected succesful response", %{config: config} do
@@ -123,8 +124,10 @@ defmodule Assent.Strategy.OAuthTest do
     end
 
     test "returns url", %{config: config} do
+      request_token_url = TestServer.url("/request_token")
+
       expect_oauth_request_token_request([], fn _conn, oauth_params ->
-        signature_base_string = gen_signature_base_string("POST&#{URI.encode_www_form(TestServer.url("/request_token"))}&", oauth_params)
+        signature_base_string = gen_signature_base_string("POST&#{URI.encode_www_form(request_token_url)}&", oauth_params)
 
         assert oauth_params["oauth_callback"] == "http%3A%2F%2Flocalhost%3A4000%2Fauth%2Fcallback"
         assert oauth_params["oauth_consumer_key"] == config[:consumer_key]
@@ -145,9 +148,10 @@ defmodule Assent.Strategy.OAuthTest do
 
     test "parses URI query params in `:request_token_url` for the signature", %{config: config} do
       config = Keyword.put(config, :request_token_url, "/request_token?a=1&c=3&b=2")
+      request_token_url = TestServer.url("/request_token")
 
       expect_oauth_request_token_request([], fn conn, oauth_params ->
-        signature_base_string = gen_signature_base_string("POST&#{URI.encode_www_form(TestServer.url("/request_token"))}&", Map.merge(oauth_params, conn.query_params))
+        signature_base_string = gen_signature_base_string("POST&#{URI.encode_www_form(request_token_url)}&", Map.merge(oauth_params, conn.query_params))
 
         assert conn.query_params == %{"a" => "1", "b" => "2", "c" => "3"}
         assert {:ok, decoded_signature} = Base.decode64(URI.decode(oauth_params["oauth_signature"]))
@@ -206,6 +210,8 @@ defmodule Assent.Strategy.OAuthTest do
     end
 
     test "returns url", %{config: config} do
+      request_token_url = TestServer.url("/request_token")
+
       expect_oauth_request_token_request([], fn _conn, oauth_params ->
         decoded_public_key =
           @public_key
@@ -213,7 +219,7 @@ defmodule Assent.Strategy.OAuthTest do
           |> List.first()
           |> :public_key.pem_entry_decode()
 
-        signature_base_string = gen_signature_base_string("POST&#{URI.encode_www_form(TestServer.url("/request_token"))}&", oauth_params)
+        signature_base_string = gen_signature_base_string("POST&#{URI.encode_www_form(request_token_url)}&", oauth_params)
 
         assert oauth_params["oauth_signature_method"] == "RSA-SHA1"
         assert {:ok, decoded_signature} = Base.decode64(URI.decode(oauth_params["oauth_signature"]))
@@ -296,13 +302,14 @@ defmodule Assent.Strategy.OAuthTest do
     end
 
     test "with unreachable token url", %{config: config, callback_params: callback_params} do
-      TestServer.down()
+      access_token_url = TestServer.url("/access_token")
+      TestServer.stop()
 
       assert {:error, %RequestError{} = error} = OAuth.callback(config, callback_params)
       assert error.error == :unreachable
       assert error.message =~ "Server was unreachable with Assent.HTTPAdapter.Httpc."
       assert error.message =~ "{:failed_connect, "
-      assert error.message =~ "URL: #{TestServer.url("/access_token")}"
+      assert error.message =~ "URL: #{access_token_url}"
     end
 
     test "with token url error response", %{config: config, callback_params: callback_params} do
@@ -341,8 +348,10 @@ defmodule Assent.Strategy.OAuthTest do
     end
 
     test "normalizes data", %{config: config, callback_params: callback_params} do
+      access_token_url = TestServer.url("/access_token")
+
       expect_oauth_access_token_request([], fn _conn, oauth_params ->
-        signature_base_string = gen_signature_base_string("POST&#{URI.encode_www_form(TestServer.url("/access_token"))}&", oauth_params)
+        signature_base_string = gen_signature_base_string("POST&#{URI.encode_www_form(access_token_url)}&", oauth_params)
 
         assert oauth_params["oauth_consumer_key"] == config[:consumer_key]
         assert signature = oauth_params["oauth_signature"]
@@ -394,20 +403,22 @@ defmodule Assent.Strategy.OAuthTest do
     end
 
     test "with network error", %{config: config, token: token} do
-      TestServer.down()
+      info_url = TestServer.url("/info")
+      TestServer.stop()
 
       assert {:error, %Assent.RequestError{} = error} = OAuth.request(config, token, :get, "/info")
       assert error.error == :unreachable
       assert error.message =~ "Server was unreachable with Assent.HTTPAdapter.Httpc."
       assert error.message =~ "{:failed_connect, "
-      assert error.message =~ "URL: #{TestServer.url("/info")}"
+      assert error.message =~ "URL: #{info_url}"
     end
 
     test "fetches", %{config: config, token: token} do
       shared_secret = "#{config[:consumer_secret]}&#{token["oauth_token_secret"]}"
+      info_url = TestServer.url("/info")
 
       expect_oauth_api_request("/info", %{"success" => true}, [], fn _conn, oauth_params ->
-        signature_base_string = gen_signature_base_string("GET&#{URI.encode_www_form(TestServer.url("/info"))}&", oauth_params)
+        signature_base_string = gen_signature_base_string("GET&#{URI.encode_www_form(info_url)}&", oauth_params)
 
         assert oauth_params["oauth_consumer_key"] == config[:consumer_key]
         assert oauth_params["oauth_nonce"]
@@ -427,9 +438,10 @@ defmodule Assent.Strategy.OAuthTest do
 
     test "with params", %{config: config, token: token} do
       shared_secret = "#{config[:consumer_secret]}&#{token["oauth_token_secret"]}"
+      info_url = TestServer.url("/info")
 
       expect_oauth_api_request("/info", %{"success" => true}, [params: [a: 1]], fn conn, oauth_params ->
-        signature_base_string = gen_signature_base_string("GET&#{URI.encode_www_form(TestServer.url("/info"))}&", Map.merge(oauth_params, conn.params))
+        signature_base_string = gen_signature_base_string("GET&#{URI.encode_www_form(info_url)}&", Map.merge(oauth_params, conn.params))
 
         assert conn.params["a"] == "1"
         assert {:ok, decoded_signature} = Base.decode64(URI.decode(oauth_params["oauth_signature"]))
@@ -442,9 +454,10 @@ defmodule Assent.Strategy.OAuthTest do
 
     test "with params and request header", %{config: config, token: token} do
       shared_secret = "#{config[:consumer_secret]}&#{token["oauth_token_secret"]}"
+      info_url = TestServer.url("/info")
 
       expect_oauth_api_request("/info", %{"success" => true}, [params: [a: 1]], fn conn, oauth_params ->
-        signature_base_string = gen_signature_base_string("GET&#{URI.encode_www_form(TestServer.url("/info"))}&", Map.merge(oauth_params, conn.params))
+        signature_base_string = gen_signature_base_string("GET&#{URI.encode_www_form(info_url)}&", Map.merge(oauth_params, conn.params))
 
         assert Plug.Conn.get_req_header(conn, "b") == ["2"]
         assert {:ok, decoded_signature} = Base.decode64(URI.decode(oauth_params["oauth_signature"]))
@@ -458,9 +471,10 @@ defmodule Assent.Strategy.OAuthTest do
     test "with uppercase url", %{config: config, token: token} do
       shared_secret = "#{config[:consumer_secret]}&#{token["oauth_token_secret"]}"
       config        = Keyword.put(config, :site, String.upcase(config[:site]))
+      info_url      = TestServer.url("/info")
 
       expect_oauth_api_request("/INFO", %{"success" => true}, [], fn _conn, oauth_params ->
-        signature_base_string = gen_signature_base_string("GET&#{URI.encode_www_form(TestServer.url("/info"))}&", oauth_params)
+        signature_base_string = gen_signature_base_string("GET&#{URI.encode_www_form(info_url)}&", oauth_params)
 
         assert {:ok, decoded_signature} = Base.decode64(URI.decode(oauth_params["oauth_signature"]))
         assert :crypto.mac(:hmac, :sha, shared_secret, signature_base_string) == decoded_signature
@@ -477,6 +491,8 @@ defmodule Assent.Strategy.OAuthTest do
         |> Keyword.put(:private_key, @private_key)
         |> Keyword.delete(:consumer_secret)
 
+      info_url = TestServer.url("/info")
+
       expect_oauth_api_request("/info", %{"success" => true}, [], fn _conn, oauth_params ->
         decoded_public_key =
           @public_key
@@ -484,7 +500,7 @@ defmodule Assent.Strategy.OAuthTest do
           |> List.first()
           |> :public_key.pem_entry_decode()
 
-        signature_base_string = gen_signature_base_string("GET&#{URI.encode_www_form(TestServer.url("/info"))}&", oauth_params)
+        signature_base_string = gen_signature_base_string("GET&#{URI.encode_www_form(info_url)}&", oauth_params)
 
         assert oauth_params["oauth_signature_method"] == "RSA-SHA1"
         assert {:ok, decoded_signature} = Base.decode64(URI.decode(oauth_params["oauth_signature"]))
@@ -511,9 +527,10 @@ defmodule Assent.Strategy.OAuthTest do
   test "request/6 as POST request", %{config: config} do
     token = %{"oauth_token" => "token", "oauth_token_secret" => "token_secret"}
     shared_secret = "#{config[:consumer_secret]}&#{token["oauth_token_secret"]}"
+    info_url = TestServer.url("/info")
 
     expect_oauth_api_request("/info", %{"success" => true}, [], fn _conn, oauth_params ->
-      signature_base_string = gen_signature_base_string("POST&#{URI.encode_www_form(TestServer.url("/info"))}&", oauth_params)
+      signature_base_string = gen_signature_base_string("POST&#{URI.encode_www_form(info_url)}&", oauth_params)
 
       assert {:ok, decoded_signature} = Base.decode64(URI.decode(oauth_params["oauth_signature"]))
       assert :crypto.mac(:hmac, :sha, shared_secret, signature_base_string) == decoded_signature
@@ -525,7 +542,7 @@ defmodule Assent.Strategy.OAuthTest do
     expect_oauth_api_request("/info", %{"success" => true}, [params: [a: 1]], fn conn, oauth_params ->
       {:ok, body, _conn} = Plug.Conn.read_body(conn, [])
       params = URI.decode_query(body)
-      signature_base_string = gen_signature_base_string("POST&#{URI.encode_www_form(TestServer.url("/info"))}&", Map.merge(oauth_params, params))
+      signature_base_string = gen_signature_base_string("POST&#{URI.encode_www_form(info_url)}&", Map.merge(oauth_params, params))
 
       assert params == %{"a" => "1"}
       assert {:ok, decoded_signature} = Base.decode64(URI.decode(oauth_params["oauth_signature"]))

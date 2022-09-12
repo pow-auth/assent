@@ -5,25 +5,24 @@ defmodule Assent.HTTPAdapter.MintTest do
   alias ExUnit.CaptureLog
   alias Mint.TransportError
   alias Assent.HTTPAdapter.{HTTPResponse, Mint}
-  alias Assent.TestServer
 
   describe "request/4" do
     test "handles SSL" do
-      TestServer.setup(scheme: :https)
-      TestServer.expect("GET", "/")
+      TestServer.start(scheme: :https)
+      TestServer.add("/", via: :get)
 
-      mint_opts = [transport_opts: [cacertfile: TestServer.cacertfile()], protocols: [:http1]]
+      mint_opts = [transport_opts: [cacerts: TestServer.x509_suite().cacerts], protocols: [:http1]]
 
       assert {:ok, %HTTPResponse{status: 200, body: "HTTP/1.1"}} = Mint.request(:get, TestServer.url(), nil, [], mint_opts)
     end
 
     test "handles SSL with bad certificate" do
-      TestServer.setup(scheme: :https)
-      TestServer.expect("GET", "/")
+      TestServer.start(scheme: :https)
+      TestServer.add("/", via: :get)
 
-      mint_opts = [transport_opts: [cacertfile: TestServer.cacertfile()]]
+      mint_opts = [transport_opts: [cacerts: TestServer.x509_suite().cacerts]]
 
-      assert {:error, %TransportError{reason: {:tls_alert, {:handshake_failure, _error}}}} = Mint.request(:get, TestServer.url(domain: "bad-host.localhost"), nil, [], mint_opts)
+      assert {:error, %TransportError{reason: {:tls_alert, {:handshake_failure, _error}}}} = Mint.request(:get, TestServer.url(host: "bad-host.localhost"), nil, [], mint_opts)
 
       # For OTP 24 "Authenticity is not established by certificate path validation" warning
       CaptureLog.capture_log(fn ->
@@ -35,10 +34,10 @@ defmodule Assent.HTTPAdapter.MintTest do
 
     if :crypto.supports()[:curves] do
       test "handles http/2" do
-        TestServer.setup(scheme: :https)
-        TestServer.expect("GET", "/")
+        TestServer.start(scheme: :https)
+        TestServer.add("/", via: :get)
 
-        mint_opts = [transport_opts: [cacertfile: TestServer.cacertfile()]]
+        mint_opts = [transport_opts: [cacerts: TestServer.x509_suite().cacerts]]
 
         assert {:ok, %HTTPResponse{status: 200, body: "HTTP/2"}} = Mint.request(:get, TestServer.url(), nil, [], mint_opts)
       end
@@ -47,14 +46,15 @@ defmodule Assent.HTTPAdapter.MintTest do
     end
 
     test "handles unreachable host" do
-      TestServer.setup()
-      TestServer.down()
+      TestServer.start()
+      url = TestServer.url()
+      TestServer.stop()
 
-      assert {:error, %TransportError{reason: :econnrefused}} = Mint.request(:get, TestServer.url(), nil, [])
+      assert {:error, %TransportError{reason: :econnrefused}} = Mint.request(:get, url, nil, [])
     end
 
     test "handles query in URL" do
-      TestServer.expect("GET", "/get", fn conn ->
+      TestServer.add("/get", via: :get, to: fn conn ->
         assert conn.query_string == "a=1"
 
         Plug.Conn.send_resp(conn, 200, "")
@@ -64,7 +64,7 @@ defmodule Assent.HTTPAdapter.MintTest do
     end
 
     test "handles POST" do
-      TestServer.expect("POST", "/post", fn conn ->
+      TestServer.add("/post", via: :post, to: fn conn ->
         {:ok, body, conn} = Plug.Conn.read_body(conn, [])
         params = URI.decode_query(body)
 

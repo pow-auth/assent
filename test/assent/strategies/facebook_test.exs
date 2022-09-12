@@ -1,7 +1,7 @@
 defmodule Assent.Strategy.FacebookTest do
   use Assent.Test.OAuth2TestCase
 
-  alias Assent.{Strategy.Facebook, TestServer}
+  alias Assent.Strategy.Facebook
 
   # From https://developers.facebook.com/tools/explorer/?method=GET&path=me%3Ffields%3Demail%2Cfirst_name%2Clast_name%2Cmiddle_name%2Cpicture%2Cgender%2Clink%2Cname%2Cname_format%2Cbirthday%2Cshort_name%2Cdomains%2Cwebsite&version=v4.0
   @user_response %{
@@ -43,7 +43,7 @@ defmodule Assent.Strategy.FacebookTest do
     end
 
     test "handles error", %{config: config, callback_params: params} do
-      TestServer.down()
+      TestServer.stop()
 
       assert {:error, %Assent.RequestError{error: :unreachable}} = Facebook.callback(config, params)
     end

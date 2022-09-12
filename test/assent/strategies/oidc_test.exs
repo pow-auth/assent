@@ -1,7 +1,7 @@
 defmodule Assent.Strategy.OIDCTest do
   use Assent.Test.OIDCTestCase
 
-  alias Assent.{JWTAdapter.AssentJWT, RequestError, Strategy.OIDC, TestServer}
+  alias Assent.{JWTAdapter.AssentJWT, RequestError, Strategy.OIDC}
 
   describe "authorize_url/2" do
     test "generates url and state", %{config: config} do
@@ -113,6 +113,8 @@ defmodule Assent.Strategy.OIDCTest do
         |> Keyword.put(:private_key, @private_rsa_key)
         |> Keyword.put(:private_key_id, "key_id")
 
+      url = TestServer.url()
+
       expect_oidc_access_token_request([id_token_opts: [claims: @user_claims, iss: "http://localhost"]], fn _conn, params ->
         assert {:ok, jwt} = AssentJWT.verify(params["client_assertion"], @public_rsa_key, json_library: Jason)
         assert jwt.header["alg"] == "RS256"
@@ -120,7 +122,7 @@ defmodule Assent.Strategy.OIDCTest do
         assert jwt.header["kid"] == "key_id"
         assert jwt.claims["iss"] == "id"
         assert jwt.claims["sub"] == "id"
-        assert jwt.claims["aud"] == TestServer.url()
+        assert jwt.claims["aud"] == url
         assert jwt.claims["exp"] > DateTime.to_unix(DateTime.utc_now())
       end)
 
@@ -146,13 +148,14 @@ defmodule Assent.Strategy.OIDCTest do
     end
 
     test "with unreachable openid config url", %{config: config, callback_params: params} do
-      TestServer.down()
+      openid_config_url = TestServer.url("/.well-known/openid-configuration")
+      TestServer.stop()
 
       assert {:error, %RequestError{} = error} = OIDC.callback(config, params)
       assert error.error == :unreachable
       assert error.message =~ "Server was unreachable with Assent.HTTPAdapter.Httpc."
       assert error.message =~ "{:failed_connect"
-      assert error.message =~ "URL: #{TestServer.url("/.well-known/openid-configuration")}"
+      assert error.message =~ "URL: #{openid_config_url}"
     end
 
     test "with unexpected openid config url response", %{config: config, openid_config: openid_config, callback_params: params} do
@@ -360,13 +363,14 @@ defmodule Assent.Strategy.OIDCTest do
     end
 
     test "with unreachable `jwk_uri` url",  %{config: config, id_token: id_token} do
-      TestServer.down()
+      jwks_uri_url = TestServer.url("/jwks_uri.json")
+      TestServer.stop()
 
       assert {:error, %RequestError{} = error} = OIDC.validate_id_token(config, id_token)
       assert error.error == :unreachable
       assert error.message =~ "Server was unreachable with Assent.HTTPAdapter.Httpc."
       assert error.message =~ "{:failed_connect"
-      assert error.message =~ "URL: #{TestServer.url("/jwks_uri.json")}"
+      assert error.message =~ "URL: #{jwks_uri_url}"
     end
 
     test "with unexpected `jwk_uri` url response", %{config: config, id_token: id_token} do
@@ -378,7 +382,7 @@ defmodule Assent.Strategy.OIDCTest do
     end
 
     test "with 404 `jwks_uri` url", %{config: config, id_token: id_token} do
-      TestServer.expect("GET", "/jwks_uri.json", fn conn ->
+      TestServer.add("/jwks_uri.json", via: :get, to: fn conn ->
         Plug.Conn.send_resp(conn, 404, "")
       end)
 
@@ -388,7 +392,7 @@ defmodule Assent.Strategy.OIDCTest do
     end
 
     test "with missing keys in `jwks_uri` url", %{config: config, id_token: id_token} do
-      TestServer.expect("GET", "/jwks_uri.json", fn conn ->
+      TestServer.add("/jwks_uri.json", via: :get, to: fn conn ->
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
         |> Plug.Conn.send_resp(200, "{}")
