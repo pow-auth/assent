@@ -1,7 +1,7 @@
 defmodule Assent.Strategy.TwitterTest do
   use Assent.Test.OAuthTestCase
 
-  alias Assent.{CallbackError, Strategy.Twitter, TestServer}
+  alias Assent.{CallbackError, Strategy.Twitter}
 
   # From https://developer.twitter.com/en/docs/accounts-and-users/manage-account-settings/api-reference/get-account-verify_credentials
   @user_response %{

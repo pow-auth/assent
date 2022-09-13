@@ -1,7 +1,7 @@
 defmodule Assent.Strategy.StripeTest do
   use Assent.Test.OAuth2TestCase
 
-  alias Assent.{Strategy.Stripe, TestServer}
+  alias Assent.Strategy.Stripe
 
   # From https://stripe.com/docs/api/accounts/retrieve
   @user_response %{

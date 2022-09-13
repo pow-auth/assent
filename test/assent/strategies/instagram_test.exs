@@ -1,7 +1,7 @@
 defmodule Assent.Strategy.InstagramTest do
   use Assent.Test.OAuth2TestCase
 
-  alias Assent.{Strategy.Instagram, TestServer}
+  alias Assent.Strategy.Instagram
 
   # From https://developers.facebook.com/docs/instagram-basic-display-api/reference/user
   @user_response %{
@@ -42,7 +42,7 @@ defmodule Assent.Strategy.InstagramTest do
     end
 
     test "handles error", %{config: config, callback_params: params} do
-      TestServer.down()
+      TestServer.stop()
 
       assert {:error, %Assent.RequestError{error: :unreachable}} = Instagram.callback(config, params)
     end

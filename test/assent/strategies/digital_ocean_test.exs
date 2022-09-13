@@ -1,7 +1,7 @@
 defmodule Assent.Strategy.DigitalOceanTest do
   use Assent.Test.OAuth2TestCase
 
-  alias Assent.{Strategy.DigitalOcean, TestServer}
+  alias Assent.Strategy.DigitalOcean
 
   # From https://developers.digitalocean.com/documentation/v2/#account
   @user_response %{

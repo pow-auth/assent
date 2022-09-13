@@ -1,7 +1,7 @@
 defmodule Assent.Strategy.OAuth2Test do
   use Assent.Test.OAuth2TestCase
 
-  alias Assent.{CallbackCSRFError, CallbackError, Config.MissingKeyError, JWTAdapter.AssentJWT, MissingParamError, RequestError, Strategy.OAuth2, TestServer}
+  alias Assent.{CallbackCSRFError, CallbackError, Config.MissingKeyError, JWTAdapter.AssentJWT, MissingParamError, RequestError, Strategy.OAuth2}
 
   @client_id "s6BhdRkqt3"
   @client_secret "7Fjfp0ZBr1KtDRbnfVdmIw"
@@ -137,13 +137,14 @@ defmodule Assent.Strategy.OAuth2Test do
     end
 
     test "with unreachable token url", %{config: config, callback_params: params} do
-      TestServer.down()
+      oauth_token_url = TestServer.url("/oauth/token")
+      TestServer.stop()
 
       assert {:error, %RequestError{} = error} = OAuth2.callback(config, params)
       assert error.error == :unreachable
       assert error.message =~ "Server was unreachable with Assent.HTTPAdapter.Httpc."
       assert error.message =~ "{:failed_connect"
-      assert error.message =~ "URL: #{TestServer.url("/oauth/token")}"
+      assert error.message =~ "URL: #{oauth_token_url}"
     end
 
     test "with access token error with 200 response", %{config: config, callback_params: params} do
@@ -251,6 +252,7 @@ defmodule Assent.Strategy.OAuth2Test do
 
     test "with `:client_secret_jwt` auth method", %{config: config, callback_params: params} do
       config = Keyword.put(config, :auth_method, :client_secret_jwt)
+      url = TestServer.url()
 
       expect_oauth2_access_token_request([], fn _conn, params ->
         assert params["grant_type"] == "authorization_code"
@@ -264,7 +266,7 @@ defmodule Assent.Strategy.OAuth2Test do
         assert jwt.header["typ"] == "JWT"
         assert jwt.claims["iss"] == @client_id
         assert jwt.claims["sub"] == @client_id
-        assert jwt.claims["aud"] == TestServer.url()
+        assert jwt.claims["aud"] == url
         assert jwt.claims["exp"] > DateTime.to_unix(DateTime.utc_now())
       end)
 
@@ -281,6 +283,8 @@ defmodule Assent.Strategy.OAuth2Test do
         |> Keyword.put(:private_key, @private_key)
         |> Keyword.put(:private_key_id, @private_key_id)
 
+      url = TestServer.url()
+
       expect_oauth2_access_token_request([], fn _conn, params ->
         assert params["grant_type"] == "authorization_code"
         assert params["code"] == "code_test_value"
@@ -294,7 +298,7 @@ defmodule Assent.Strategy.OAuth2Test do
         assert jwt.header["kid"] == @private_key_id
         assert jwt.claims["iss"] == @client_id
         assert jwt.claims["sub"] == @client_id
-        assert jwt.claims["aud"] == TestServer.url()
+        assert jwt.claims["aud"] == url
         assert jwt.claims["exp"] > DateTime.to_unix(DateTime.utc_now())
       end)
 

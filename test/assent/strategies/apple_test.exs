@@ -2,7 +2,7 @@ defmodule Assent.Strategy.AppleTest do
   use Assent.Test.OIDCTestCase
 
   alias Assent.JWTAdapter.AssentJWT
-  alias Assent.{Strategy.Apple, TestServer}
+  alias Assent.Strategy.Apple
 
   @client_id "001473.fe6f6f83bf4b8e4590aacbabdcb8598bd0.2039"
   @team_id "app.test.client"
@@ -66,6 +66,8 @@ defmodule Assent.Strategy.AppleTest do
 
   if :crypto.supports()[:curves] do
     test "callback/2", %{config: config, callback_params: params} do
+      url = TestServer.url()
+
       expect_oidc_access_token_request([id_token_opts: [claims: @id_token_claims], uri: "/auth/token"], fn _conn, params ->
         assert {:ok, jwt} = AssentJWT.verify(params["client_secret"], @public_key, json_library: Jason)
         assert jwt.verified?
@@ -74,7 +76,7 @@ defmodule Assent.Strategy.AppleTest do
         assert jwt.header["kid"] == @private_key_id
         assert jwt.claims["iss"] == @team_id
         assert jwt.claims["sub"] == @client_id
-        assert jwt.claims["aud"] == TestServer.url()
+        assert jwt.claims["aud"] == url
         assert jwt.claims["exp"] > DateTime.to_unix(DateTime.utc_now())
       end)
 

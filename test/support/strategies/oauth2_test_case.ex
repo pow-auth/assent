@@ -2,9 +2,9 @@ defmodule Assent.Test.OAuth2TestCase do
   @moduledoc false
   use ExUnit.CaseTemplate
 
-  alias Assent.TestServer
-
   setup _tags do
+    TestServer.start()
+
     params = %{"code" => "code_test_value", "state" => "state_test_value"}
     config = [client_id: "id", client_secret: "secret", site: TestServer.url(), redirect_uri: "http://localhost:4000/auth/callback", session_params: %{state: "state_test_value"}]
 
@@ -28,7 +28,7 @@ defmodule Assent.Test.OAuth2TestCase do
     uri          = Keyword.get(opts, :uri, "/oauth/token")
     status_code  = Keyword.get(opts, :status_code, 200)
 
-    TestServer.expect("POST", uri, fn conn ->
+    TestServer.add(uri, via: :post, to: fn conn ->
       {:ok, body, _conn} = Plug.Conn.read_body(conn, [])
       params = URI.decode_query(body)
 
@@ -46,11 +46,11 @@ defmodule Assent.Test.OAuth2TestCase do
   end
 
   @spec expect_oauth2_api_request(binary(), map(), Keyword.t(), function() | nil) :: :ok
-  def expect_oauth2_api_request(uri, response, opts \\ [], assert_fn \\ nil, method \\ "GET") do
+  def expect_oauth2_api_request(uri, response, opts \\ [], assert_fn \\ nil, method \\ :get) do
     access_token = Keyword.get(opts, :access_token, "access_token")
     status_code  = Keyword.get(opts, :status_code, 200)
 
-    TestServer.expect(method, uri, fn conn ->
+    TestServer.add(uri, via: method, to: fn conn ->
       if assert_fn, do: assert_fn.(conn)
 
       assert_bearer_token_in_header(conn, access_token)

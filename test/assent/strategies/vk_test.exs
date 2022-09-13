@@ -1,7 +1,7 @@
 defmodule Assent.Strategy.VKTest do
   use Assent.Test.OAuth2TestCase
 
-  alias Assent.{Strategy.VK, TestServer}
+  alias Assent.Strategy.VK
 
   # From https://vk.com/dev/first_guide
   @users_response [
@@ -52,7 +52,7 @@ defmodule Assent.Strategy.VKTest do
     end
 
     test "handles error", %{config: config, callback_params: params} do
-      TestServer.down()
+      TestServer.stop()
 
       assert {:error, %Assent.RequestError{error: :unreachable}} = VK.callback(config, params)
     end

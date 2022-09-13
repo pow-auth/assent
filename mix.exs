@@ -8,7 +8,7 @@ defmodule Assent.MixProject do
     [
       app: :assent,
       version: @version,
-      elixir: "~> 1.7",
+      elixir: "~> 1.11",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -21,9 +21,7 @@ defmodule Assent.MixProject do
       name: "Assent",
       docs: docs(),
 
-      xref: [exclude: [:certifi, :httpc, Mint.HTTP, JOSE.JWT, JOSE.JWK, JOSE.JWS, :ssl_verify_hostname]],
-
-      aliases: aliases()
+      xref: [exclude: [:certifi, :httpc, Mint.HTTP, JOSE.JWT, JOSE.JWK, JOSE.JWS, :ssl_verify_hostname]]
     ]
   end
 
@@ -49,8 +47,7 @@ defmodule Assent.MixProject do
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
 
       {:mime, "~> 1.0", only: :test},
-      {:plug_cowboy, "~> 2.0", only: :test},
-      {:x509, "~> 0.6.0", only: :test}
+      {:test_server, "~> 0.1.0", only: :test}
     ]
   end
 
@@ -85,12 +82,6 @@ defmodule Assent.MixProject do
       skip_undefined_reference_warnings_on: [
         "CHANGELOG.md"
       ]
-    ]
-  end
-
-  defp aliases do
-    [
-      test: ["x509.gen.suite -f -o tmp/fixtures/ssl localhost", "test"]
     ]
   end
 end
