@@ -24,6 +24,6 @@
   "ranch": {:hex, :ranch, "1.8.0", "8c7a100a139fd57f17327b6413e4167ac559fbc04ca7448e9be9057311597a1d", [:make, :rebar3], [], "hexpm", "49fbcfd3682fab1f5d109351b61257676da1a2fdbe295904176d5e521a2ddfe5"},
   "ssl_verify_fun": {:hex, :ssl_verify_fun, "1.1.6", "cf344f5692c82d2cd7554f5ec8fd961548d4fd09e7d22f5b62482e5aeaebd4b0", [:make, :mix, :rebar3], [], "hexpm", "bdb0d2471f453c88ff3908e7686f86f9be327d065cc1ec16fa4540197ea04680"},
   "telemetry": {:hex, :telemetry, "1.1.0", "a589817034a27eab11144ad24d5c0f9fab1f58173274b1e9bae7074af9cbee51", [:rebar3], [], "hexpm", "b727b2a1f75614774cff2d7565b64d0dfa5bd52ba517f16543e6fc7efcc0df48"},
-  "test_server": {:hex, :test_server, "0.1.3", "985dbb466b521b72c9b9bcd95cbefae513a773edf0eab5236e0becd1c9700bb4", [:mix], [{:plug_cowboy, "~> 2.0", [hex: :plug_cowboy, repo: "hexpm", optional: false]}, {:x509, "~> 0.6.0", [hex: :x509, repo: "hexpm", optional: false]}], "hexpm", "92eda07a89c5b1b5c0d0e299050651add18d0e504b9b60002d21bc65b2ec17c9"},
+  "test_server": {:hex, :test_server, "0.1.5", "9c060c6d12085dc34df7ba07ffe1eeca46238bbaf423728f3afd361cd0fb2c03", [:mix], [{:plug_cowboy, "~> 2.0", [hex: :plug_cowboy, repo: "hexpm", optional: false]}, {:x509, "~> 0.6.0", [hex: :x509, repo: "hexpm", optional: false]}], "hexpm", "02492c912dcd03256dd94106d60300f2b3d81707816c3ddfa2a5bd226d7e2fcb"},
   "x509": {:hex, :x509, "0.6.0", "51a274a8368cf6fe771c1920ce5b075d28a076745987666593adb818aadf1bf7", [:mix], [], "hexpm", "111d29a5388e059413aa4553b64f041452fe49777be310622cd71e451d29630d"},
 }
