@@ -77,7 +77,7 @@ defmodule Assent do
     end
   end
 
-  use Bitwise
+  import Bitwise
 
   @doc false
   @spec constant_time_compare(binary(), binary()) :: boolean()
