@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.2.1 (TBA)
+## v0.2.1 (2022-09-15)
 
 * Default to using `Jason` instead of `Poison` for JSON parsing
 * Fixed `Bitwise` warning when running on Elixir 1.14
