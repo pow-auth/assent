@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.2.1 (TBA)
+
+* Default to using `Jason` instead of `Poison` for JSON parsing
+
 ## v0.2.0 (2022-03-01)
 
 **This release consists of breaking changes.**
