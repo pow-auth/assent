@@ -1,8 +1,8 @@
 # Assent
 
 [![Github CI](https://github.com/pow-auth/assent/workflows/CI/badge.svg)](https://github.com/pow-auth/assent/actions?query=workflow%3ACI)
-[![hexdocs.pm](https://img.shields.io/badge/api-docs-green.svg?style=flat)](https://hexdocs.pm/pow)
-[![hex.pm](https://img.shields.io/hexpm/v/assent.svg?style=flat)](https://hex.pm/packages/assnet)
+[![hexdocs.pm](https://img.shields.io/badge/api-docs-green.svg?style=flat)](https://hexdocs.pm/assent)
+[![hex.pm](https://img.shields.io/hexpm/v/assent.svg?style=flat)](https://hex.pm/packages/assent)
 
 Multi-provider authentication framework.
 
