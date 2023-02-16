@@ -260,7 +260,7 @@ defmodule Assent.Strategy.OAuth2 do
     end
   end
 
-  defp process_access_token_response({:ok, %HTTPResponse{status: 200, body: %{"access_token" => _} = token}}), do: {:ok, token}
+  defp process_access_token_response({:ok, %HTTPResponse{status: status, body: %{"access_token" => _} = token}}) when status in [200, 201], do: {:ok, token}
   defp process_access_token_response(any), do: process_response(any)
 
   defp process_response({:ok, %HTTPResponse{} = response}), do: {:error, RequestError.unexpected(response)}
