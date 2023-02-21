@@ -329,9 +329,8 @@ defmodule Assent.Strategy.OAuth2Test do
       assert {:ok, _any} = OAuth2.callback(config, params)
     end
 
-    test "with access token with 201 response", %{config: config, callback_params: params} do
+    test "with 201 response", %{config: config, callback_params: params} do
       expect_oauth2_access_token_request(status_code: 201)
-
       expect_oauth2_user_request(@user_api_params)
 
       assert {:ok, _any} = OAuth2.callback(config, params)
