@@ -266,7 +266,7 @@ defmodule Assent.Strategy.OIDC do
          {:ok, issuer}        <- fetch_from_openid_config(openid_config, "issuer"),
          {:ok, jwt}           <- verify_jwt(id_token, openid_config, config),
          :ok                  <- validate_required_fields(jwt),
-         :ok                  <- validate_issuer_identifer(jwt, issuer),
+         :ok                  <- validate_issuer_identifier(jwt, issuer),
          :ok                  <- validate_audience(jwt, client_id),
          :ok                  <- validate_alg(jwt, expected_alg),
          :ok                  <- validate_verified(jwt),
@@ -332,8 +332,8 @@ defmodule Assent.Strategy.OIDC do
     end)
   end
 
-  defp validate_issuer_identifer(%{claims: %{"iss" => iss}}, iss), do: :ok
-  defp validate_issuer_identifer(%{claims: %{"iss" => iss}}, _iss), do: {:error, "Invalid issuer \"#{iss}\" in ID Token"}
+  defp validate_issuer_identifier(%{claims: %{"iss" => iss}}, iss), do: :ok
+  defp validate_issuer_identifier(%{claims: %{"iss" => iss}}, _iss), do: {:error, "Invalid issuer \"#{iss}\" in ID Token"}
 
   defp validate_audience(%{claims: %{"aud" => aud}}, aud), do: :ok
   defp validate_audience(%{claims: %{"aud" => aud}}, _client_id), do: {:error, "Invalid audience \"#{aud}\" in ID Token"}

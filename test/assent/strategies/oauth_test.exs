@@ -80,7 +80,7 @@ defmodule Assent.Strategy.OAuthTest do
       assert error.message =~ "URL: #{request_token_url}"
     end
 
-    test "with unexpected succesful response", %{config: config} do
+    test "with unexpected successful response", %{config: config} do
       expect_oauth_request_token_request(params: %{"error_code" => 215, "error_message" => "Bad Authentication data."})
 
       assert {:error, %RequestError{} = error} = OAuth.authorize_url(config)

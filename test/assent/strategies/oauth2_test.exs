@@ -349,7 +349,7 @@ defmodule Assent.Strategy.OAuth2Test do
       {:ok, config: config}
     end
 
-    test "with missing `refreh_token` in token", %{config: config} do
+    test "with missing `refresh_token` in token", %{config: config} do
       assert OAuth2.refresh_access_token(config, %{}) == {:error, "No `refresh_token` in token map"}
     end
 
