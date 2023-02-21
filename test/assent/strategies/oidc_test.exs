@@ -283,7 +283,58 @@ defmodule Assent.Strategy.OIDCTest do
     test "with invalid `aud` in id_token", %{config: config} do
       id_token = gen_id_token(alg: "HS256", claims: %{"aud" => "invalid"})
 
-      assert OIDC.validate_id_token(config, id_token) == {:error, "Invalid audience \"invalid\" in ID Token"}
+      assert OIDC.validate_id_token(config, id_token) == {:error, "`:client_id` not in audience [\"invalid\"] in ID Token"}
+    end
+
+    test "with case insensitive `aud` in id_token", %{config: config} do
+      id_token = gen_id_token(alg: "HS256", claims: %{"aud" => "ID"})
+
+      assert OIDC.validate_id_token(config, id_token) == {:error, "`:client_id` not in audience [\"ID\"] in ID Token"}
+    end
+
+    test "with `aud` list with only client id in id_token", %{config: config} do
+      id_token = gen_id_token(alg: "HS256", claims: %{"aud" => ~w(id)})
+
+      assert {:ok, _} = OIDC.validate_id_token(config, id_token)
+    end
+
+    test "with `aud` list in id_token no trusted_audiences config", %{config: config} do
+      id_token = gen_id_token(alg: "HS256", claims: %{"aud" => ~w(id aud1 aud2)})
+
+      assert OIDC.validate_id_token(config, id_token) == {:error, "Untrusted audience(s) [\"aud1\", \"aud2\"] in ID Token"}
+    end
+
+    test "with `aud` list with missing client id in id_token", %{config: config} do
+      id_token = gen_id_token(alg: "HS256", claims: %{"aud" => ~w(aud1 aud2)})
+      config = Keyword.put(config, :trusted_audiences, ~w(aud1 aud2))
+
+      assert OIDC.validate_id_token(config, id_token) == {:error, "`:client_id` not in audience [\"aud1\", \"aud2\"] in ID Token"}
+    end
+
+    test "with `aud` list with untrusted audiences in id_token", %{config: config} do
+      id_token = gen_id_token(alg: "HS256", claims: %{"aud" => ~w(id aud1 aud2)})
+      config = Keyword.put(config, :trusted_audiences, ~w(aud1))
+
+      assert OIDC.validate_id_token(config, id_token) == {:error, "Untrusted audience(s) [\"aud2\"] in ID Token"}
+    end
+
+    test "with `aud` list in id_token", %{config: config} do
+      id_token = gen_id_token(alg: "HS256", claims: %{"aud" => ~w(id aud1 aud2)})
+      config = Keyword.put(config, :trusted_audiences, ~w(aud1 aud2))
+
+      assert {:ok, _} = OIDC.validate_id_token(config, id_token)
+    end
+
+    test "with invalid `azp`", %{config: config} do
+      id_token = gen_id_token(alg: "HS256", claims: %{"azp" => "invalid"})
+
+      assert OIDC.validate_id_token(config, id_token) == {:error, "Invalid authorized party \"invalid\" in ID Token"}
+    end
+
+    test "with valid `azp`", %{config: config} do
+      id_token = gen_id_token(alg: "HS256", claims: %{"azp" => "id"})
+
+      assert {:ok, _} = OIDC.validate_id_token(config, id_token)
     end
 
     test "with invalid signature in id_token", %{config: config, id_token: id_token} do
