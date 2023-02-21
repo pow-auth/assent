@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.2.2 (TBA)
+
+* Fixed bug to handle 201 success response
+
 ## v0.2.1 (2022-09-15)
 
 * Default to using `Jason` instead of `Poison` for JSON parsing
