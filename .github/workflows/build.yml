@@ -11,23 +11,23 @@ jobs:
   test:
     strategy:
       matrix:
-        include:
+        version:
           - otp: 25.0
             elixir: 1.14.0
             os: ubuntu-latest
           - otp: 22.0
             elixir: 1.11.0
-            # It's necessary to run on ubunto 20.04 for OTP 20 - 25
+            # It's necessary to run on ubuntu 20.04 for OTP 20 - 23
             # See https://github.com/erlef/setup-beam
             os: ubuntu-20.04
-    runs-on: ${{ matrix.os }}
-    name: OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
+    runs-on: ${{ matrix.version.os }}
+    name: OTP ${{matrix.version.otp}} / Elixir ${{matrix.version.elixir}}
     steps:
       - uses: actions/checkout@v3
       - uses: erlef/setup-beam@v1
         with:
-          otp-version: ${{matrix.otp}}
-          elixir-version: ${{matrix.elixir}}
+          otp-version: ${{matrix.version.otp}}
+          elixir-version: ${{matrix.version.elixir}}
       - run: mix deps.get
       - run: mix test
       - run: MIX_ENV=test mix credo
