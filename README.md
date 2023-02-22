@@ -49,7 +49,7 @@ end
 
 Run `mix deps.get` to install it.
 
-By default `:httpc` will be used for HTTP requests. To compile the app with `:httpc` support, please add `:inets` to `:extra_applications` in `mix.exs`:
+By default, `:httpc` will be used for HTTP requests. To compile the app with `:httpc` support, please add `:inets` to `:extra_applications` in `mix.exs`:
 
 ```elixir
 def application do
@@ -69,7 +69,7 @@ Assent requires Erlang OTP 22.1 or greater.
 
 ## Getting started
 
-A strategy consists of two phases; request and callback. In the request phase the user would normally be redirected to the provider for authentication, and then returned back to initiate the callback phase.
+A strategy consists of two phases; request and callback. In the request phase, the user would normally be redirected to the provider for authentication, and then returned back to initiate the callback phase.
 
 ### Single provider example
 
@@ -171,7 +171,7 @@ defmodule TestProvider do
 end
 ```
 
-The normalized user map should conform to the [OpenID Connect Core 1.0 Standard Claims spec](https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.5.1), and should return either `{:ok, userinfo_claims}` or `{:ok, userinfo_claims, additional}`. Any keys defined in the userinfo claims that isn't part of the specs will not be included in the user map. Instead they should be set in the additional data that will then be merged on top of the userinfo claims excluding any keys that already was set.
+The normalized user map should conform to the [OpenID Connect Core 1.0 Standard Claims spec](https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.5.1), and should return either `{:ok, userinfo_claims}` or `{:ok, userinfo_claims, additional}`. Any keys defined in the userinfo claims that aren't part of the specs will not be included in the user map. Instead, they should be set in the additional data that will then be merged on top of the userinfo claims excluding any keys that already been set.
 
 You can also use `Assent.Strategy`:
 
