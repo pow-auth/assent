@@ -25,6 +25,7 @@ Multi-provider authentication framework.
   * Google - `Assent.Strategy.Google`
   * Instagram - `Assent.Strategy.Instagram`
   * LINE Login - `Assent.Strategy.LINE`
+  * Linkedin - `Assent.Strategy.Linkedin`
   * Slack - `Assent.Strategy.Slack`
   * Stripe Connect - `Assent.Strategy.Stripe`
   * Twitter - `Assent.Strategy.Twitter`
