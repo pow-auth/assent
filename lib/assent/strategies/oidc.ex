@@ -25,6 +25,7 @@ defmodule Assent.Strategy.OIDC do
       Token will be considered valid, optional, defaults to nil
     - `:nonce` - The nonce to use for authorization request, optional, MUST be
       session based and unguessable
+    - `:trusted_audiences` - A list of audiences that are trusted, optional.
 
   See `Assent.Strategy.OAuth2` for more configuration options.
 
@@ -267,7 +268,8 @@ defmodule Assent.Strategy.OIDC do
          {:ok, jwt}           <- verify_jwt(id_token, openid_config, config),
          :ok                  <- validate_required_fields(jwt),
          :ok                  <- validate_issuer_identifier(jwt, issuer),
-         :ok                  <- validate_audience(jwt, client_id),
+         :ok                  <- validate_audience(jwt, client_id, config),
+         :ok                  <- validate_authorization_party(jwt, client_id, config),
          :ok                  <- validate_alg(jwt, expected_alg),
          :ok                  <- validate_verified(jwt),
          :ok                  <- validate_expiration(jwt),
@@ -335,8 +337,27 @@ defmodule Assent.Strategy.OIDC do
   defp validate_issuer_identifier(%{claims: %{"iss" => iss}}, iss), do: :ok
   defp validate_issuer_identifier(%{claims: %{"iss" => iss}}, _iss), do: {:error, "Invalid issuer \"#{iss}\" in ID Token"}
 
-  defp validate_audience(%{claims: %{"aud" => aud}}, aud), do: :ok
-  defp validate_audience(%{claims: %{"aud" => aud}}, _client_id), do: {:error, "Invalid audience \"#{aud}\" in ID Token"}
+  defp validate_audience(%{claims: %{"aud" => aud} = claims} = jwt, client_id, config) when is_binary(aud) do
+    validate_audience(%{jwt | claims: %{claims | "aud" => [aud]}}, client_id, config)
+  end
+  defp validate_audience(%{claims: %{"aud" => [client_id]}}, client_id, _config), do: :ok
+  defp validate_audience(%{claims: %{"aud" => auds}}, client_id, config) do
+    trusted_audiences = Config.get(config, :trusted_audiences, []) ++ [client_id]
+    missing_client_id? = client_id not in auds
+    untrusted_auds = Enum.filter(auds, & &1 not in trusted_audiences)
+
+    case {missing_client_id?, untrusted_auds} do
+      {false, []} -> :ok
+      {true, _} -> {:error, "`:client_id` not in audience #{inspect auds} in ID Token"}
+      {false, untrusted_auds} -> {:error, "Untrusted audience(s) #{inspect untrusted_auds} in ID Token"}
+    end
+  end
+
+  defp validate_authorization_party(%{claims: %{"azp" => client_id}}, client_id, _config), do: :ok
+  defp validate_authorization_party(%{claims: %{"azp" => azp}}, _client_id, _config) do
+    {:error, "Invalid authorized party \"#{azp}\" in ID Token"}
+  end
+  defp validate_authorization_party(_jwt, _client_id, _config), do: :ok
 
   defp validate_alg(%{header: %{"alg" => alg}}, alg), do: :ok
   defp validate_alg(%{header: %{"alg" => alg}}, expected_alg), do: {:error, "Expected `alg` in ID Token to be \"#{expected_alg}\", got \"#{alg}\""}

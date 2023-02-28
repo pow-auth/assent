@@ -3,6 +3,7 @@
 ## v0.2.2 (TBA)
 
 * Fixed bug to handle 201 success response
+* `Assent.Strategy.OIDC` now has support for multiple audiences
 
 ## v0.2.1 (2022-09-15)
 
