@@ -45,7 +45,8 @@ defmodule Assent.MixProject do
 
       {:credo, "~> 1.1", only: [:dev, :test]},
       {:jason, "~> 1.0", only: [:dev, :test]},
-      {:test_server, "~> 0.1.0", only: :test}
+      {:test_server, "~> 0.1.0", only: :test},
+      {:plug_cowboy, ">= 0.0.0", only: :test}
     ]
   end
 
