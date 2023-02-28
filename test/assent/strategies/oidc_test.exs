@@ -43,6 +43,24 @@ defmodule Assent.Strategy.OIDCTest do
     @user_claims %{sub: "1", name: "Dan Schultzer", email: "foo@example.com", email_verified: true, "http://localhost:4000/additional": "info"}
     @user %{"email" => "foo@example.com", "name" => "Dan Schultzer", "sub" => "1", "email_verified" => true, "http://localhost:4000/additional" => "info"}
 
+    test "with invalid authentication method", %{config: config, callback_params: params} do
+      config = Keyword.put(config, :client_authentication_method, "invalid")
+
+      assert OIDC.callback(config, params) == {:error, "Invalid client authentication method: invalid"}
+    end
+
+    test "with unsupported authentication method", %{config: config, callback_params: params} do
+      openid_configuration =
+        Map.put(config[:openid_configuration], "token_endpoint_auth_methods_supported", ["private_key_jwt"])
+
+      config =
+        config
+        |> Keyword.put(:client_authentication_method, "client_secret_basic")
+        |> Keyword.put(:openid_configuration, openid_configuration)
+
+      assert OIDC.callback(config, params) == {:error, "Unsupported client authentication method: client_secret_basic"}
+    end
+
     test "with `client_secret_basic` authentication method", %{config: config, callback_params: params} do
       expect_oidc_access_token_request([id_token_opts: [claims: @user_claims, iss: "http://localhost"]], fn conn, _params ->
         assert [{"authorization", "Basic " <> token} | _rest] = conn.req_headers
@@ -102,9 +120,7 @@ defmodule Assent.Strategy.OIDCTest do
 
     test "with `private_key_jwt` authentication method", %{config: config, callback_params: params} do
       openid_configuration =
-        config[:openid_configuration]
-        |> Map.put("client_authentication_method", "private_key_jwt")
-        |> Map.put("token_endpoint_auth_methods_supported", ["private_key_jwt"])
+        Map.put(config[:openid_configuration], "token_endpoint_auth_methods_supported", ["private_key_jwt"])
 
       config =
         config

@@ -4,6 +4,7 @@
 
 * Fixed bug to handle 201 success response
 * `Assent.Strategy.OIDC` now has support for multiple audiences
+* `Assent.Strategy.OIDC` now permits any auth method if no `token_endpoint_auth_methods_supported` specified
 
 ## v0.2.1 (2022-09-15)
 

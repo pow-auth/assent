@@ -205,9 +205,11 @@ defmodule Assent.Strategy.OIDC do
 
   defp fetch_client_authentication_method(openid_config, config) do
     method  = Config.get(config, :client_authentication_method, "client_secret_basic")
-    methods = Map.get(openid_config, "token_endpoint_auth_methods_supported", ["client_secret_basic"])
+    methods = Map.get(openid_config, "token_endpoint_auth_methods_supported")
 
-    case method in methods do
+    supported_method? = if is_nil(methods), do: true, else: method in methods
+
+    case supported_method? do
       true  -> to_client_auth_method(method)
       false -> {:error, "Unsupported client authentication method: #{method}"}
     end
