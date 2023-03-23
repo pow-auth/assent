@@ -39,7 +39,6 @@ defmodule Assent.MixProject do
       {:ssl_verify_fun, ">= 0.0.0", optional: true},
 
       {:mint, "~> 1.0", optional: true},
-      {:castore, "~> 1.0", optional: true},
 
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
 

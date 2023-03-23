@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.2.3 (TBA)
+
+* Remove `:castore` version requirement
+
 ## v0.2.2 (2023-02-27)
 
 * Fixed bug to handle 201 success response
