@@ -205,7 +205,7 @@ defp deps do
   [
     # ...
     {:mint, "~> 1.0"},
-    {:castore, "~> 0.1.0"} # Required for SSL validation
+    {:castore, "~> 1.0"} # Required for SSL validation
   ]
 end
 ```
