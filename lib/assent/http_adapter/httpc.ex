@@ -17,9 +17,7 @@ defmodule Assent.HTTPAdapter.Httpc do
   def request(method, url, body, headers, httpc_opts \\ nil) do
     headers = headers ++ [HTTPAdapter.user_agent_header()]
     request = httpc_request(url, body, headers)
-    opts    = parse_httpc_opts(httpc_opts, url)
-
-    warn_missing_ssl(opts)
+    opts    = parse_httpc_ssl_opts(httpc_opts, url)
 
     method
     |> :httpc.request(request, opts, [])
@@ -58,61 +56,98 @@ defmodule Assent.HTTPAdapter.Httpc do
   end
   defp format_response({:error, error}), do: {:error, error}
 
-  defp parse_httpc_opts(nil, url), do: default_httpc_opts(url)
-  defp parse_httpc_opts(opts, _url), do: opts
+  defp parse_httpc_ssl_opts(nil, url), do: parse_httpc_ssl_opts([], url)
+  defp parse_httpc_ssl_opts(opts, url) do
+    uri = URI.parse(url)
 
-  defp default_httpc_opts(url, cacerts \\ nil) do
-    case certifi_and_ssl_verify_fun_available?() do
-      true  -> [ssl: ssl_opts(url, cacerts || :certifi.cacerts())]
-      false -> []
+    case uri.scheme do
+      "https" ->
+        ssl_opts =
+          opts
+          |> Keyword.get(:ssl, [])
+          |> verify_fun_ssl_opts(uri)
+          |> cacerts_ssl_opts()
+
+        Keyword.put(opts, :ssl, ssl_opts)
+
+      "http" ->
+        opts
     end
   end
 
-  defp certifi_and_ssl_verify_fun_available? do
-    Application.ensure_all_started(:certifi)
-    Application.ensure_all_started(:ssl_verify_fun)
+  defp verify_fun_ssl_opts(ssl_opts, uri) do
+    case Keyword.has_key?(ssl_opts, :verify_fun) do
+      true ->
+        ssl_opts
 
-    app_available?(:certifi) && app_available?(:ssl_verify_fun)
-  end
+      false ->
+        raise_on_missing_ssl_verify_fun!()
 
-  defp app_available?(app) do
-    case :application.get_key(app, :vsn) do
-      {:ok, _vsn} -> true
-      _           -> false
-    end
-  end
+        # This handles certificates for wildcard domain with SAN extension for
+        # OTP >= 22
+        hostname_match_check =
+          try do
+            [customize_hostname_check: [match_fun: :public_key.pkix_verify_hostname_match_fun(:https)]]
+          rescue
+            _e in UndefinedFunctionError -> []
+          end
 
-  defp ssl_opts(url, cacerts) do
-    %{host: host} = URI.parse(url)
-
-    # This handles certificates for wildcard domain with SAN extension for
-    # OTP >= 22
-    hostname_match_check =
-      try do
-        [customize_hostname_check: [match_fun: :public_key.pkix_verify_hostname_match_fun(:https)]]
-      rescue
-        _e in UndefinedFunctionError -> []
+        ssl_opts ++
+        [
+          verify: :verify_peer,
+          depth: 99,
+          verify_fun: {&:ssl_verify_hostname.verify_fun/3, check_hostname: to_charlist(uri.host)}
+        ] ++ hostname_match_check
       end
-
-    [
-      verify: :verify_peer,
-      depth: 99,
-      cacerts: cacerts,
-      verify_fun: {&:ssl_verify_hostname.verify_fun/3, check_hostname: to_charlist(host)}
-    ] ++ hostname_match_check
   end
 
-  defp warn_missing_ssl(opts) do
-    opts
-    |> Keyword.get(:ssl, [])
-    |> Keyword.get(:verify_fun)
-    |> case do
-      nil -> IO.warn("This request will NOT be verified for valid SSL certificate")
-      _   -> :ok
+  defp raise_on_missing_ssl_verify_fun! do
+    Code.ensure_loaded?(:ssl_verify_hostname) || raise """
+      This request can NOT be verified for valid SSL certificate.
+
+      Please add `:ssl_verify_fun` to your projects dependencies:
+
+        {:ssl_verify_fun, "~> 1.1"}
+
+      Or specify the ssl options in the `:http_adapter` config option:
+
+        config =
+          [
+            client_id: "REPLACE_WITH_CLIENT_ID",
+            client_secret: "REPLACE_WITH_CLIENT_SECRET",
+            http_adapter: {#{__MODULE__}, ssl: [verify_peer: :verify_peer, verify_fun: ...]}
+          ]
+      """
+  end
+
+  defp cacerts_ssl_opts(ssl_opts) do
+    case Keyword.has_key?(ssl_opts, :cacerts) || Keyword.has_key?(ssl_opts, :cacertfile) do
+      true ->
+        ssl_opts
+
+      false ->
+        raise_on_missing_certifi!()
+
+        ssl_opts ++ [cacerts: :certifi.cacerts()]
     end
   end
 
-  if Mix.env() == :test do
-    def httpc_opts_with_cacerts(url, cacerts), do: default_httpc_opts(url, cacerts)
+  defp raise_on_missing_certifi! do
+    Code.ensure_loaded?(:certifi) || raise """
+      This request requires a CA trust store.
+
+      Please add `:certifi` to your projects dependencies:
+
+        {:certifi, "~> 2.4"}
+
+      Or specify the ssl options in the `:http_adapter` config option:
+
+        config =
+          [
+            client_id: "REPLACE_WITH_CLIENT_ID",
+            client_secret: "REPLACE_WITH_CLIENT_SECRET",
+            http_adapter: {#{__MODULE__}, ssl: [cacerts: ...]}
+          ]
+      """
   end
 end

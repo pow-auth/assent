@@ -41,7 +41,7 @@ defp deps do
     # ...
     {:assent, "~> 0.2.2"},
 
-    # Optional, but recommended for SSL validation with :httpc adapter
+     # Required for SSL validation with :httpc adapter
     {:certifi, "~> 2.4"},
     {:ssl_verify_fun, "~> 1.1"}
   ]
@@ -205,7 +205,7 @@ defp deps do
   [
     # ...
     {:mint, "~> 1.0"},
-    {:castore, "~> 0.1.0"} # Required for SSL validation
+    {:castore, "~> 1.0"} # Required for SSL validation
   ]
 end
 ```
