@@ -2,7 +2,6 @@ defmodule Assent.HTTPAdapter.HttpcTest do
   use ExUnit.Case
   doctest Assent.HTTPAdapter.Httpc
 
-  alias ExUnit.CaptureLog
   alias Assent.HTTPAdapter.{Httpc, HTTPResponse}
 
   describe "request/4" do
@@ -10,30 +9,39 @@ defmodule Assent.HTTPAdapter.HttpcTest do
       TestServer.start(scheme: :https)
       TestServer.add("/", via: :get)
 
-      httpc_opts = Httpc.httpc_opts_with_cacerts(TestServer.url(), TestServer.x509_suite().cacerts)
+      assert {:ok, %HTTPResponse{status: 200, body: "HTTP/1.1"}} = Httpc.request(:get, TestServer.url(), nil, [], ssl: [cacerts: TestServer.x509_suite().cacerts])
 
-      assert {:ok, %HTTPResponse{status: 200, body: "HTTP/1.1"}} = Httpc.request(:get, TestServer.url(), nil, [], httpc_opts)
+      File.write!("tmp/cacerts.pem", :public_key.pem_encode(Enum.map(TestServer.x509_suite().cacerts, &{:Certificate, &1, :not_encrypted})))
+      TestServer.add("/", via: :get)
+
+      assert {:ok, %HTTPResponse{status: 200, body: "HTTP/1.1"}} = Httpc.request(:get, TestServer.url(), nil, [], ssl: [cacertfile: 'tmp/cacerts.pem'])
     end
 
     test "handles SSL with bad certificate" do
       TestServer.start(scheme: :https)
 
       bad_host_url = TestServer.url(host: "bad-host.localhost")
-      httpc_opts = Httpc.httpc_opts_with_cacerts(bad_host_url, TestServer.x509_suite().cacerts)
 
-      assert {:error, {:failed_connect, error}} = Httpc.request(:get, bad_host_url, nil, [], httpc_opts)
+      assert {:error, {:failed_connect, error}} = Httpc.request(:get, bad_host_url, nil, [], ssl: [cacerts: TestServer.x509_suite().cacerts])
       assert {:tls_alert, {:handshake_failure, _error}} = fetch_inet_error(error)
     end
 
-    test "with invalid ssl setting" do
-      TestServer.start(scheme: :https)
+    test "with missing ssl_verify_fun" do
+      error = request_with_deps(["{:certifi, \">= 0.0.0\"}"])
 
-      # For OTP 24 "Authenticity is not established by certificate path validation" warning
-      CaptureLog.capture_log(fn ->
-        assert_raise RuntimeError, ~r/This request can NOT be verified for valid SSL certificate/, fn ->
-          assert {:ok, %HTTPResponse{status: 200}} = Httpc.request(:get, TestServer.url(), nil, [], ssl: [])
-        end
-      end)
+      assert error =~ "RuntimeError"
+      assert error =~ "This request can NOT be verified for valid SSL certificate"
+      assert error =~ "Please add `:ssl_verify_fun` to your projects dependencies"
+      assert error =~ "ssl: [verify_peer: :verify_peer, verify_fun: ...]"
+    end
+
+    test "with missing cacerts" do
+      error = request_with_deps(["{:ssl_verify_fun, \">= 0.0.0\"}"])
+
+      assert error =~ "RuntimeError"
+      assert error =~ "This request requires a CA trust store"
+      assert error =~ "Please add `:certifi` to your projects dependencies"
+      assert error =~ "ssl: [cacerts: ...]"
     end
 
     test "handles unreachable host" do
@@ -72,4 +80,34 @@ defmodule Assent.HTTPAdapter.HttpcTest do
   end
 
   defp fetch_inet_error([_, {:inet, [:inet], error}]), do: error
+
+  defp request_with_deps(deps) do
+    deps = deps ++ ["{:assent, path: \"../../\"}"]
+
+    File.rm_rf!("tmp/test_app")
+    File.mkdir_p!("tmp/test_app")
+
+    File.write!("tmp/test_app/mix.exs", """
+    defmodule TestApp.MixProject do
+      use Mix.Project
+
+      def project do
+        [
+          app: :test_app,
+          version: "0.1.0",
+          deps_path: "../../deps",
+          deps: [#{Enum.join(deps, ",")}]
+        ]
+      end
+    end
+    """)
+
+    File.cd!("tmp/test_app", fn ->
+      assert {_stdout, 0} = System.cmd("mix", ["deps.get"])
+      assert {_stdout, 0} = System.cmd("mix", ["compile"])
+      assert {stdout, 1} = System.cmd("mix", ["run", "-e", "Assent.HTTPAdapter.Httpc.request(:get, \"https://localhost\", nil, [])"], stderr_to_stdout: true)
+
+      stdout
+    end)
+  end
 end
