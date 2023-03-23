@@ -3,6 +3,7 @@
 ## v0.2.3 (TBA)
 
 * Remove `:castore` version requirement
+* `Assent.Strategy.Httpc.request/5` raises error when SSL certificate can't be validated
 
 ## v0.2.2 (2023-02-27)
 

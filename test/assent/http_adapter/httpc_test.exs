@@ -2,7 +2,7 @@ defmodule Assent.HTTPAdapter.HttpcTest do
   use ExUnit.Case
   doctest Assent.HTTPAdapter.Httpc
 
-  alias ExUnit.{CaptureIO, CaptureLog}
+  alias ExUnit.CaptureLog
   alias Assent.HTTPAdapter.{Httpc, HTTPResponse}
 
   describe "request/4" do
@@ -17,19 +17,22 @@ defmodule Assent.HTTPAdapter.HttpcTest do
 
     test "handles SSL with bad certificate" do
       TestServer.start(scheme: :https)
-      TestServer.add("/", via: :get)
 
       bad_host_url = TestServer.url(host: "bad-host.localhost")
       httpc_opts = Httpc.httpc_opts_with_cacerts(bad_host_url, TestServer.x509_suite().cacerts)
 
       assert {:error, {:failed_connect, error}} = Httpc.request(:get, bad_host_url, nil, [], httpc_opts)
       assert {:tls_alert, {:handshake_failure, _error}} = fetch_inet_error(error)
+    end
+
+    test "with invalid ssl setting" do
+      TestServer.start(scheme: :https)
 
       # For OTP 24 "Authenticity is not established by certificate path validation" warning
       CaptureLog.capture_log(fn ->
-        assert CaptureIO.capture_io(:stderr, fn ->
+        assert_raise RuntimeError, ~r/This request can NOT be verified for valid SSL certificate/, fn ->
           assert {:ok, %HTTPResponse{status: 200}} = Httpc.request(:get, TestServer.url(), nil, [], ssl: [])
-        end) =~ "This request will NOT be verified for valid SSL certificate"
+        end
       end)
     end
 

@@ -19,7 +19,7 @@ defmodule Assent.HTTPAdapter.Httpc do
     request = httpc_request(url, body, headers)
     opts    = parse_httpc_opts(httpc_opts, url)
 
-    warn_missing_ssl(opts)
+    raise_on_missing_ssl_verify_fun!(url, opts)
 
     method
     |> :httpc.request(request, opts, [])
@@ -102,15 +102,26 @@ defmodule Assent.HTTPAdapter.Httpc do
     ] ++ hostname_match_check
   end
 
-  defp warn_missing_ssl(opts) do
-    opts
-    |> Keyword.get(:ssl, [])
-    |> Keyword.get(:verify_fun)
-    |> case do
-      nil -> IO.warn("This request will NOT be verified for valid SSL certificate")
-      _   -> :ok
-    end
+  defp raise_on_missing_ssl_verify_fun!("https" <> _rest, opts) do
+    opts |> Keyword.get(:ssl, []) |> Keyword.get(:verify_fun) || raise """
+      This request can NOT be verified for valid SSL certificate.
+
+      Please add `:certifi` and `:ssl_verify_fun` to your projects depenencies:
+
+        {:certifi, "~> 2.4"},
+        {:ssl_verify_fun, "~> 1.1"}
+
+      Or specify the ssl options in the `:http_adapter` config option:
+
+        config =
+          [
+            client_id: "REPLACE_WITH_CLIENT_ID",
+            client_secret: "REPLACE_WITH_CLIENT_SECRET",
+            http_adapter: {#{__MODULE__}, ssl: [verify_peer: :verify_peer, verify_fun: ...]}
+          ]
+      """
   end
+  defp raise_on_missing_ssl_verify_fun!(_url, _opts), do: :ok
 
   if Mix.env() == :test do
     def httpc_opts_with_cacerts(url, cacerts), do: default_httpc_opts(url, cacerts)
