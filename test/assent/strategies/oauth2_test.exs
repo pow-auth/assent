@@ -221,7 +221,7 @@ defmodule Assent.Strategy.OAuth2Test do
       config = Keyword.put(config, :auth_method, :client_secret_basic)
 
       expect_oauth2_access_token_request([], fn conn, params ->
-        assert [{"authorization", "Basic " <> token} | _rest] = conn.req_headers
+        assert ["Basic " <> token] = Plug.Conn.get_req_header(conn, "authorization")
         assert Base.url_decode64(token) == {:ok, "#{@client_id}:#{@client_secret}"}
 
         assert params["grant_type"] == "authorization_code"

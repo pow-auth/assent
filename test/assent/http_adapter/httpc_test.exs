@@ -21,9 +21,20 @@ defmodule Assent.HTTPAdapter.HttpcTest do
       TestServer.start(scheme: :https)
 
       bad_host_url = TestServer.url(host: "bad-host.localhost")
+      httpc_opts = [ssl: [cacerts: TestServer.x509_suite().cacerts]]
 
-      assert {:error, {:failed_connect, error}} = Httpc.request(:get, bad_host_url, nil, [], ssl: [cacerts: TestServer.x509_suite().cacerts])
+      assert {:error, {:failed_connect, error}} = Httpc.request(:get, bad_host_url, nil, [], httpc_opts)
       assert {:tls_alert, {:handshake_failure, _error}} = fetch_inet_error(error)
+    end
+
+    test "handles SSL with bad certificate and no verification" do
+      TestServer.start(scheme: :https)
+      TestServer.add("/", via: :get)
+
+      bad_host_url = TestServer.url(host: "bad-host.localhost")
+      httpc_opts = [ssl: [cacerts: TestServer.x509_suite().cacerts, verify: :verify_none, verify_fun: {fn _cert, _event, state -> {:valid, state} end, nil}]]
+
+      assert {:ok, %HTTPResponse{status: 200}} = Httpc.request(:get, bad_host_url, nil, [], httpc_opts)
     end
 
     test "with missing ssl_verify_fun" do
