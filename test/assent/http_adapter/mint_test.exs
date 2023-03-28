@@ -2,7 +2,6 @@ defmodule Assent.HTTPAdapter.MintTest do
   use ExUnit.Case
   doctest Assent.HTTPAdapter.Mint
 
-  alias ExUnit.CaptureLog
   alias Mint.TransportError
   alias Assent.HTTPAdapter.{HTTPResponse, Mint}
 
@@ -18,18 +17,21 @@ defmodule Assent.HTTPAdapter.MintTest do
 
     test "handles SSL with bad certificate" do
       TestServer.start(scheme: :https)
-      TestServer.add("/", via: :get)
 
+      bad_host_url = TestServer.url(host: "bad-host.localhost")
       mint_opts = [transport_opts: [cacerts: TestServer.x509_suite().cacerts]]
 
-      assert {:error, %TransportError{reason: {:tls_alert, {:handshake_failure, _error}}}} = Mint.request(:get, TestServer.url(host: "bad-host.localhost"), nil, [], mint_opts)
+      assert {:error, %TransportError{reason: {:tls_alert, {:handshake_failure, _error}}}} = Mint.request(:get, bad_host_url, nil, [], mint_opts)
+    end
 
-      # For OTP 24 "Authenticity is not established by certificate path validation" warning
-      CaptureLog.capture_log(fn ->
-        mint_opts = put_in(mint_opts, [:transport_opts, :verify], :verify_none)
+    test "handles SSL with bad certificate and no verification" do
+      TestServer.start(scheme: :https)
+      TestServer.add("/", via: :get)
 
-        assert {:ok, %HTTPResponse{status: 200}} = Mint.request(:get, TestServer.url(), nil, [], mint_opts)
-      end)
+      bad_host_url = TestServer.url(host: "bad-host.localhost")
+      mint_opts = [transport_opts: [cacerts: TestServer.x509_suite().cacerts, verify: :verify_none]]
+
+      assert {:ok, %HTTPResponse{status: 200}} = Mint.request(:get, bad_host_url, nil, [], mint_opts)
     end
 
     if :crypto.supports()[:curves] do

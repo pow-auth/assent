@@ -63,7 +63,7 @@ defmodule Assent.Strategy.OIDCTest do
 
     test "with `client_secret_basic` authentication method", %{config: config, callback_params: params} do
       expect_oidc_access_token_request([id_token_opts: [claims: @user_claims, iss: "http://localhost"]], fn conn, _params ->
-        assert [{"authorization", "Basic " <> token} | _rest] = conn.req_headers
+        assert ["Basic " <> token] = Plug.Conn.get_req_header(conn, "authorization")
         assert [client_id, client_secret] = String.split(Base.url_decode64!(token, padding: false), ":")
 
         assert client_id == config[:client_id]

@@ -92,12 +92,11 @@ defmodule Assent.HTTPAdapter.Httpc do
             _e in UndefinedFunctionError -> []
           end
 
-        ssl_opts ++
-        [
+        Keyword.merge([
           verify: :verify_peer,
           depth: 99,
           verify_fun: {&:ssl_verify_hostname.verify_fun/3, check_hostname: to_charlist(uri.host)}
-        ] ++ hostname_match_check
+        ] ++ hostname_match_check, ssl_opts)
       end
   end
 
