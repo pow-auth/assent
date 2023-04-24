@@ -52,7 +52,7 @@ defmodule Assent.Strategy.OAuth2 do
         user_url: "https://example.com/api/user"
       ]
 
-      {:ok, {url: url, session_params: session_params}} =
+      {:ok, %{url: url, session_params: session_params}} =
         config
         |> Assent.Config.put(:redirect_uri, "http://localhost:4000/auth/callback")
         |> Assent.Strategy.OAuth2.authorize_url()
