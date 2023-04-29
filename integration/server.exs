@@ -91,4 +91,5 @@ defmodule IntegrationServer.Router do
   end
 end
 
-Plug.Cowboy.http(IntegrationServer.Router, port: 4000)
+{:ok, pid} = Bandit.start_link(plug: IntegrationServer.Router)
+Process.unlink(pid)
