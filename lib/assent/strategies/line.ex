@@ -2,6 +2,13 @@ defmodule Assent.Strategy.LINE do
   @moduledoc """
   LINE Login OpenID Connect Strategy.
 
+  ## Usage
+
+    config = [
+      client_id: "REPLACE_WITH_CLIENT_ID",
+      client_secret: "REPLACE_WITH_CLIENT_SECRET"
+    ]
+
   See `Assent.Strategy.OIDC` for more.
   """
 
