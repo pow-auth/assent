@@ -12,8 +12,8 @@ jobs:
     strategy:
       matrix:
         version:
-          - otp: 25.0
-            elixir: 1.14.0
+          - otp: 26.0
+            elixir: 1.15.0
             os: ubuntu-latest
           - otp: 22.0
             elixir: 1.12.0
