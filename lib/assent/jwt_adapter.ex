@@ -21,8 +21,8 @@ defmodule Assent.JWTAdapter do
 
   alias Assent.Config
 
-  @callback sign(map(), binary(), binary(), Keyword.t()) :: {:ok, binary()} | {:error, any()}
-  @callback verify(binary(), binary() | map() | nil, Keyword.t()) :: {:ok, map()} | {:error, any()}
+  @callback sign(map(), binary(), binary(), Keyword.t()) :: {:ok, binary()} | {:error, term()}
+  @callback verify(binary(), binary() | map() | nil, Keyword.t()) :: {:ok, map()} | {:error, term()}
 
   @doc """
   Generates a signed JSON Web Token signature
