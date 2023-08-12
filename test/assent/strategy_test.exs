@@ -58,7 +58,7 @@ defmodule Assent.StrategyTest do
   defmodule CustomJSONLibrary do
     @moduledoc false
 
-    def decode(_binary), do: {:ok, :decoded}
+    def decode(_binary), do: {:ok, %{"alg" => "none", "custom_json" => true}}
 
     def encode(_binary), do: {:ok, ""}
   end
@@ -81,10 +81,8 @@ defmodule Assent.StrategyTest do
   test "verify_jwt/2" do
     assert {:ok, jwt} = Strategy.verify_jwt(@token, @secret, [])
     assert jwt.verified?
-
     assert Strategy.verify_jwt(@token, @secret, jwt_adapter: CustomJWTAdapter) == :verified
-
-    assert Strategy.verify_jwt(@token, @secret, json_library: CustomJSONLibrary) == {:ok, :decoded}
+    assert {:ok, %{header: %{"custom_json" => true}}} = Strategy.verify_jwt(@token, @secret, json_library: CustomJSONLibrary)
   end
 
   test "to_url/3" do
