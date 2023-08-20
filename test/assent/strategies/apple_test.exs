@@ -103,6 +103,15 @@ defmodule Assent.Strategy.AppleTest do
       assert {:ok, %{user: user}} = Apple.callback(config, params)
       assert user == expected_user
     end
+
+    test "callback/2 with missing private key file", %{config: config, callback_params: params} do
+      config =
+        config
+        |> Keyword.delete(:private_key)
+        |> Keyword.put(:private_key_path, "tmp/missing.pem")
+
+      assert Apple.callback(config, params) == {:error, "Failed to read \"tmp/missing.pem\", got; :enoent"}
+    end
   else
     IO.warn("No support curve algorithms, can't test #{__MODULE__}")
   end

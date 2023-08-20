@@ -3,6 +3,7 @@
 ## v0.2.4 (TBA)
 
 * Fixed bug in `Assent.JWTAdapter.AssentJWT` where `verified?` could be a `{:error, term()}` tuple rather than boolean
+* Improved message on private key file load error
 
 ## v0.2.3 (2023-03-23)
 
