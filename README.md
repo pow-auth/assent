@@ -39,7 +39,7 @@ Add Assent to your list of dependencies in `mix.exs`:
 defp deps do
   [
     # ...
-    {:assent, "~> 0.2.3"},
+    {:assent, "~> 0.2.4"},
 
      # Required for SSL validation with :httpc adapter
     {:certifi, "~> 2.4"},
