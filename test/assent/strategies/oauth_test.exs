@@ -245,6 +245,15 @@ defmodule Assent.Strategy.OAuthTest do
       refute is_nil(oauth_token_secret)
       assert url == TestServer.url("/authorize?oauth_token=hh5s93j4hdidpola")
     end
+
+    test "with `:private_key_path` config with missing file", %{config: config} do
+      config =
+        config
+        |> Keyword.delete(:private_key)
+        |> Keyword.put(:private_key_path, "tmp/missing.pem")
+
+      assert {:error, "Failed to read \"tmp/missing.pem\", got; :enoent"} = OAuth.authorize_url(config)
+    end
   end
 
   describe "authorize_url/2 with PLAINTEXT signature method" do

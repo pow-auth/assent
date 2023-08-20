@@ -329,6 +329,17 @@ defmodule Assent.Strategy.OAuth2Test do
       assert {:ok, _any} = OAuth2.callback(config, params)
     end
 
+    test "with `:private_key_jwt` auth method with private key as missing file", %{config: config, callback_params: params} do
+      config =
+        config
+        |> Keyword.delete(:client_secret)
+        |> Keyword.put(:auth_method, :private_key_jwt)
+        |> Keyword.put(:private_key_path, "tmp/missing.pem")
+        |> Keyword.put(:private_key_id, @private_key_id)
+
+      assert {:error, "Failed to read \"tmp/missing.pem\", got; :enoent"} = OAuth2.callback(config, params)
+    end
+
     test "with 201 response", %{config: config, callback_params: params} do
       expect_oauth2_access_token_request(status_code: 201)
       expect_oauth2_user_request(@user_api_params)

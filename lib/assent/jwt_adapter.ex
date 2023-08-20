@@ -57,8 +57,15 @@ defmodule Assent.JWTAdapter do
   @spec load_private_key(Config.t()) :: {:ok, binary()} | {:error, term()}
   def load_private_key(config) do
     case Config.fetch(config, :private_key_path) do
-      {:ok, path}    -> File.read(path)
+      {:ok, path}    -> read(path)
       {:error, _any} -> Config.fetch(config, :private_key)
+    end
+  end
+
+  defp read(path) do
+    case File.read(path) do
+      {:error, error} -> {:error, "Failed to read \"#{path}\", got; #{inspect error}"}
+      {:ok, content} -> {:ok, content}
     end
   end
 end
