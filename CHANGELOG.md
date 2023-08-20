@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.2.4 (TBA)
+
+* Fixed bug in `Assent.JWTAdapter.AssentJWT` where `verified?` could be a `{:error, term()}` tuple rather than boolean
+
 ## v0.2.3 (2023-03-23)
 
 * Removed `:castore` version requirement
