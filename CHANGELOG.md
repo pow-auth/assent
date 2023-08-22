@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.2.5 (TBA)
+
+* `Assent.Strategy.Spotify` added
+
 ## v0.2.4 (2023-08-20)
 
 * Fixed bug in `Assent.JWTAdapter.AssentJWT` where `verified?` could be a `{:error, term()}` tuple rather than boolean
