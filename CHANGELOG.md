@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.2.5 (TBA)
+## v0.2.5 (2023-08-21)
 
 * `Assent.Strategy.Spotify` added
 
