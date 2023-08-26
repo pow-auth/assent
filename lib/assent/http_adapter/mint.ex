@@ -1,9 +1,10 @@
+if Code.ensure_loaded?(Mint.HTTP) do
 defmodule Assent.HTTPAdapter.Mint do
   @moduledoc """
   HTTP adapter module for making http requests with Mint.
 
   Mint can be configured by updating the configuration to
-  `http_adapter: {HTTPAdapter.Mint, [...]}`.
+  `http_adapter: {Assent.HTTPAdapter.Mint, [...]}`.
 
   See `Assent.HTTPAdapter` for more.
   """
@@ -13,6 +14,8 @@ defmodule Assent.HTTPAdapter.Mint do
 
   @impl HTTPAdapter
   def request(method, url, body, headers, mint_opts \\ nil) do
+    IO.warn("#{inspect __MODULE__} is deprecated, consider use #{inspect Assent.HTTPAdapter.Finch} instead")
+
     headers = headers ++ [HTTPAdapter.user_agent_header()]
 
     %{scheme: scheme, port: port, host: host, path: path, query: query} = URI.parse(url)
@@ -102,4 +105,5 @@ defmodule Assent.HTTPAdapter.Mint do
   defp merge_body([{:data, _request, new_body} | rest], body), do: merge_body(rest, body <> new_body)
   defp merge_body(_rest, body), do: body
   defp merge_body(responses), do: merge_body(responses, "")
+end
 end
