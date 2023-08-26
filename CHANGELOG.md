@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.2.6 (TBA)
+## v0.2.6 (2023-08-26)
 
 * Added `Assent.HTTPAdapter.Finch`
 * Deprecated `Assent.HTTPAdapter.Mint`
