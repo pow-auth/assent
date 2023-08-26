@@ -65,7 +65,7 @@ def application do
 end
 ```
 
-This is not necessary if you'll use another HTTP adapter, such as Finch or Mint.
+This is not necessary if you'll use another HTTP adapter like Finch.
 
 Assent requires Erlang OTP 22.1 or greater.
 
@@ -197,7 +197,7 @@ end
 
 By default Erlangs built-in `:httpc` is used for requests. SSL verification is automatically enabled when `:certifi` and `:ssl_verify_fun` packages are available. `:httpc` only supports HTTP/1.1.
 
-If you would like HTTP/2 support, you should consider adding [`Finch`](https://github.com/sneako/finch) or [`Mint`](https://github.com/ericmj/mint) to your project.
+If you would like HTTP/2 support, you should consider adding [`Finch`](https://github.com/sneako/finch) to your project.
 
 ### Finch
 
@@ -219,30 +219,6 @@ config = [
   client_id: "REPLACE_WITH_CLIENT_ID",
   client_secret: "REPLACE_WITH_CLIENT_SECRET",
   http_adapter: {Assent.HTTPAdapter.Finch, supervisor: MyFinch}
-]
-```
-
-### Mint
-
-Update `mix.exs`:
-
-```elixir
-defp deps do
-  [
-    # ...
-    {:mint, "~> 1.0"},
-    {:castore, "~> 1.0"} # Required for SSL validation
-  ]
-end
-```
-
-Pass the `:http_adapter` with your provider configuration:
-
-```elixir
-config = [
-  client_id: "REPLACE_WITH_CLIENT_ID",
-  client_secret: "REPLACE_WITH_CLIENT_SECRET",
-  http_adapter: Assent.HTTPAdapter.Mint
 ]
 ```
 

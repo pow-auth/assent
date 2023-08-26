@@ -14,6 +14,8 @@ defmodule Assent.HTTPAdapter.Mint do
 
   @impl HTTPAdapter
   def request(method, url, body, headers, mint_opts \\ nil) do
+    IO.warn("#{inspect __MODULE__} is deprecated, consider use #{inspect Assent.HTTPAdapter.Finch} instead")
+
     headers = headers ++ [HTTPAdapter.user_agent_header()]
 
     %{scheme: scheme, port: port, host: host, path: path, query: query} = URI.parse(url)
