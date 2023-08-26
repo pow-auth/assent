@@ -87,7 +87,6 @@ defmodule Assent.Strategy.OAuth do
 
       config
       |> do_request(:post, site, url, [], oauth_params)
-      |> Helpers.decode_response(config)
       |> process_token_response()
     end
   end
@@ -312,7 +311,6 @@ defmodule Assent.Strategy.OAuth do
 
       config
       |> do_request(:post, site, url, [], [{"oauth_token", oauth_token}, {"oauth_verifier", oauth_verifier}], [], oauth_token_secret)
-      |> Helpers.decode_response(config)
       |> process_token_response()
     end
   end
@@ -327,9 +325,7 @@ defmodule Assent.Strategy.OAuth do
          {:ok, oauth_token_secret} <- fetch_from_token(token, "oauth_token_secret") do
       url = process_url(site, url)
 
-      config
-      |> do_request(method, site, url, params, [{"oauth_token", oauth_token}], headers, oauth_token_secret)
-      |> Helpers.decode_response(config)
+      do_request(config, method, site, url, params, [{"oauth_token", oauth_token}], headers, oauth_token_secret)
     end
   end
 

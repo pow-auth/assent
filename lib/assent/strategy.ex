@@ -26,7 +26,7 @@ defmodule Assent.Strategy do
         end
       end
   """
-  alias Assent.{Config, HTTPResponse, RequestError}
+  alias Assent.{Config, HTTPAdapter.HTTPResponse, RequestError}
 
   @callback authorize_url(Config.t()) :: {:ok, %{:url => binary(), optional(atom()) => any()}} | {:error, term()}
   @callback callback(Config.t(), map()) :: {:ok, %{:user => map(), optional(atom()) => any()}} | {:error, term()}
@@ -41,6 +41,7 @@ defmodule Assent.Strategy do
     method
     |> http_adapter.request(url, body, headers, opts)
     |> parse_status_response(http_adapter, url)
+    |> decode_response(config)
   end
 
   defp fetch_http_adapter(config) do
@@ -65,26 +66,23 @@ defmodule Assent.Strategy do
   @doc """
   Decodes a request response.
   """
-  @spec decode_response({:ok, HTTPResponse.t()} | {:error, HTTPResponse.t()} | {:error. term()}, Config.t()) :: {:ok, HTTPResponse.t()} | {:error, HTTPResponse.t()} | {:error, term()}
-  def decode_response({ok_or_error, %{body: body, headers: headers} = resp}, config) do
+  @spec decode_response({:ok, HTTPResponse.t()} | {:error, HTTPResponse.t()} | {:error, term()}, Config.t()) :: {:ok, HTTPResponse.t()} | {:error, HTTPResponse.t()} | {:error, term()}
+  def decode_response({ok_or_error, %{body: body, headers: headers} = resp}, config) when is_binary(body) do
     case decode_body(headers, body, config) do
       {:ok, body}     -> {ok_or_error, %{resp | body: body}}
       {:error, error} -> {:error, error}
     end
   end
-  def decode_response({:error, reason}, _config), do: {:error, reason}
+
+  def decode_response(any, _config), do: any
 
   defp decode_body(headers, body, config) do
     case List.keyfind(headers, "content-type", 0) do
-      {"content-type", "application/json" <> _rest} ->
-        decode_json(body, config)
-      {"content-type", "text/javascript" <> _rest} ->
-        decode_json(body, config)
-      {"content-type", "application/x-www-form-urlencoded" <> _reset} ->
-        {:ok, URI.decode_query(body)}
-      _any ->
-        {:ok, body}
-      end
+      {"content-type", "application/json" <> _rest} -> decode_json(body, config)
+      {"content-type", "text/javascript" <> _rest} -> decode_json(body, config)
+      {"content-type", "application/x-www-form-urlencoded" <> _reset} -> {:ok, URI.decode_query(body)}
+      _any -> {:ok, body}
+    end
   end
 
   @doc """

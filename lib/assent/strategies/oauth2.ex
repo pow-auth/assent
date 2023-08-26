@@ -255,7 +255,6 @@ defmodule Assent.Strategy.OAuth2 do
 
       :post
       |> Helpers.request(url, body, headers, config)
-      |> Helpers.decode_response(config)
       |> process_access_token_response()
     end
   end
@@ -299,9 +298,7 @@ defmodule Assent.Strategy.OAuth2 do
       params      = url_params(method, params)
       url         = Helpers.to_url(site, url, params)
 
-      method
-      |> Helpers.request(url, req_body, req_headers, config)
-      |> Helpers.decode_response(config)
+      Helpers.request(method, url, req_body, req_headers, config)
     end
   end
 
