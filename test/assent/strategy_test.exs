@@ -2,7 +2,7 @@ defmodule Assent.StrategyTest do
   use ExUnit.Case
   doctest Assent.Strategy
 
-  alias Assent.Strategy
+  alias Assent.{HTTPAdapter.HTTPResponse, Strategy}
 
   test "decode_response/2" do
     expected = %{"a" => "1", "b" => "2"}
@@ -38,13 +38,70 @@ defmodule Assent.StrategyTest do
   end
 
   defmodule HTTPMock do
-    def request(_method, _url, _body, _headers, nil), do: {:ok, %{status: 200}}
-    def request(_method, _url, _body, _headers, opts), do: {:ok, %{status: 200, opts: opts}}
+    def request(:get, "http-adapter", nil, [], nil) do
+      {:ok, %HTTPResponse{status: 200, headers: [], body: nil}}
+    end
+
+    def request(:get, "http-adapter-with-opts", nil, [], opts) do
+      {:ok, %HTTPResponse{status: 200, headers: [], body: opts}}
+    end
+
+    def request(:get, "json-encoded-body", nil, [], nil) do
+      {:ok, %HTTPResponse{status: 200, headers: [{"content-type", "application/json"}], body: Jason.encode!(%{"a" => 1})}}
+    end
+
+    def request(:get, "json-encoded-body-already-decoded", nil, [], nil) do
+      {:ok, %HTTPResponse{status: 200, headers: [{"content-type", "application/json"}], body: %{"a" => 1}}}
+    end
+
+    def request(:get, "json-encoded-body-text/javascript-header", nil, [], nil) do
+      {:ok, %HTTPResponse{status: 200, headers: [{"content-type", "text/javascript"}], body: Jason.encode!(%{"a" => 1})}}
+    end
+
+    def request(:get, "invalid-json-body", nil, [], nil) do
+      {:ok, %HTTPResponse{status: 200, headers: [{"content-type", "application/json"}], body: "%"}}
+    end
+
+    def request(:get, "json-no-headers", nil, [], nil) do
+      {:ok, %HTTPResponse{status: 200, headers: [], body: Jason.encode!(%{"a" => 1})}}
+    end
+
+    def request(:get, "form-data-body", nil, [], nil) do
+      {:ok, %HTTPResponse{status: 200, headers: [{"content-type", "application/x-www-form-urlencoded"}], body: URI.encode_query(%{"a" => 1})}}
+    end
+
+    def request(:get, "form-data-body-already-decoded", nil, [], nil) do
+      {:ok, %HTTPResponse{status: 200, headers: [{"content-type", "application/x-www-form-urlencoded"}], body: %{"a" => 1}}}
+    end
   end
 
   test "request/5" do
-    assert Strategy.request(:get, "https://localhost:4000/", nil, [], http_adapter: HTTPMock) == {:ok, %{status: 200}}
-    assert Strategy.request(:get, "https://localhost:4000/", nil, [], http_adapter: {HTTPMock, a: 1}) == {:ok, %{status: 200, opts: [a: 1]}}
+    assert Strategy.request(:get, "http-adapter", nil, [], http_adapter: HTTPMock) ==
+      {:ok, %HTTPResponse{status: 200, headers: [], body: nil}}
+
+    assert Strategy.request(:get, "http-adapter-with-opts", nil, [], http_adapter: {HTTPMock, a: 1}) ==
+      {:ok, %HTTPResponse{status: 200, headers: [], body: [a: 1]}}
+
+    assert Strategy.request(:get, "json-encoded-body", nil, [], http_adapter: HTTPMock) ==
+      {:ok, %HTTPResponse{status: 200, headers: [{"content-type", "application/json"}], body: %{"a" => 1}}}
+
+    assert Strategy.request(:get, "json-encoded-body-already-decoded", nil, [], http_adapter: HTTPMock) ==
+      {:ok, %HTTPResponse{status: 200, headers: [{"content-type", "application/json"}], body: %{"a" => 1}}}
+
+    assert Strategy.request(:get, "json-encoded-body-text/javascript-header", nil, [], http_adapter: HTTPMock) ==
+      {:ok, %HTTPResponse{status: 200, headers: [{"content-type", "text/javascript"}], body: %{"a" => 1}}}
+
+    assert {:error, %Jason.DecodeError{}} =
+      Strategy.request(:get, "invalid-json-body", nil, [], http_adapter: HTTPMock)
+
+    assert Strategy.request(:get, "json-no-headers", nil, [], http_adapter: HTTPMock) ==
+      {:ok, %HTTPResponse{status: 200, headers: [], body: Jason.encode!(%{"a" => 1})}}
+
+    assert Strategy.request(:get, "form-data-body", nil, [], http_adapter: HTTPMock) ==
+      {:ok, %HTTPResponse{status: 200, headers: [{"content-type", "application/x-www-form-urlencoded"}], body: %{"a" => "1"}}}
+
+    assert Strategy.request(:get, "form-data-body-already-decoded", nil, [], http_adapter: HTTPMock) ==
+      {:ok, %HTTPResponse{status: 200, headers: [{"content-type", "application/x-www-form-urlencoded"}], body: %{"a" => 1}}}
   end
 
   defmodule CustomJWTAdapter do

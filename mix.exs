@@ -76,7 +76,9 @@ defmodule Assent.MixProject do
         "CHANGELOG.md": [filename: "CHANGELOG"],
       ],
       groups_for_modules: [
-        Strategies: ~r/^Assent.Strategy/
+        Strategies: ~r/^Assent\.Strategy/,
+        "HTTP": ~r/^Assent\.HTTPAdapter.*(?<!Error)$/,
+        "JWT": ~r/^Assent\.JWTAdapter.*(?<!Error)$/
       ],
       skip_undefined_reference_warnings_on: [
         "CHANGELOG.md"

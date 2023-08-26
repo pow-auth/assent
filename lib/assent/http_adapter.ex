@@ -23,7 +23,7 @@ defmodule Assent.HTTPAdapter do
     @type t      :: %__MODULE__{
       status: integer(),
       headers: [header()],
-      body: binary()
+      body: binary() | term()
     }
 
     defstruct status: 200, headers: [], body: ""

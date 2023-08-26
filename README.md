@@ -26,7 +26,7 @@ Multi-provider authentication framework.
   * Instagram - `Assent.Strategy.Instagram`
   * LINE Login - `Assent.Strategy.LINE`
   * Linkedin - `Assent.Strategy.Linkedin`
-  * Spotify - `Assent.Strategy.Spoty`
+  * Spotify - `Assent.Strategy.Spotify`
   * Slack - `Assent.Strategy.Slack`
   * Stripe Connect - `Assent.Strategy.Stripe`
   * Twitter - `Assent.Strategy.Twitter`
@@ -65,13 +65,13 @@ def application do
 end
 ```
 
-This is not necessary if you'll use another HTTP adapter like Finch.
+This is not necessary if you use another HTTP adapter like Finch.
 
 Assent requires Erlang OTP 22.1 or greater.
 
 ## Getting started
 
-A strategy consists of two phases; request and callback. In the request phase, the user would normally be redirected to the provider for authentication, and then returned back to initiate the callback phase.
+A strategy consists of two phases; request and callback. In the request phase, the user would normally be redirected to the provider for authentication and then returned to initiate the callback phase.
 
 ### Single provider example
 
@@ -134,9 +134,7 @@ end
 
 ## Custom provider
 
-You can add your own custom strategy.
-
-Here's an example of an OAuth 2.0 implementation using `Assent.Strategy.OAuth2.Base`:
+You can create custom strategies. Here's an example of an OAuth 2.0 implementation using `Assent.Strategy.OAuth2.Base`:
 
 ```elixir
 defmodule TestProvider do
@@ -173,7 +171,7 @@ defmodule TestProvider do
 end
 ```
 
-The normalized user map should conform to the [OpenID Connect Core 1.0 Standard Claims spec](https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.5.1), and should return either `{:ok, userinfo_claims}` or `{:ok, userinfo_claims, additional}`. Any keys defined in the userinfo claims that aren't part of the specs will not be included in the user map. Instead, they should be set in the additional data that will then be merged on top of the userinfo claims excluding any keys that already been set.
+The normalized user map should conform to the [OpenID Connect Core 1.0 Standard Claims spec](https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.5.1), and should return either `{:ok, userinfo_claims}` or `{:ok, userinfo_claims, additional}`. Any keys defined in the userinfo claims that aren't part of the specs will not be included in the user map. Instead, they should be set in the additional data that will then be merged on top of the userinfo claims excluding any keys that have already been set.
 
 You can also use `Assent.Strategy`:
 
@@ -212,7 +210,7 @@ defp deps do
 end
 ```
 
-Ensure you start the Finch supervisor in application, and pass `:http_adapter` with your provider configuration using your connection pool:
+Ensure you start the Finch supervisor in your application, and set `:http_adapter` in your provider configuration using your connection pool:
 
 ```elixir
 config = [

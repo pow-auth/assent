@@ -4,8 +4,9 @@ defmodule Assent.HTTPAdapter.Httpc do
 
   SSL support will automatically be enabled if the `:certifi` and
   `:ssl_verify_fun` libraries exists in your project. You can also override
-  the httpc options by updating the configuration to
-  `http_adapter: {Assent.HTTPAdapter.Httpc, [...]}`.
+  the httpc options by updating the configuration:
+
+      http_adapter: {Assent.HTTPAdapter.Httpc, [...]}
 
   See `Assent.HTTPAdapter` for more.
   """

@@ -112,7 +112,6 @@ defmodule Assent.Strategy.OIDC do
 
       :get
       |> Helpers.request(url, nil, [], config)
-      |> Helpers.decode_response(config)
       |> process_openid_configuration_response()
     end
   end
@@ -312,7 +311,6 @@ defmodule Assent.Strategy.OIDC do
   defp fetch_public_keys(uri, config) do
     :get
     |> Helpers.request(uri, nil, [], config)
-    |> Helpers.decode_response(config)
     |> process_public_keys_response()
   end
 
