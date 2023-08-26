@@ -9,8 +9,6 @@ defmodule Assent.JWTAdapter.AssentJWT do
   @behaviour Assent.JWTAdapter
 
   defmodule Error do
-    @moduledoc false
-
     defexception [:message, :reason, data: nil]
   end
 
