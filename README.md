@@ -27,6 +27,7 @@ Multi-provider authentication framework.
   * LINE Login - `Assent.Strategy.LINE`
   * Linkedin - `Assent.Strategy.Linkedin`
   * Spotify - `Assent.Strategy.Spotify`
+  * Strava - `Assent.Strategy.Strava`
   * Slack - `Assent.Strategy.Slack`
   * Stripe Connect - `Assent.Strategy.Stripe`
   * Twitter - `Assent.Strategy.Twitter`
