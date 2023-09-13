@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.2.7 (TBA)
+## v0.2.7 (2023-09-12)
 
 * `Assent.Strategy.Strava` added
 
