@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.2.7 (TBA)
+
+* `Assent.Strategy.Strava` added
+
 ## v0.2.6 (2023-08-26)
 
 * Added `Assent.HTTPAdapter.Finch`
