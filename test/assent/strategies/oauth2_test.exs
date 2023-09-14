@@ -308,7 +308,7 @@ defmodule Assent.Strategy.OAuth2Test do
     end
 
     test "with `:private_key_jwt` auth method with private key as file", %{config: config, callback_params: params} do
-      File.mkdir("tmp/")
+      File.mkdir_p!("tmp/")
       File.write!("tmp/private-key.pem", @private_key)
 
       config =
