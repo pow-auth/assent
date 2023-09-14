@@ -11,6 +11,7 @@ defmodule Assent.HTTPAdapter.HttpcTest do
 
       assert {:ok, %HTTPResponse{status: 200, body: "HTTP/1.1"}} = Httpc.request(:get, TestServer.url(), nil, [], ssl: [cacerts: TestServer.x509_suite().cacerts])
 
+      File.mkdir_p!("tmp")
       File.write!("tmp/cacerts.pem", :public_key.pem_encode(Enum.map(TestServer.x509_suite().cacerts, &{:Certificate, &1, :not_encrypted})))
       TestServer.add("/", via: :get)
 
