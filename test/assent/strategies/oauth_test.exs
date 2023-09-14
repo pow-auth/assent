@@ -231,7 +231,7 @@ defmodule Assent.Strategy.OAuthTest do
     end
 
     test "with `:private_key_path` config", %{config: config} do
-      File.mkdir("tmp/")
+      File.mkdir_p!("tmp/")
       File.write!("tmp/private-key.pem", @private_key)
 
       config =
