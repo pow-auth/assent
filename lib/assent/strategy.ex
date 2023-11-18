@@ -26,7 +26,7 @@ defmodule Assent.Strategy do
         end
       end
   """
-  alias Assent.{Config, HTTPAdapter.HTTPResponse, RequestError}
+  alias Assent.{Config, HTTPAdapter.HTTPResponse, ServerUnreachableError}
 
   @callback authorize_url(Config.t()) :: {:ok, %{:url => binary(), optional(atom()) => any()}} | {:error, term()}
   @callback callback(Config.t(), map()) :: {:ok, %{:user => map(), optional(atom()) => any()}} | {:error, term()}
@@ -51,16 +51,14 @@ defmodule Assent.Strategy do
     end
   end
 
-  defp parse_status_response({:ok, %{status: status} = resp}, _http_adapter, _url) when status in 200..399 do
-    {:ok, resp}
+  defp parse_status_response({:ok, %{status: status} = resp}, http_adapter, url) when status in 200..399 do
+    {:ok, %{resp | http_adapter: http_adapter, request_url: url}}
   end
-  defp parse_status_response({:ok, %{status: status} = resp}, _http_adapter, _url) when status in 400..599 do
-    {:error, resp}
+  defp parse_status_response({:ok, %{status: status} = resp}, http_adapter, url) when status in 400..599 do
+    {:error, %{resp | http_adapter: http_adapter, request_url: url}}
   end
   defp parse_status_response({:error, error}, http_adapter, url) do
-    [url | _rest] = String.split(url, "?", parts: 2)
-
-    {:error, RequestError.unreachable(http_adapter, url, error)}
+    {:error, ServerUnreachableError.exception(reason: error, http_adapter: http_adapter, request_url: url)}
   end
 
   @doc """

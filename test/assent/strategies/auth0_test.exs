@@ -34,7 +34,8 @@ defmodule Assent.Strategy.Auth0Test do
     test "requires domain or site configuration", %{config: config} do
       config = Keyword.take(config, [:client_id, :redirect_uri])
 
-      assert Auth0.authorize_url(config) == {:error, %MissingKeyError{message: "Key `:site` not found in config"}}
+      assert {:error, %MissingKeyError{} = error} = Auth0.authorize_url(config)
+      assert error.key == :site
 
       assert {:ok, %{url: url}} = Auth0.authorize_url(config ++ [site: "https://localhost"])
       assert url =~ "https://localhost/authorize"

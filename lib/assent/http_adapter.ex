@@ -21,12 +21,31 @@ defmodule Assent.HTTPAdapter do
 
     @type header :: {binary(), binary()}
     @type t      :: %__MODULE__{
+      http_adapter: atom(),
+      request_url: binary(),
       status: integer(),
       headers: [header()],
       body: binary() | term()
     }
 
-    defstruct status: 200, headers: [], body: ""
+    defstruct http_adapter: nil, request_url: nil, status: 200, headers: [], body: ""
+
+    def format(response) do
+      [request_url | _rest] = String.split(response.request_url, "?", parts: 2)
+
+      """
+      HTTP Adapter: #{inspect response.http_adapter}
+      Request URL: #{request_url}
+
+      Response status: #{response.status}
+
+      Response headers:
+      #{Enum.reduce(response.headers, "", fn {k, v}, acc -> acc <> "\n#{k}: #{v}" end)}
+
+      Response body:
+      #{inspect response.body}
+      """
+    end
   end
 
   @type method :: :get | :post

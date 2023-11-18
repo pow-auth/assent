@@ -6,7 +6,11 @@ defmodule Assent.Config do
   defmodule MissingKeyError do
     @type t :: %__MODULE__{}
 
-    defexception [:message]
+    defexception [:key]
+
+    def message(exception) do
+      "Key #{inspect exception.key} not found in config"
+    end
   end
 
   @type t :: Keyword.t()
@@ -18,7 +22,7 @@ defmodule Assent.Config do
   def fetch(config, key) do
     case Keyword.fetch(config, key) do
       {:ok, value} -> {:ok, value}
-      :error       -> {:error, MissingKeyError.exception("Key `:#{key}` not found in config")}
+      :error       -> {:error, MissingKeyError.exception(key: key)}
     end
   end
 

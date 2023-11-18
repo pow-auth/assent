@@ -77,31 +77,31 @@ defmodule Assent.StrategyTest do
 
   test "request/5" do
     assert Strategy.request(:get, "http-adapter", nil, [], http_adapter: HTTPMock) ==
-      {:ok, %HTTPResponse{status: 200, headers: [], body: nil}}
+      {:ok, %HTTPResponse{status: 200, headers: [], body: nil, http_adapter: HTTPMock, request_url: "http-adapter"}}
 
     assert Strategy.request(:get, "http-adapter-with-opts", nil, [], http_adapter: {HTTPMock, a: 1}) ==
-      {:ok, %HTTPResponse{status: 200, headers: [], body: [a: 1]}}
+      {:ok, %HTTPResponse{status: 200, headers: [], body: [a: 1], http_adapter: HTTPMock, request_url: "http-adapter-with-opts"}}
 
     assert Strategy.request(:get, "json-encoded-body", nil, [], http_adapter: HTTPMock) ==
-      {:ok, %HTTPResponse{status: 200, headers: [{"content-type", "application/json"}], body: %{"a" => 1}}}
+      {:ok, %HTTPResponse{status: 200, headers: [{"content-type", "application/json"}], body: %{"a" => 1}, http_adapter: HTTPMock, request_url: "json-encoded-body"}}
 
     assert Strategy.request(:get, "json-encoded-body-already-decoded", nil, [], http_adapter: HTTPMock) ==
-      {:ok, %HTTPResponse{status: 200, headers: [{"content-type", "application/json"}], body: %{"a" => 1}}}
+      {:ok, %HTTPResponse{status: 200, headers: [{"content-type", "application/json"}], body: %{"a" => 1}, http_adapter: HTTPMock, request_url: "json-encoded-body-already-decoded"}}
 
     assert Strategy.request(:get, "json-encoded-body-text/javascript-header", nil, [], http_adapter: HTTPMock) ==
-      {:ok, %HTTPResponse{status: 200, headers: [{"content-type", "text/javascript"}], body: %{"a" => 1}}}
+      {:ok, %HTTPResponse{status: 200, headers: [{"content-type", "text/javascript"}], body: %{"a" => 1}, http_adapter: HTTPMock, request_url: "json-encoded-body-text/javascript-header"}}
 
     assert {:error, %Jason.DecodeError{}} =
       Strategy.request(:get, "invalid-json-body", nil, [], http_adapter: HTTPMock)
 
     assert Strategy.request(:get, "json-no-headers", nil, [], http_adapter: HTTPMock) ==
-      {:ok, %HTTPResponse{status: 200, headers: [], body: Jason.encode!(%{"a" => 1})}}
+      {:ok, %HTTPResponse{status: 200, headers: [], body: Jason.encode!(%{"a" => 1}), http_adapter: HTTPMock, request_url: "json-no-headers"}}
 
     assert Strategy.request(:get, "form-data-body", nil, [], http_adapter: HTTPMock) ==
-      {:ok, %HTTPResponse{status: 200, headers: [{"content-type", "application/x-www-form-urlencoded"}], body: %{"a" => "1"}}}
+      {:ok, %HTTPResponse{status: 200, headers: [{"content-type", "application/x-www-form-urlencoded"}], body: %{"a" => "1"}, http_adapter: HTTPMock, request_url: "form-data-body"}}
 
     assert Strategy.request(:get, "form-data-body-already-decoded", nil, [], http_adapter: HTTPMock) ==
-      {:ok, %HTTPResponse{status: 200, headers: [{"content-type", "application/x-www-form-urlencoded"}], body: %{"a" => 1}}}
+      {:ok, %HTTPResponse{status: 200, headers: [{"content-type", "application/x-www-form-urlencoded"}], body: %{"a" => 1}, http_adapter: HTTPMock, request_url: "form-data-body-already-decoded"}}
   end
 
   defmodule CustomJWTAdapter do
