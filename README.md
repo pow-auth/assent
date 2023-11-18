@@ -52,6 +52,8 @@ end
 
 Run `mix deps.get` to install it.
 
+### Releases
+
 By default, `:httpc` will be used for HTTP requests. To compile the app with `:httpc` support, please add `:inets` to `:extra_applications` in `mix.exs`:
 
 ```elixir
@@ -68,8 +70,6 @@ end
 
 This is not necessary if you use another HTTP adapter like Finch.
 
-Assent requires Erlang OTP 22.1 or greater.
-
 ## Getting started
 
 A strategy consists of two phases; request and callback. In the request phase, the user would normally be redirected to the provider for authentication and then returned to initiate the callback phase.
@@ -77,21 +77,62 @@ A strategy consists of two phases; request and callback. In the request phase, t
 ### Single provider example
 
 ```elixir
-config = [
-  client_id: "REPLACE_WITH_CLIENT_ID",
-  client_secret: "REPLACE_WITH_CLIENT_SECRET",
-  redirect_uri: "http://localhost:4000/oauth/callback"
-]
+defmodule ProviderAuth do
+  import Plug.Conn
 
-# Redirect user to provider
-{:ok, %{url: url, session_params: session_params}} =
-  Assent.Strategy.Github.authorize_url(config)
+  alias Assent.{Config, Strategy.Github}
 
-# Handle callback
-{:ok, %{user: user, token: token}} =
-  config
-  |> Assent.Config.put(:session_params, session_params)
-  |> Assent.Strategy.Github.callback(params)
+  @config [
+    client_id: "REPLACE_WITH_CLIENT_ID",
+    client_secret: "REPLACE_WITH_CLIENT_SECRET",
+    redirect_uri: "http://localhost:4000/auth/github/callback"
+  ]
+
+  # http://localhost:4000/auth/github
+  def request(conn) do
+    @config
+    |> Github.authorize_url()
+    |> case do
+      {:ok, %{url: url, session_params: session_params}} ->
+        # Session params (used for OAuth 2.0 and OIDC strategies) will be
+        # retrieved when user returns for the callback phase
+        conn = put_session(conn, :session_params, session_params)
+
+        # Redirect end-user to Github to authorize access to their account
+        conn
+        |> put_resp_header("location", url)
+        |> send_resp(302, "")
+
+      {:error, error} ->
+        # Something went wrong generating the request authorization url
+    end
+  end
+
+  # http://localhost:4000/auth/github/callback
+  def callback(conn) do
+    # End-user will return to the callback URL with params attached to the
+    # request. These must be passed on to the strategy. In this example we only
+    # expect GET query params, but the provider could also return the user with
+    # a POST request where the params is in the POST body.
+    %{params: params} = fetch_query_params(conn)
+
+    # The session params (used for OAuth 2.0 and OIDC strategies) stored in the
+    # request phase will be used in the callback phase
+    session_params = get_session(conn, :session_params)
+
+    @config
+    # Session params should be added to the config so the strategy can use them
+    |> Config.put(:session_params, session_params)
+    |> Github.callback(params)
+    |> case do
+      {:ok, %{user: user, token: token}} ->
+        # Authorization succesful
+
+      {:error, error} ->
+        # Authorizaiton failed
+    end
+  end
+end
 ```
 
 ### Multi-provider example
@@ -109,26 +150,30 @@ config :my_app, :strategies,
 ```
 
 ```elixir
-defmodule MultiProvider do
+defmodule MultiProviderAuth do
+  alias Assent.Config
+
   @spec request(atom()) :: {:ok, map()} | {:error, term()}
   def request(provider) do
-    config = config!(provider)
-
-    config[:strategy].authorize_url(config)
+    provider
+    |> config!()
+    |> config[:strategy].authorize_url()
   end
 
   @spec callback(atom(), map(), map()) :: {:ok, map()} | {:error, term()}
-  def callback(provider, params, session_params \\ %{}) do
-    config =
-      provider
-      |> config!()
-      |> Assent.Config.put(:session_params, session_params)
-
-    config[:strategy].callback(config, params)
+  def callback(provider, params, session_params) do
+    provider
+    |> config!()
+    |> Assent.Config.put(:session_params, session_params)
+    |> config[:strategy].callback(params)
   end
 
   defp config!(provider) do
-    Application.get_env(:my_app, :strategies)[provider] || raise "No provider configuration for #{provider}"
+    config =
+      Application.get_env(:my_app, :strategies)[provider] ||
+        raise "No provider configuration for #{provider}"
+    
+    Config.put(config, :redirect_uri, "http://localhost:4000/oauth/#{provider}/callback")
   end
 end
 ```
@@ -144,8 +189,10 @@ defmodule TestProvider do
   @impl true
   def default_config(_config) do
     [
-      site: "http://localhost:4000/api/v1", # The base URL to use for any paths below
-      authorize_url: "http://localhost:4000/oauth/authorize", # Full URL will not use the `:site` option
+      # `:site` is the base URL used for any paths below
+      site: "http://localhost:4000/api/v1",
+       # Definining an absolute URI overrides the `:site` base URL
+      authorize_url: "http://localhost:4000/oauth/authorize",
       token_url: "/oauth/access_token",
       user_url: "/user",
       authorization_params: [scope: "email profile"],
@@ -174,7 +221,9 @@ end
 
 The normalized user map should conform to the [OpenID Connect Core 1.0 Standard Claims spec](https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.5.1), and should return either `{:ok, userinfo_claims}` or `{:ok, userinfo_claims, additional}`. Any keys defined in the userinfo claims that aren't part of the specs will not be included in the user map. Instead, they should be set in the additional data that will then be merged on top of the userinfo claims excluding any keys that have already been set.
 
-You can also use `Assent.Strategy`:
+You can use any of the `Assent.Strategy.OAuth2.Base`, `Assent.Strategy.OAuth.Base`, and `Assent.Strategy.OIDC.Base` macros to set up the strategy.
+
+If you need more control over the strategy than what the macros give you, you can implement your provider using the `Assent.Strategy` behaviour:
 
 ```elixir
 defmodule TestProvider do
