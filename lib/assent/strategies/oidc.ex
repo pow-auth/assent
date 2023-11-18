@@ -67,7 +67,7 @@ defmodule Assent.Strategy.OIDC do
   @behaviour Assent.Strategy
 
   alias Assent.Strategy, as: Helpers
-  alias Assent.{Config, HTTPAdapter.HTTPResponse, RequestError, Strategy.OAuth2}
+  alias Assent.{Config, HTTPAdapter.HTTPResponse, RequestError, UnexpectedResponseError, InvalidResponseError, Strategy.OAuth2}
 
   @doc """
   Generates an authorization URL for request phase.
@@ -119,8 +119,8 @@ defmodule Assent.Strategy.OIDC do
   defp process_openid_configuration_response({:ok, %HTTPResponse{status: 200, body: configuration}}), do: {:ok, configuration}
   defp process_openid_configuration_response(any), do: process_response(any)
 
-  defp process_response({:ok, %HTTPResponse{} = response}), do: {:error, RequestError.unexpected(response)}
-  defp process_response({:error, %HTTPResponse{} = response}), do: {:error, RequestError.invalid(response)}
+  defp process_response({:ok, %HTTPResponse{} = response}), do: {:error, UnexpectedResponseError.exception(response: response)}
+  defp process_response({:error, %HTTPResponse{} = response}), do: {:error, InvalidResponseError.exception(response: response)}
   defp process_response({:error, error}), do: {:error, error}
 
   defp fetch_from_openid_config(config, key) do
@@ -439,7 +439,7 @@ defmodule Assent.Strategy.OIDC do
       _any                                         -> {:ok, body}
     end
   end
-  defp process_userinfo_response({:error, %HTTPResponse{status: 401}}, _openid_config, _config), do: {:error, %RequestError{message: "Unauthorized token"}}
+  defp process_userinfo_response({:error, %HTTPResponse{status: 401} = response}, _openid_config, _config), do: {:error, RequestError.exception(message: "Unauthorized token", response: response)}
   defp process_userinfo_response(any, _openid_config, _config), do: process_response(any)
 
   defp process_jwt(body, openid_config, config) do

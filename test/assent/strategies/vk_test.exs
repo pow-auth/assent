@@ -51,10 +51,13 @@ defmodule Assent.Strategy.VKTest do
       assert user == @user
     end
 
-    test "handles error", %{config: config, callback_params: params} do
-      TestServer.stop()
+    test "handles invalid user response", %{config: config, callback_params: params} do
+      expect_oauth2_access_token_request(uri: "/access_token", params: @token_response)
+      expect_oauth2_user_request(%{"a" => 1}, [uri: "/method/users.get"])
 
-      assert {:error, %Assent.RequestError{error: :unreachable}} = VK.callback(config, params)
+      assert {:error, %RuntimeError{} = error} = VK.callback(config, params)
+      assert error.message =~ "Retrieved an invalid response fetching VK user"
+      assert error.message =~ "%{\"a\" => 1}"
     end
   end
 end

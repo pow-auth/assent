@@ -29,7 +29,7 @@ defmodule Assent.JWTAdapter.AssentJWT do
 
     case encode_json_base64(header, opts) do
       {:ok, encoded_header} -> {:ok, encoded_header}
-      {:error, error}       -> {:error, %Error{message: "Failed to encode header", reason: error, data: header}}
+      {:error, error}       -> {:error, Error.exception(message: "Failed to encode header", reason: error, data: header)}
     end
   end
 
@@ -43,7 +43,7 @@ defmodule Assent.JWTAdapter.AssentJWT do
   defp encode_claims(claims, opts) do
     case encode_json_base64(claims, opts) do
       {:ok, encoded_claims} -> {:ok, encoded_claims}
-      {:error, error}       -> {:error, %Error{message: "Failed to encode claims", reason: error, data: claims}}
+      {:error, error}       -> {:error, Error.exception(message: "Failed to encode claims", reason: error, data: claims)}
     end
   end
 
@@ -52,7 +52,7 @@ defmodule Assent.JWTAdapter.AssentJWT do
 
     case sign_message(message, alg, secret_or_private_key) do
       {:ok, signature} -> {:ok, "#{message}.#{Base.url_encode64(signature, padding: false)}"}
-      {:error, error} -> {:error, %Error{message: "Failed to sign JWT", reason: error, data: {message, alg}}}
+      {:error, error} -> {:error, Error.exception(message: "Failed to sign JWT", reason: error, data: {message, alg})}
     end
   end
 
@@ -139,7 +139,7 @@ defmodule Assent.JWTAdapter.AssentJWT do
   defp split(token) do
     case String.split(token, ".") do
       [header, claims, signature] -> {:ok, %{header: header, claims: claims, signature: signature}}
-      parts                     -> {:error, %Error{message: "JWT must have exactly three parts", reason: :invalid_format, data: parts}}
+      parts                     -> {:error, Error.exception(message: "JWT must have exactly three parts", reason: :invalid_format, data: parts)}
     end
   end
 
@@ -150,7 +150,7 @@ defmodule Assent.JWTAdapter.AssentJWT do
          {:ok, alg}          <- fetch_alg(header) do
       {:ok, alg, header}
     else
-      {:error, error} -> {:error, %Error{message: "Failed to decode header", reason: error, data: header}}
+      {:error, error} -> {:error, Error.exception(message: "Failed to decode header", reason: error, data: header)}
     end
   end
 
@@ -177,14 +177,14 @@ defmodule Assent.JWTAdapter.AssentJWT do
          {:ok, claims}       <- decode_json(claims, json_library) do
       {:ok, claims}
     else
-      {:error, error} -> {:error, %Error{message: "Failed to decode claims", reason: error, data: claims}}
+      {:error, error} -> {:error, Error.exception(message: "Failed to decode claims", reason: error, data: claims)}
     end
   end
 
   defp decode_signature(signature) do
     case decode_base64_url(signature) do
       {:ok, signature} -> {:ok, signature}
-      {:error, error} -> {:error, %Error{message: "Failed to decode signature", reason: error, data: signature}}
+      {:error, error} -> {:error, Error.exception(message: "Failed to decode signature", reason: error, data: signature)}
     end
   end
 
@@ -193,7 +193,7 @@ defmodule Assent.JWTAdapter.AssentJWT do
 
     case verify_message(message, signature, alg, secret_or_public_key) do
       {:ok, verified} -> {:ok, verified}
-      {:error, error} -> {:error, %Error{message: "Failed to verify signature", reason: error, data: {message, signature, alg}}}
+      {:error, error} -> {:error, Error.exception(message: "Failed to verify signature", reason: error, data: {message, signature, alg})}
     end
   end
 

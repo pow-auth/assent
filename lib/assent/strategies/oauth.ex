@@ -46,7 +46,7 @@ defmodule Assent.Strategy.OAuth do
   @behaviour Assent.Strategy
 
   alias Assent.Strategy, as: Helpers
-  alias Assent.{Config, HTTPAdapter.HTTPResponse, JWTAdapter, MissingParamError, RequestError}
+  alias Assent.{Config, HTTPAdapter.HTTPResponse, JWTAdapter, MissingParamError, InvalidResponseError, RequestError, UnexpectedResponseError}
 
   @doc """
   Generate authorization URL for request phase.
@@ -244,8 +244,8 @@ defmodule Assent.Strategy.OAuth do
   defp process_token_response({:ok, %HTTPResponse{status: 200, body: %{"oauth_token" => _, "oauth_token_secret" => _} = token}}), do: {:ok, token}
   defp process_token_response(any), do: process_response(any)
 
-  defp process_response({:ok, %HTTPResponse{} = response}), do: {:error, RequestError.unexpected(response)}
-  defp process_response({:error, %HTTPResponse{} = response}), do: {:error, RequestError.invalid(response)}
+  defp process_response({:ok, %HTTPResponse{} = response}), do: {:error, UnexpectedResponseError.exception(response: response)}
+  defp process_response({:error, %HTTPResponse{} = response}), do: {:error, InvalidResponseError.exception(response: response)}
   defp process_response({:error, error}), do: {:error, error}
 
   defp build_authorize_url({:ok, token}, config) do
@@ -298,10 +298,10 @@ defmodule Assent.Strategy.OAuth do
   end
 
   defp fetch_oauth_token(%{"oauth_token" => code}), do: {:ok, code}
-  defp fetch_oauth_token(params), do: {:error, MissingParamError.new("oauth_token", params)}
+  defp fetch_oauth_token(params), do: {:error, MissingParamError.exception(expected_key: "oauth_token", params: params)}
 
   defp fetch_oauth_verifier(%{"oauth_verifier" => code}), do: {:ok, code}
-  defp fetch_oauth_verifier(params), do: {:error, MissingParamError.new("oauth_verifier", params)}
+  defp fetch_oauth_verifier(params), do: {:error, MissingParamError.exception(expected_key: "oauth_verifier", params: params)}
 
   defp get_access_token(config, oauth_token, oauth_verifier) do
     with {:ok, site} <- Config.fetch(config, :site) do
@@ -340,6 +340,6 @@ defmodule Assent.Strategy.OAuth do
   end
 
   defp process_user_response({:ok, %HTTPResponse{status: 200, body: user}}), do: {:ok, user}
-  defp process_user_response({:error, %HTTPResponse{status: 401}}), do: {:error, %RequestError{message: "Unauthorized token"}}
+  defp process_user_response({:error, %HTTPResponse{status: 401} = response}), do: {:error, RequestError.exception(message: "Unauthorized token", response: response)}
   defp process_user_response(any), do: process_response(any)
 end

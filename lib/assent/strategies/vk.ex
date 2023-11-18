@@ -73,8 +73,20 @@ defmodule Assent.Strategy.VK do
 
     {:ok, user}
   end
-  defp handle_user_response({:ok, user}, _token),
-    do: {:error, %Assent.RequestError{message: "Retrieved invalid response: #{inspect user}"}}
-  defp handle_user_response({:error, error}, _token),
-    do: {:error, error}
+
+  defp handle_user_response({:ok, user}, _token) do
+    {
+      :error,
+      RuntimeError.exception("""
+      Retrieved an invalid response fetching VK user.
+
+      User response:
+      #{inspect user}
+      """)
+    }
+  end
+
+  defp handle_user_response({:error, error}, _token) do
+    {:error, error}
+  end
 end

@@ -41,11 +41,5 @@ defmodule Assent.Strategy.FacebookTest do
       assert {:ok, %{user: user}} = Facebook.callback(config, params)
       assert user == Map.put(@user, "picture", TestServer.url("/1000001/picture"))
     end
-
-    test "handles error", %{config: config, callback_params: params} do
-      TestServer.stop()
-
-      assert {:error, %Assent.RequestError{error: :unreachable}} = Facebook.callback(config, params)
-    end
   end
 end

@@ -6,74 +6,81 @@ defmodule Assent do
   end
 
   defmodule CallbackCSRFError do
-    defexception [:message]
+    defexception [:key]
 
-    @spec new(binary()) :: %__MODULE__{}
-    def new(key) do
-      %__MODULE__{message: "CSRF detected with param key #{inspect key}"}
+    def message(exception) do
+      "CSRF detected with param key #{inspect exception.key}"
     end
   end
 
   defmodule MissingParamError do
-    defexception [:message, :params]
+    defexception [:expected_key, :params]
 
-    @spec new(binary(), map()) :: %__MODULE__{}
-    def new(key, params) do
-      %__MODULE__{
-        message: "Expected #{inspect key} to exist in params, but only found the following keys: #{inspect Map.keys(params)}",
-        params: params
-      }
+    def message(exception) do
+      expected_key = inspect exception.expected_key
+      params = inspect Map.keys(exception.params)
+
+      "Expected #{expected_key} in params, got: #{params}"
     end
   end
 
   defmodule RequestError do
-    defexception [:message, :error]
+    defexception [:message, :response]
 
     alias Assent.HTTPAdapter.HTTPResponse
 
-    @spec unexpected(HTTPResponse.t()) :: %__MODULE__{}
-    def unexpected(response) do
-      %__MODULE__{
-        message:
-          """
-          An unexpected success response was received:
+    def message(exception) do
+      """
+      #{exception.message}
 
-          #{inspect response.body}
-          """,
-        error: :unexpected_response
-      }
+      #{HTTPResponse.format(exception.response)}
+      """
     end
+  end
 
-    @spec invalid(HTTPResponse.t()) :: %__MODULE__{}
-    def invalid(response) do
-      %__MODULE__{
-        message:
-          """
-          Server responded with status: #{response.status}
+  defmodule InvalidResponseError do
+    defexception [:response]
 
-          Headers:#{Enum.reduce(response.headers, "", fn {k, v}, acc -> acc <> "\n#{k}: #{v}" end)}
+    alias Assent.HTTPAdapter.HTTPResponse
 
-          Body:
-          #{inspect response.body}
-          """,
-        error: :invalid_server_response
-      }
+    def message(exception) do
+      """
+      An invalid response was received.
+
+      #{HTTPResponse.format(exception.response)}
+      """
     end
+  end
 
-    @spec unreachable(atom(), binary(), term()) :: %__MODULE__{}
-    def unreachable(adapter, url, error) do
-      %__MODULE__{
-        message:
-          """
-          Server was unreachable with #{inspect adapter}.
+  defmodule UnexpectedResponseError do
+    defexception [:response]
 
-          Failed with the following error:
-          #{inspect error}
+    alias Assent.HTTPAdapter.HTTPResponse
 
-          URL: #{url}
-          """,
-        error: :unreachable
-      }
+    def message(exception) do
+      """
+      An unexpected response was received.
+
+      #{HTTPResponse.format(exception.response)}
+      """
+    end
+  end
+
+  defmodule ServerUnreachableError do
+    defexception [:http_adapter, :request_url, :reason]
+
+    def message(exception) do
+      [url | _rest] = String.split(exception.request_url, "?", parts: 2)
+
+      """
+      The server was unreachable.
+
+      HTTP Adapter: #{inspect exception.http_adapter}
+      Request URL: #{url}
+
+      Reason:
+      #{inspect exception.reason}
+      """
     end
   end
 

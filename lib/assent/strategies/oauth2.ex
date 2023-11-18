@@ -65,7 +65,7 @@ defmodule Assent.Strategy.OAuth2 do
   @behaviour Assent.Strategy
 
   alias Assent.Strategy, as: Helpers
-  alias Assent.{CallbackCSRFError, CallbackError, Config, HTTPAdapter.HTTPResponse, JWTAdapter, MissingParamError, RequestError}
+  alias Assent.{CallbackCSRFError, CallbackError, Config, HTTPAdapter.HTTPResponse, JWTAdapter, MissingParamError, InvalidResponseError, RequestError, UnexpectedResponseError}
 
   @doc """
   Generate authorization URL for request phase.
@@ -144,21 +144,21 @@ defmodule Assent.Strategy.OAuth2 do
     error     = params["error"]
     error_uri = params["error_uri"]
 
-    {:error, %CallbackError{message: message, error: error, error_uri: error_uri}}
+    {:error, CallbackError.exception(message: message, error: error, error_uri: error_uri)}
   end
   defp check_error_params(_params), do: :ok
 
   defp fetch_code_param(%{"code" => code}), do: {:ok, code}
-  defp fetch_code_param(params), do: {:error, MissingParamError.new("code", params)}
+  defp fetch_code_param(params), do: {:error, MissingParamError.exception(expected_key: "code", params: params)}
 
   defp maybe_check_state(%{state: stored_state}, %{"state" => provided_state}) do
     case Assent.constant_time_compare(stored_state, provided_state) do
       true -> :ok
-      false -> {:error, CallbackCSRFError.new("state")}
+      false -> {:error, CallbackCSRFError.exception(key: "state")}
     end
   end
   defp maybe_check_state(%{state: _state}, params) do
-    {:error, MissingParamError.new("state", params)}
+    {:error, MissingParamError.exception(expected_key: "state", params: params)}
   end
   defp maybe_check_state(_session_params, _params), do: :ok
 
@@ -262,8 +262,8 @@ defmodule Assent.Strategy.OAuth2 do
   defp process_access_token_response({:ok, %HTTPResponse{status: status, body: %{"access_token" => _} = token}}) when status in [200, 201], do: {:ok, token}
   defp process_access_token_response(any), do: process_response(any)
 
-  defp process_response({:ok, %HTTPResponse{} = response}), do: {:error, RequestError.unexpected(response)}
-  defp process_response({:error, %HTTPResponse{} = response}), do: {:error, RequestError.invalid(response)}
+  defp process_response({:ok, %HTTPResponse{} = response}), do: {:error, UnexpectedResponseError.exception(response: response)}
+  defp process_response({:error, %HTTPResponse{} = response}), do: {:error, InvalidResponseError.exception(response: response)}
   defp process_response({:error, error}), do: {:error, error}
 
   defp fetch_user_with_strategy(config, token, strategy) do
@@ -350,6 +350,6 @@ defmodule Assent.Strategy.OAuth2 do
   end
 
   defp process_user_response({:ok, %HTTPResponse{status: 200, body: user}}), do: {:ok, user}
-  defp process_user_response({:error, %HTTPResponse{status: 401}}), do: {:error, %RequestError{message: "Unauthorized token"}}
+  defp process_user_response({:error, %HTTPResponse{status: 401} = response}), do: {:error, RequestError.exception(message: "Unauthorized token", response: response)}
   defp process_user_response(any), do: process_response(any)
 end

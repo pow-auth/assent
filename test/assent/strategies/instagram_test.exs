@@ -44,7 +44,7 @@ defmodule Assent.Strategy.InstagramTest do
     test "handles error", %{config: config, callback_params: params} do
       TestServer.stop()
 
-      assert {:error, %Assent.RequestError{error: :unreachable}} = Instagram.callback(config, params)
+      assert {:error, %Assent.ServerUnreachableError{}} = Instagram.callback(config, params)
     end
   end
 end

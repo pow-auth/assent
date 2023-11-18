@@ -1,7 +1,7 @@
 defmodule Assent.Strategy.OIDCTest do
   use Assent.Test.OIDCTestCase
 
-  alias Assent.{JWTAdapter.AssentJWT, RequestError, Strategy.OIDC}
+  alias Assent.{JWTAdapter.AssentJWT, InvalidResponseError, RequestError, ServerUnreachableError, UnexpectedResponseError, Strategy.OIDC}
 
   describe "authorize_url/2" do
     test "generates url and state", %{config: config} do
@@ -167,27 +167,24 @@ defmodule Assent.Strategy.OIDCTest do
       openid_config_url = TestServer.url("/.well-known/openid-configuration")
       TestServer.stop()
 
-      assert {:error, %RequestError{} = error} = OIDC.callback(config, params)
-      assert error.error == :unreachable
-      assert error.message =~ "Server was unreachable with Assent.HTTPAdapter.Httpc."
-      assert error.message =~ "{:failed_connect"
-      assert error.message =~ "URL: #{openid_config_url}"
+      assert {:error, %ServerUnreachableError{} = error} = OIDC.callback(config, params)
+      assert Exception.message(error) =~ "The server was unreachable."
+      assert error.http_adapter == Assent.HTTPAdapter.Httpc
+      assert error.request_url == openid_config_url
+      assert {:failed_connect, _} = error.reason
     end
 
     test "with unexpected openid config url response", %{config: config, openid_config: openid_config, callback_params: params} do
       expect_openid_config_request(openid_config, status_code: 201)
 
-      assert {:error, %RequestError{} = error} = OIDC.callback(config, params)
-      assert error.error == :unexpected_response
-      assert error.message =~ "An unexpected success response was received:"
+      assert {:error, %UnexpectedResponseError{}} = OIDC.callback(config, params)
     end
 
     test "with 404 openid config url", %{config: config, openid_config: openid_config, callback_params: params} do
       expect_openid_config_request(openid_config, status_code: 404)
 
-      assert {:error, %RequestError{} = error} = OIDC.callback(config, params)
-      assert error.error == :invalid_server_response
-      assert error.message =~ "Server responded with status: 404"
+      assert {:error, %InvalidResponseError{} = error} = OIDC.callback(config, params)
+      assert error.response.status == 404
     end
 
     test "with invalid id_token", %{config: config, openid_config: openid_config, callback_params: params} do
@@ -245,14 +242,14 @@ defmodule Assent.Strategy.OIDCTest do
 
       expect_openid_config_request([], status_code: 500)
 
-      assert {:error, %RequestError{error: :invalid_server_response}} = OIDC.validate_id_token(config, id_token)
+      assert {:error, %InvalidResponseError{}} = OIDC.validate_id_token(config, id_token)
     end
 
     test "with no `:client_id`", %{config: config, id_token: id_token} do
       config = Keyword.delete(config, :client_id)
 
       assert {:error, %Assent.Config.MissingKeyError{} = error} = OIDC.validate_id_token(config, id_token)
-      assert error.message == "Key `:client_id` not found in config"
+      assert error.key == :client_id
     end
 
     test "with missing `issuer` in OpenID configuration", %{config: config, id_token: id_token} do
@@ -270,7 +267,7 @@ defmodule Assent.Strategy.OIDCTest do
       config = Keyword.delete(config, :client_secret)
 
       assert {:error, %Assent.Config.MissingKeyError{} = error} = OIDC.validate_id_token(config, id_token)
-      assert error.message == "Key `:client_secret` not found in config"
+      assert error.key == :client_secret
     end
 
     for key <- ~w(iss sub aud exp iat) do
@@ -377,7 +374,7 @@ defmodule Assent.Strategy.OIDCTest do
       config = Keyword.delete(config, :session_params)
 
       assert {:error, %Assent.Config.MissingKeyError{} = error} = OIDC.validate_id_token(config, id_token)
-      assert error.message == "Key `:session_params` not found in config"
+      assert error.key == :session_params
     end
 
     test "without nonce", %{config: config, id_token: id_token} do
@@ -433,19 +430,17 @@ defmodule Assent.Strategy.OIDCTest do
       jwks_uri_url = TestServer.url("/jwks_uri.json")
       TestServer.stop()
 
-      assert {:error, %RequestError{} = error} = OIDC.validate_id_token(config, id_token)
-      assert error.error == :unreachable
-      assert error.message =~ "Server was unreachable with Assent.HTTPAdapter.Httpc."
-      assert error.message =~ "{:failed_connect"
-      assert error.message =~ "URL: #{jwks_uri_url}"
+      assert {:error, %ServerUnreachableError{} = error} = OIDC.validate_id_token(config, id_token)
+      assert error.http_adapter == Assent.HTTPAdapter.Httpc
+      assert error.request_url == jwks_uri_url
+      assert {:failed_connect, _} = error.reason
     end
 
     test "with unexpected `jwk_uri` url response", %{config: config, id_token: id_token} do
       expect_oidc_jwks_uri_request(status_code: 201)
 
-      assert {:error, %RequestError{} = error} = OIDC.validate_id_token(config, id_token)
-      assert error.error == :unexpected_response
-      assert error.message =~ "An unexpected success response was received:"
+      assert {:error, %UnexpectedResponseError{} = error} = OIDC.validate_id_token(config, id_token)
+      assert error.response.status == 201
     end
 
     test "with 404 `jwks_uri` url", %{config: config, id_token: id_token} do
@@ -453,9 +448,8 @@ defmodule Assent.Strategy.OIDCTest do
         Plug.Conn.send_resp(conn, 404, "")
       end)
 
-      assert {:error, %RequestError{} = error} = OIDC.validate_id_token(config, id_token)
-      assert error.error == :invalid_server_response
-      assert error.message =~ "Server responded with status: 404"
+      assert {:error, %InvalidResponseError{} = error} = OIDC.validate_id_token(config, id_token)
+      assert error.response.status == 404
     end
 
     test "with missing keys in `jwks_uri` url", %{config: config, id_token: id_token} do
@@ -514,7 +508,7 @@ defmodule Assent.Strategy.OIDCTest do
       config = Keyword.delete(config, :openid_configuration)
       expect_openid_config_request([], status_code: 500)
 
-      assert {:error, %RequestError{error: :invalid_server_response}} = OIDC.fetch_userinfo(config, access_token)
+      assert {:error, %InvalidResponseError{}} = OIDC.fetch_userinfo(config, access_token)
     end
 
     test "with missing `userinfo_endpoint` in OpenID configuration", %{config: config, access_token: access_token} do
@@ -528,19 +522,16 @@ defmodule Assent.Strategy.OIDCTest do
       openid_configuration = Map.put(config[:openid_configuration], "userinfo_endpoint", "http://localhost:8888/userinfo")
       config               = Keyword.put(config, :openid_configuration, openid_configuration)
 
-      assert {:error, %RequestError{} = error} = OIDC.fetch_userinfo(config, access_token)
-      assert error.error == :unreachable
-      assert error.message =~ "Server was unreachable with Assent.HTTPAdapter.Httpc."
-      assert error.message =~ "{:failed_connect"
-      assert error.message =~ "URL: http://localhost:8888/userinfo"
+      assert {:error, %ServerUnreachableError{} = error} = OIDC.fetch_userinfo(config, access_token)
+      assert error.http_adapter == Assent.HTTPAdapter.Httpc
+      assert error.request_url == "http://localhost:8888/userinfo"
+      assert {:failed_connect, _} = error.reason
     end
 
     test "with unexpected `userinfo_endpoint` url response", %{config: config, access_token: access_token} do
       expect_oidc_userinfo_request(gen_id_token(alg: "HS256"), status_code: 201)
 
-      assert {:error, %RequestError{} = error} = OIDC.fetch_userinfo(config, access_token)
-      assert error.error == :unexpected_response
-      assert error.message =~ "An unexpected success response was received:"
+      assert {:error, %UnexpectedResponseError{}} = OIDC.fetch_userinfo(config, access_token)
     end
 
     test "with unauthorized `userinfo_endpoint`", %{config: config, access_token: access_token} do
@@ -548,7 +539,7 @@ defmodule Assent.Strategy.OIDCTest do
 
       assert {:error, %RequestError{} = error} = OIDC.fetch_userinfo(config, access_token)
       assert error.message == "Unauthorized token"
-      refute error.error
+      assert error.response.status == 401
     end
 
     test "with jwt response with invalid signature", %{config: config, access_token: access_token} do

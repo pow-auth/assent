@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.2.8 (TBA)
+
+- More expressive errors now including the whole HTTP response where applicable
+
 ## v0.2.7 (2023-09-12)
 
 * `Assent.Strategy.Strava` added

@@ -1,7 +1,8 @@
 defmodule Assent.Strategy.OAuthTest do
   use Assent.Test.OAuthTestCase
 
-  alias Assent.{Config.MissingKeyError, MissingParamError, RequestError, Strategy.OAuth}
+  alias Assent.UnexpectedResponseError
+  alias Assent.{Config.MissingKeyError, InvalidResponseError, MissingParamError, ServerUnreachableError, Strategy.OAuth}
 
   @private_key """
     -----BEGIN RSA PRIVATE KEY-----
@@ -48,79 +49,86 @@ defmodule Assent.Strategy.OAuthTest do
     test "with missing `:redirect_uri` config", %{config: config} do
       config = Keyword.delete(config, :redirect_uri)
 
-      assert OAuth.authorize_url(config) == {:error, %MissingKeyError{message: "Key `:redirect_uri` not found in config"}}
+      assert {:error, %MissingKeyError{} = error} = OAuth.authorize_url(config)
+      assert error.key == :redirect_uri
     end
 
     test "with missing `:site` config", %{config: config} do
       config = Keyword.delete(config, :site)
 
-      assert OAuth.authorize_url(config) == {:error, %MissingKeyError{message: "Key `:site` not found in config"}}
+      assert {:error, %MissingKeyError{} = error} = OAuth.authorize_url(config)
+      assert error.key == :site
     end
 
     test "with missing `:consumer_key` config", %{config: config} do
       config = Keyword.delete(config, :consumer_key)
 
-      assert OAuth.authorize_url(config) == {:error, %MissingKeyError{message: "Key `:consumer_key` not found in config"}}
+      assert {:error, %MissingKeyError{} = error} = OAuth.authorize_url(config)
+      assert error.key == :consumer_key
     end
 
     test "with missing `:consumer_secret` config", %{config: config} do
       config = Keyword.delete(config, :consumer_secret)
 
-      assert OAuth.authorize_url(config) == {:error, %MissingKeyError{message: "Key `:consumer_secret` not found in config"}}
+      assert {:error, %MissingKeyError{} = error} = OAuth.authorize_url(config)
+      assert error.key == :consumer_secret
     end
 
     test "with unreachable request token url", %{config: config} do
       request_token_url = TestServer.url("/request_token")
       TestServer.stop()
 
-      assert {:error, %RequestError{} = error} = OAuth.authorize_url(config)
-      assert error.error == :unreachable
-      assert error.message =~ "Server was unreachable with Assent.HTTPAdapter.Httpc."
-      assert error.message =~ "{:failed_connect, "
-      assert error.message =~ "URL: #{request_token_url}"
+      assert {:error, %ServerUnreachableError{} = error} = OAuth.authorize_url(config)
+      assert Exception.message(error) =~ "The server was unreachable."
+      assert error.http_adapter == Assent.HTTPAdapter.Httpc
+      assert error.request_url == request_token_url
+      assert {:failed_connect, _} = error.reason
     end
 
     test "with unexpected successful response", %{config: config} do
       expect_oauth_request_token_request(params: %{"error_code" => 215, "error_message" => "Bad Authentication data."})
 
-      assert {:error, %RequestError{} = error} = OAuth.authorize_url(config)
-      assert error.error == :unexpected_response
-      assert error.message =~ "An unexpected success response was received:"
-      assert error.message =~ "%{\"error_code\" => \"215\", \"error_message\" => \"Bad Authentication data.\"}"
+      assert {:error, %UnexpectedResponseError{} = error} = OAuth.authorize_url(config)
+      assert Exception.message(error) =~ "An unexpected response was received."
+      assert error.response.http_adapter == Assent.HTTPAdapter.Httpc
+      assert error.response.request_url == TestServer.url("/request_token")
+      assert error.response.status == 200
+      assert error.response.body == %{"error_code" => "215", "error_message" => "Bad Authentication data."}
     end
 
     test "with error response", %{config: config} do
       expect_oauth_request_token_request(status_code: 500, params: %{"error_code" => 215, "error_message" => "Bad Authentication data."})
 
-      assert {:error, %RequestError{} = error} = OAuth.authorize_url(config)
-      assert error.error == :invalid_server_response
-      assert error.message =~ "Server responded with status: 500"
-      assert error.message =~ "%{\"error_code\" => \"215\", \"error_message\" => \"Bad Authentication data.\"}"
+      assert {:error, %InvalidResponseError{} = error} = OAuth.authorize_url(config)
+      assert Exception.message(error) =~ "An invalid response was received."
+      assert error.response.http_adapter == Assent.HTTPAdapter.Httpc
+      assert error.response.request_url == TestServer.url("/request_token")
+      assert error.response.status == 500
+      assert error.response.body == %{"error_code" => "215", "error_message" => "Bad Authentication data."}
     end
 
     test "with json error response", %{config: config} do
       expect_oauth_request_token_request(status_code: 500, content_type: "application/json", params: %{"errors" => [%{"code" => 215, "message" => "Bad Authentication data."}]})
 
-      assert {:error, %RequestError{} = error} = OAuth.authorize_url(config)
-      assert error.error == :invalid_server_response
-      assert error.message =~ "Server responded with status: 500"
-      assert error.message =~ "%{\"errors\" => [%{\"code\" => 215, \"message\" => \"Bad Authentication data.\"}]}"
+      assert {:error, %InvalidResponseError{} = error} = OAuth.authorize_url(config)
+      assert error.response.status == 500
+      assert error.response.body == %{"errors" => [%{"code" => 215, "message" => "Bad Authentication data."}]}
     end
 
     test "with missing `oauth_token` in access token response", %{config: config} do
       expect_oauth_request_token_request(params: %{oauth_token_secret: "hdhd0244k9j7ao03"})
 
-      assert {:error, %RequestError{} = error} = OAuth.authorize_url(config)
-      assert error.error == :unexpected_response
-      assert error.message =~ "An unexpected success response was received:\n\n%{\"oauth_token_secret\" => \"hdhd0244k9j7ao03\"}\n"
+      assert {:error, %UnexpectedResponseError{} = error} = OAuth.authorize_url(config)
+      assert Exception.message(error) =~ "An unexpected response was received."
+      assert error.response.body == %{"oauth_token_secret" => "hdhd0244k9j7ao03"}
     end
 
     test "with missing `oauth_token_secret` in access token response", %{config: config} do
       expect_oauth_request_token_request(params: %{oauth_token: "hh5s93j4hdidpola"})
 
-      assert {:error, %RequestError{} = error} = OAuth.authorize_url(config)
-      assert error.error == :unexpected_response
-      assert error.message =~ "An unexpected success response was received:\n\n%{\"oauth_token\" => \"hh5s93j4hdidpola\"}\n"
+      assert {:error, %UnexpectedResponseError{} = error} = OAuth.authorize_url(config)
+      assert Exception.message(error) =~ "An unexpected response was received."
+      assert error.response.body == %{"oauth_token" => "hh5s93j4hdidpola"}
     end
 
     test "returns url", %{config: config} do
@@ -206,7 +214,8 @@ defmodule Assent.Strategy.OAuthTest do
     test "with missing `:private_key` config", %{config: config} do
       config = Keyword.delete(config, :private_key)
 
-      assert OAuth.authorize_url(config) == {:error, %MissingKeyError{message: "Key `:private_key` not found in config"}}
+      assert {:error, %MissingKeyError{} = error} = OAuth.authorize_url(config)
+      assert error.key == :private_key
     end
 
     test "returns url", %{config: config} do
@@ -266,7 +275,8 @@ defmodule Assent.Strategy.OAuthTest do
     test "with missing `:consumer_secret` config", %{config: config} do
       config = Keyword.delete(config, :consumer_secret)
 
-      assert OAuth.authorize_url(config) == {:error, %MissingKeyError{message: "Key `:consumer_secret` not found in config"}}
+      assert {:error, %MissingKeyError{} = error} = OAuth.authorize_url(config)
+      assert error.key == :consumer_secret
     end
 
     test "returns url", %{config: config} do
@@ -292,7 +302,8 @@ defmodule Assent.Strategy.OAuthTest do
       params = Map.delete(params, "oauth_token")
 
       assert {:error, %MissingParamError{} = error} = OAuth.callback(config, params)
-      assert error.message == "Expected \"oauth_token\" to exist in params, but only found the following keys: [\"oauth_verifier\"]"
+      assert Exception.message(error) == "Expected \"oauth_token\" in params, got: [\"oauth_verifier\"]"
+      assert error.expected_key == "oauth_token"
       assert error.params == %{"oauth_verifier" => "hfdp7dh39dks9884"}
     end
 
@@ -300,60 +311,60 @@ defmodule Assent.Strategy.OAuthTest do
       params = Map.delete(params, "oauth_verifier")
 
       assert {:error, %MissingParamError{} = error} = OAuth.callback(config, params)
-      assert error.message == "Expected \"oauth_verifier\" to exist in params, but only found the following keys: [\"oauth_token\"]"
+      assert Exception.message(error) == "Expected \"oauth_verifier\" in params, got: [\"oauth_token\"]"
+      assert error.expected_key == "oauth_verifier"
       assert error.params == %{"oauth_token" => "hh5s93j4hdidpola"}
     end
 
     test "with missing `:site` config", %{config: config, callback_params: callback_params} do
       config = Keyword.delete(config, :site)
 
-      assert OAuth.callback(config, callback_params) == {:error, %MissingKeyError{message: "Key `:site` not found in config"}}
+      assert {:error, %MissingKeyError{} = error} = OAuth.callback(config, callback_params)
+      assert error.key == :site
     end
 
     test "with unreachable token url", %{config: config, callback_params: callback_params} do
       access_token_url = TestServer.url("/access_token")
       TestServer.stop()
 
-      assert {:error, %RequestError{} = error} = OAuth.callback(config, callback_params)
-      assert error.error == :unreachable
-      assert error.message =~ "Server was unreachable with Assent.HTTPAdapter.Httpc."
-      assert error.message =~ "{:failed_connect, "
-      assert error.message =~ "URL: #{access_token_url}"
+      assert {:error, %ServerUnreachableError{} = error} = OAuth.callback(config, callback_params)
+      assert Exception.message(error) =~ "The server was unreachable."
+      assert error.http_adapter == Assent.HTTPAdapter.Httpc
+      assert error.request_url == access_token_url
+      assert {:failed_connect, _} = error.reason
     end
 
     test "with token url error response", %{config: config, callback_params: callback_params} do
       expect_oauth_access_token_request(status_code: 500, params: %{error: "Unknown error"})
 
-      assert {:error, %RequestError{} = error} = OAuth.callback(config, callback_params)
-      assert error.error == :invalid_server_response
-      assert error.message =~ "Server responded with status: 500"
-      assert error.message =~ "%{\"error\" => \"Unknown error\"}"
+      assert {:error, %InvalidResponseError{} = error} = OAuth.callback(config, callback_params)
+      assert Exception.message(error) =~ "Response status: 500"
+      assert error.response.body == %{"error" => "Unknown error"}
     end
 
     test "with missing `oauth_token` in access token response", %{config: config, callback_params: callback_params} do
       expect_oauth_access_token_request(params: %{oauth_token_secret: "token_secret"})
 
-      assert {:error, %RequestError{} = error} = OAuth.callback(config, callback_params)
-      assert error.error == :unexpected_response
-      assert error.message =~ "An unexpected success response was received:\n\n%{\"oauth_token_secret\" => \"token_secret\"}\n"
+      assert {:error, %UnexpectedResponseError{} = error} = OAuth.callback(config, callback_params)
+      assert Exception.message(error) =~ "An unexpected response was received."
+      assert error.response.body == %{"oauth_token_secret" => "token_secret"}
     end
 
     test "with missing `oauth_token_secret` in access token response", %{config: config, callback_params: callback_params} do
       expect_oauth_access_token_request(params: %{oauth_token: "token"})
 
-      assert {:error, %RequestError{} = error} = OAuth.callback(config, callback_params)
-      assert error.error == :unexpected_response
-      assert error.message =~ "An unexpected success response was received:\n\n%{\"oauth_token\" => \"token\"}\n"
+      assert {:error, %UnexpectedResponseError{} = error} = OAuth.callback(config, callback_params)
+      assert Exception.message(error) =~ "An unexpected response was received."
+      assert error.response.body == %{"oauth_token" => "token"}
     end
 
     test "bubbles up user request error response", %{config: config, callback_params: callback_params} do
       expect_oauth_access_token_request()
       expect_oauth_user_request(%{error: "Unknown error"}, status_code: 500)
 
-      assert {:error, %RequestError{} = error} = OAuth.callback(config, callback_params)
-      assert error.error == :invalid_server_response
-      assert error.message =~ "Server responded with status: 500"
-      assert error.message =~ "%{\"error\" => \"Unknown error\"}"
+      assert {:error, %InvalidResponseError{} = error} = OAuth.callback(config, callback_params)
+      assert Exception.message(error) =~ "Response status: 500"
+      assert error.response.body == %{"error" => "Unknown error"}
     end
 
     test "normalizes data", %{config: config, callback_params: callback_params} do
@@ -388,7 +399,8 @@ defmodule Assent.Strategy.OAuthTest do
     test "with missing `:site` config", %{config: config, token: token} do
       config = Keyword.delete(config, :site)
 
-      assert OAuth.request(config, token, :get, "/info") == {:error, %MissingKeyError{message: "Key `:site` not found in config"}}
+      assert {:error, %MissingKeyError{} = error} = OAuth.request(config, token, :get, "/info")
+      assert error.key == :site
     end
 
     test "with missing `oauth_token` in token", %{config: config, token: token} do
@@ -402,24 +414,26 @@ defmodule Assent.Strategy.OAuthTest do
     test "with missing `:consumer_key` config", %{config: config, token: token} do
       config = Keyword.delete(config, :consumer_key)
 
-      assert OAuth.request(config, token, :get, "/info") == {:error, %MissingKeyError{message: "Key `:consumer_key` not found in config"}}
+      assert {:error, %MissingKeyError{} = error} = OAuth.request(config, token, :get, "/info")
+      assert error.key == :consumer_key
     end
 
     test "with missing `:consumer_secret` config", %{config: config, token: token} do
       config = Keyword.delete(config, :consumer_secret)
 
-      assert OAuth.request(config, token, :get, "/info") == {:error, %MissingKeyError{message: "Key `:consumer_secret` not found in config"}}
+      assert {:error, %MissingKeyError{} = error} = OAuth.request(config, token, :get, "/info")
+      assert error.key == :consumer_secret
     end
 
     test "with network error", %{config: config, token: token} do
       info_url = TestServer.url("/info")
       TestServer.stop()
 
-      assert {:error, %Assent.RequestError{} = error} = OAuth.request(config, token, :get, "/info")
-      assert error.error == :unreachable
-      assert error.message =~ "Server was unreachable with Assent.HTTPAdapter.Httpc."
-      assert error.message =~ "{:failed_connect, "
-      assert error.message =~ "URL: #{info_url}"
+      assert {:error, %ServerUnreachableError{} = error} = OAuth.request(config, token, :get, "/info")
+      assert Exception.message(error) =~ "The server was unreachable."
+      assert error.http_adapter == Assent.HTTPAdapter.Httpc
+      assert error.request_url == info_url
+      assert {:failed_connect, _} = error.reason
     end
 
     test "fetches", %{config: config, token: token} do
