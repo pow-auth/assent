@@ -46,9 +46,10 @@ defmodule Assent.Strategy.Instagram do
 
   @impl true
   def normalize(_config, user) do
-    {:ok, %{
-      "sub"                => user["id"],
-      "preferred_username" => user["username"]
-    }}
+    {:ok,
+     %{
+       "sub" => user["id"],
+       "preferred_username" => user["username"]
+     }}
   end
 end

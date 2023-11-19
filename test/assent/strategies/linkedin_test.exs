@@ -10,7 +10,8 @@ defmodule Assent.Strategy.LinkedInTest do
     "name" => "John Doe",
     "given_name" => "John",
     "family_name" => "Doe",
-    "picture" => "https://media.licdn-ei.com/dms/image/C5F03AQHqK8v7tB1HCQ/profile-displayphoto-shrink_100_100/0/",
+    "picture" =>
+      "https://media.licdn-ei.com/dms/image/C5F03AQHqK8v7tB1HCQ/profile-displayphoto-shrink_100_100/0/",
     "locale" => "en-US",
     "email" => "doe@email.com",
     "email_verified" => true
@@ -22,7 +23,8 @@ defmodule Assent.Strategy.LinkedInTest do
     "given_name" => "John",
     "family_name" => "Doe",
     "locale" => "en-US",
-    "picture" => "https://media.licdn-ei.com/dms/image/C5F03AQHqK8v7tB1HCQ/profile-displayphoto-shrink_100_100/0/",
+    "picture" =>
+      "https://media.licdn-ei.com/dms/image/C5F03AQHqK8v7tB1HCQ/profile-displayphoto-shrink_100_100/0/",
     "sub" => "782bbtaQ"
   }
 
@@ -36,11 +38,25 @@ defmodule Assent.Strategy.LinkedInTest do
     "subject_types_supported" => ["pairwise"],
     "id_token_signing_alg_values_supported" => ["RS256"],
     "scopes_supported" => ["openid", "profile", "email"],
-    "claims_supported" => ["iss", "aud", "iat", "exp", "sub", "name", "given_name", "family_name", "picture", "email", "email_verified", "locale"]
+    "claims_supported" => [
+      "iss",
+      "aud",
+      "iat",
+      "exp",
+      "sub",
+      "name",
+      "given_name",
+      "family_name",
+      "picture",
+      "email",
+      "email_verified",
+      "locale"
+    ]
   }
 
   setup %{config: config} do
-    openid_configuration = Map.merge(@openid_config, Map.delete(config[:openid_configuration], "issuer"))
+    openid_configuration =
+      Map.merge(@openid_config, Map.delete(config[:openid_configuration], "issuer"))
 
     config = Keyword.put(config, :openid_configuration, openid_configuration)
 

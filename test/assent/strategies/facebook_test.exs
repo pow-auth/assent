@@ -35,7 +35,11 @@ defmodule Assent.Strategy.FacebookTest do
 
         assert conn.params["access_token"] == "access_token"
         assert conn.params["fields"] == "email,name,first_name,last_name,middle_name,link"
-        assert conn.params["appsecret_proof"] == Base.encode16(:crypto.mac(:hmac, :sha256, "secret", "access_token"), case: :lower)
+
+        assert conn.params["appsecret_proof"] ==
+                 Base.encode16(:crypto.mac(:hmac, :sha256, "secret", "access_token"),
+                   case: :lower
+                 )
       end)
 
       assert {:ok, %{user: user}} = Facebook.callback(config, params)

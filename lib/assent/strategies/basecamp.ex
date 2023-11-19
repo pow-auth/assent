@@ -34,15 +34,16 @@ defmodule Assent.Strategy.Basecamp do
 
   @impl true
   def normalize(_config, user) do
-    {:ok, %{
-      "sub"         => user["identity"]["id"],
-      "name"        => "#{user["identity"]["first_name"]} #{user["identity"]["last_name"]}",
-      "given_name"  => user["identity"]["first_name"],
-      "family_name" => user["identity"]["last_name"],
-      "email"       => user["identity"]["email_address"]
-    },
-    %{
-      "basecamp_accounts" => user["accounts"]
-    }}
+    {:ok,
+     %{
+       "sub" => user["identity"]["id"],
+       "name" => "#{user["identity"]["first_name"]} #{user["identity"]["last_name"]}",
+       "given_name" => user["identity"]["first_name"],
+       "family_name" => user["identity"]["last_name"],
+       "email" => user["identity"]["email_address"]
+     },
+     %{
+       "basecamp_accounts" => user["accounts"]
+     }}
   end
 end

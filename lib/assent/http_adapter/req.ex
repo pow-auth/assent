@@ -19,19 +19,25 @@ if Code.ensure_loaded?(Req) do
       opts = req_opts || []
 
       opts =
-        Keyword.merge([
-          method: method,
-          url: url,
-          headers: headers,
-          body: body
-        ], opts)
+        Keyword.merge(
+          [
+            method: method,
+            url: url,
+            headers: headers,
+            body: body
+          ],
+          opts
+        )
 
       opts
       |> Req.new()
       |> Req.request()
       |> case do
         {:ok, response} ->
-          headers = Enum.map(headers, fn {key, value} -> {String.downcase(to_string(key)), to_string(value)} end)
+          headers =
+            Enum.map(headers, fn {key, value} ->
+              {String.downcase(to_string(key)), to_string(value)}
+            end)
 
           {:ok, %HTTPResponse{status: response.status, headers: headers, body: response.body}}
 
@@ -40,4 +46,4 @@ if Code.ensure_loaded?(Req) do
       end
     end
   end
-  end
+end

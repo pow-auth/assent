@@ -23,16 +23,17 @@ defmodule IntegrationServer.Router do
   {:ok, modules} = :application.get_key(:assent, :modules)
 
   @path_modules modules
-    |> Enum.map(&{Module.split(&1), &1})
-    |> Enum.map(fn
-      {["Assent", "Strategy", uri], module} -> {uri, module}
-      _any -> nil
-    end)
-    |> Enum.reject(&is_nil/1)
-    |> Enum.into(%{})
+                |> Enum.map(&{Module.split(&1), &1})
+                |> Enum.map(fn
+                  {["Assent", "Strategy", uri], module} -> {uri, module}
+                  _any -> nil
+                end)
+                |> Enum.reject(&is_nil/1)
+                |> Enum.into(%{})
 
-  defp secret_key_base(conn, _opts),
-    do: %{conn | secret_key_base: "LG8WiSkAlUlwVJpISmRYsi7aJV/Qlv65FXyxwWXxp1QUzQY3hzEfg73YKfKZPpe0"}
+  defp secret_key_base(conn, _opts) do
+    %{conn | secret_key_base: "LG8WiSkAlUlwVJpISmRYsi7aJV/Qlv65FXyxwWXxp1QUzQY3hzEfg73YKfKZPpe0"}
+  end
 
   get "/" do
     list =
@@ -50,7 +51,7 @@ defmodule IntegrationServer.Router do
 
     {:ok, %{url: url, session_params: session_params}} = module.authorize_url(config!(provider))
 
-    Logger.info("Redirecting to #{inspect url} with session params #{inspect session_params}")
+    Logger.info("Redirecting to #{inspect(url)} with session params #{inspect(session_params)}")
 
     html = Plug.HTML.html_escape(url)
     body = "<html><body>You are being <a href=\"#{html}\">redirected</a>.</body></html>"

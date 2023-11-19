@@ -73,7 +73,7 @@ defmodule Assent.Strategy.Apple do
   @impl true
   def callback(config, params) do
     with {:ok, client_secret} <- gen_client_secret(config),
-         {:ok, user_info}     <- decode_user_params(config, params) do
+         {:ok, user_info} <- decode_user_params(config, params) do
       config
       |> Config.put(:client_secret, client_secret)
       |> Config.put(:user, user_info)
@@ -85,17 +85,17 @@ defmodule Assent.Strategy.Apple do
 
   defp gen_client_secret(config) do
     timestamp = :os.system_time(:second)
-    config    =
+
+    config =
       config
       |> default_config()
       |> Keyword.merge(config)
 
-    with {:ok, base_url}    <- Config.fetch(config, :base_url),
-         {:ok, client_id}   <- Config.fetch(config, :client_id),
-         {:ok, team_id}     <- Config.fetch(config, :team_id),
-         :ok                <- ensure_private_key_id(config),
+    with {:ok, base_url} <- Config.fetch(config, :base_url),
+         {:ok, client_id} <- Config.fetch(config, :client_id),
+         {:ok, team_id} <- Config.fetch(config, :team_id),
+         :ok <- ensure_private_key_id(config),
          {:ok, private_key} <- JWTAdapter.load_private_key(config) do
-
       claims = %{
         "aud" => base_url,
         "iss" => team_id,
@@ -127,12 +127,13 @@ defmodule Assent.Strategy.Apple do
 
   @impl true
   def normalize(_config, user) do
-    {:ok, %{
-      "sub"            => user["sub"],
-      "email"          => user["email"],
-      "email_verified" => true,
-      "given_name"     => Map.get(user, "name", %{})["firstName"],
-      "family_name"    => Map.get(user, "name", %{})["lastName"]
-    }}
+    {:ok,
+     %{
+       "sub" => user["sub"],
+       "email" => user["email"],
+       "email_verified" => true,
+       "given_name" => Map.get(user, "name", %{})["firstName"],
+       "family_name" => Map.get(user, "name", %{})["lastName"]
+     }}
   end
 end

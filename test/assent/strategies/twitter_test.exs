@@ -10,7 +10,8 @@ defmodule Assent.Strategy.TwitterTest do
     "name" => "Twitter Dev",
     "screen_name" => "TwitterDev",
     "location" => "Internet",
-    "description" => "Your official source for Twitter Platform news, updates & events. Need technical help? Visit https://t.co/mGHnxZU8c1 ⌨️ #TapIntoTwitter",
+    "description" =>
+      "Your official source for Twitter Platform news, updates & events. Need technical help? Visit https://t.co/mGHnxZU8c1 ⌨️ #TapIntoTwitter",
     "url" => "https://t.co/FGl7VOULyL",
     "entities" => %{
       "url" => %{
@@ -56,7 +57,8 @@ defmodule Assent.Strategy.TwitterTest do
       "created_at" => "Tue May 14 17:54:29 +0000 2019",
       "id" => 1_128_357_932_238_823_424,
       "id_str" => "1128357932238823424",
-      "text" => "We’ll release the first Labs endpoints to all eligible developers in the coming weeks. If you want to participate,… https://t.co/8q8sj87D5a",
+      "text" =>
+        "We’ll release the first Labs endpoints to all eligible developers in the coming weeks. If you want to participate,… https://t.co/8q8sj87D5a",
       "truncated" => true,
       "entities" => %{
         "hashtags" => [],
@@ -100,7 +102,8 @@ defmodule Assent.Strategy.TwitterTest do
     "profile_background_image_url_https" => "null",
     "profile_background_tile" => nil,
     "profile_image_url" => "null",
-    "profile_image_url_https" => "https://pbs.twimg.com/profile_images/880136122604507136/xHrnqf1T_normal.jpg",
+    "profile_image_url_https" =>
+      "https://pbs.twimg.com/profile_images/880136122604507136/xHrnqf1T_normal.jpg",
     "profile_banner_url" => "https://pbs.twimg.com/profile_banners/2244994945/1498675817",
     "profile_link_color" => "null",
     "profile_sidebar_border_color" => "null",
@@ -127,34 +130,66 @@ defmodule Assent.Strategy.TwitterTest do
 
   setup %{config: config, callback_params: callback_params} do
     config = Keyword.merge(config, consumer_key: "cChZNFj6T5R0TigYB9yd1w")
-    callback_params = Map.merge(callback_params, %{"oauth_token" => "NPcudxy0yU5T3tBzho7iCotZ3cnetKwcTIRlX0iwRl0", "oauth_verifier" => "uw7NjWHT6OJ1MpJOXsHfNxoAhPKpgI8BlYDhxEjIBY"})
+
+    callback_params =
+      Map.merge(callback_params, %{
+        "oauth_token" => "NPcudxy0yU5T3tBzho7iCotZ3cnetKwcTIRlX0iwRl0",
+        "oauth_verifier" => "uw7NjWHT6OJ1MpJOXsHfNxoAhPKpgI8BlYDhxEjIBY"
+      })
 
     {:ok, config: config, callback_params: callback_params}
   end
 
   test "authorize_url/2", %{config: config} do
-    expect_oauth_request_token_request(uri: "/oauth/request_token", params: %{oauth_token: "NPcudxy0yU5T3tBzho7iCotZ3cnetKwcTIRlX0iwRl0", oauth_token_secret: "veNRnAWe6inFuo8o2u8SLLZLjolYDmDP7SzL0YfYI", oauth_callback_confirmed: true})
+    expect_oauth_request_token_request(
+      uri: "/oauth/request_token",
+      params: %{
+        oauth_token: "NPcudxy0yU5T3tBzho7iCotZ3cnetKwcTIRlX0iwRl0",
+        oauth_token_secret: "veNRnAWe6inFuo8o2u8SLLZLjolYDmDP7SzL0YfYI",
+        oauth_callback_confirmed: true
+      }
+    )
 
-    assert {:ok, %{url: url, session_params: %{oauth_token_secret: oauth_token_secret}}} = Twitter.authorize_url(config)
-    assert url == TestServer.url("/oauth/authenticate?oauth_token=NPcudxy0yU5T3tBzho7iCotZ3cnetKwcTIRlX0iwRl0")
+    assert {:ok, %{url: url, session_params: %{oauth_token_secret: oauth_token_secret}}} =
+             Twitter.authorize_url(config)
+
+    assert url ==
+             TestServer.url(
+               "/oauth/authenticate?oauth_token=NPcudxy0yU5T3tBzho7iCotZ3cnetKwcTIRlX0iwRl0"
+             )
+
     refute is_nil(oauth_token_secret)
   end
 
   test "callback/2", %{config: config, callback_params: params} do
-    expect_oauth_access_token_request([uri: "/oauth/access_token", params: %{oauth_token: "7588892-kagSNqWge8gB1WwE3plnFsJHAZVfxWD7Vb57p0b4", oauth_token_secret: "PbKfYqSryyeKDWz4ebtY3o5ogNLG11WJuZBc9fQrQo"}], fn _conn, oauth_params ->
-      assert oauth_params["oauth_consumer_key"] == "cChZNFj6T5R0TigYB9yd1w"
-      assert oauth_params["oauth_token"] == "NPcudxy0yU5T3tBzho7iCotZ3cnetKwcTIRlX0iwRl0"
-      assert oauth_params["oauth_verifier"] == "uw7NjWHT6OJ1MpJOXsHfNxoAhPKpgI8BlYDhxEjIBY"
-    end)
+    expect_oauth_access_token_request(
+      [
+        uri: "/oauth/access_token",
+        params: %{
+          oauth_token: "7588892-kagSNqWge8gB1WwE3plnFsJHAZVfxWD7Vb57p0b4",
+          oauth_token_secret: "PbKfYqSryyeKDWz4ebtY3o5ogNLG11WJuZBc9fQrQo"
+        }
+      ],
+      fn _conn, oauth_params ->
+        assert oauth_params["oauth_consumer_key"] == "cChZNFj6T5R0TigYB9yd1w"
+        assert oauth_params["oauth_token"] == "NPcudxy0yU5T3tBzho7iCotZ3cnetKwcTIRlX0iwRl0"
+        assert oauth_params["oauth_verifier"] == "uw7NjWHT6OJ1MpJOXsHfNxoAhPKpgI8BlYDhxEjIBY"
+      end
+    )
 
-    expect_oauth_user_request(@user_response, uri: "/1.1/account/verify_credentials.json", params: [include_entities: false, skip_status: true, include_email: true])
+    expect_oauth_user_request(@user_response,
+      uri: "/1.1/account/verify_credentials.json",
+      params: [include_entities: false, skip_status: true, include_email: true]
+    )
 
     assert {:ok, %{user: user}} = Twitter.callback(config, params)
     assert user == @user
   end
 
   test "callback/2 when user denies", %{config: config, callback_params: params} do
-    assert {:error, %CallbackError{} = error} = Twitter.callback(config, %{"denied" => params["oauth_token"]})
+    assert {:error, %CallbackError{} = error} =
+             Twitter.callback(config, %{"denied" => params["oauth_token"]})
+
     assert error.message == "The user denied the authorization request"
     refute error.error
     refute error.error_uri

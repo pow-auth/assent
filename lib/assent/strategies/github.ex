@@ -37,15 +37,16 @@ defmodule Assent.Strategy.Github do
 
   @impl true
   def normalize(_config, user) do
-    {:ok, %{
-      "sub"                => user["id"],
-      "name"               => user["name"],
-      "preferred_username" => user["login"],
-      "profile"            => user["html_url"],
-      "picture"            => user["avatar_url"],
-      "email"              => user["email"],
-      "email_verified"     => user["email_verified"]
-    }}
+    {:ok,
+     %{
+       "sub" => user["id"],
+       "name" => user["name"],
+       "preferred_username" => user["login"],
+       "profile" => user["html_url"],
+       "picture" => user["avatar_url"],
+       "email" => user["email"],
+       "email_verified" => user["email_verified"]
+     }}
   end
 
   @impl true
@@ -67,10 +68,12 @@ defmodule Assent.Strategy.Github do
 
     {:ok, Map.merge(user, %{"email" => email, "email_verified" => verified})}
   end
+
   defp process_email_response({:error, error}, _user), do: {:error, error}
 
   defp get_primary_email([%{"verified" => verified, "primary" => true, "email" => email} | _rest]),
     do: {email, verified}
+
   defp get_primary_email([_ | rest]), do: get_primary_email(rest)
   defp get_primary_email(_any), do: {nil, false}
 end

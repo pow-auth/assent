@@ -9,7 +9,7 @@ defmodule Assent do
     defexception [:key]
 
     def message(exception) do
-      "CSRF detected with param key #{inspect exception.key}"
+      "CSRF detected with param key #{inspect(exception.key)}"
     end
   end
 
@@ -17,8 +17,8 @@ defmodule Assent do
     defexception [:expected_key, :params]
 
     def message(exception) do
-      expected_key = inspect exception.expected_key
-      params = inspect Map.keys(exception.params)
+      expected_key = inspect(exception.expected_key)
+      params = inspect(Map.keys(exception.params))
 
       "Expected #{expected_key} in params, got: #{params}"
     end
@@ -75,11 +75,11 @@ defmodule Assent do
       """
       The server was unreachable.
 
-      HTTP Adapter: #{inspect exception.http_adapter}
+      HTTP Adapter: #{inspect(exception.http_adapter)}
       Request URL: #{url}
 
       Reason:
-      #{inspect exception.reason}
+      #{inspect(exception.reason)}
       """
     end
   end

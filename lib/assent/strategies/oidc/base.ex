@@ -48,14 +48,21 @@ defmodule Assent.Strategy.OIDC.Base do
     end
   end
 
-  @spec authorize_url(Keyword.t(), module()) :: {:ok, %{session_params: %{state: binary()} | %{state: binary(), nonce: binary()}, url: binary()}} | {:error, term()}
+  @spec authorize_url(Keyword.t(), module()) ::
+          {:ok,
+           %{
+             session_params: %{state: binary()} | %{state: binary(), nonce: binary()},
+             url: binary()
+           }}
+          | {:error, term()}
   def authorize_url(config, strategy) do
     config
     |> set_config(strategy)
     |> OIDC.authorize_url()
   end
 
-  @spec callback(Keyword.t(), map(), module()) :: {:ok, %{user: map(), token: map()}} | {:error, term()}
+  @spec callback(Keyword.t(), map(), module()) ::
+          {:ok, %{user: map(), token: map()}} | {:error, term()}
   def callback(config, params, strategy) do
     config = set_config(config, strategy)
 

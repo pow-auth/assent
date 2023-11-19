@@ -24,7 +24,7 @@ defmodule Assent.HTTPAdapter.Httpc do
 
     headers = headers ++ [HTTPAdapter.user_agent_header()]
     request = httpc_request(url, body, headers)
-    opts    = parse_httpc_ssl_opts(httpc_opts, url)
+    opts = parse_httpc_ssl_opts(httpc_opts, url)
 
     method
     |> :httpc.request(request, opts, [])
@@ -32,8 +32,9 @@ defmodule Assent.HTTPAdapter.Httpc do
   end
 
   defp raise_on_missing_httpc! do
-    Code.ensure_loaded?(:httpc) || raise """
-      #{inspect __MODULE__} requires `:httpc` to be included in your
+    Code.ensure_loaded?(:httpc) ||
+      raise """
+      #{inspect(__MODULE__)} requires `:httpc` to be included in your
       application.
 
       Please add `:inets` to `:extra_applications`:
@@ -51,8 +52,8 @@ defmodule Assent.HTTPAdapter.Httpc do
   end
 
   defp httpc_request(url, body, headers) do
-    url          = to_charlist(url)
-    headers      = Enum.map(headers, fn {k, v} -> {to_charlist(k), to_charlist(v)} end)
+    url = to_charlist(url)
+    headers = Enum.map(headers, fn {k, v} -> {to_charlist(k), to_charlist(v)} end)
 
     do_httpc_request(url, body, headers)
   end
@@ -60,29 +61,36 @@ defmodule Assent.HTTPAdapter.Httpc do
   defp do_httpc_request(url, nil, headers) do
     {url, headers}
   end
+
   defp do_httpc_request(url, body, headers) do
     {content_type, headers} = split_content_type_headers(headers)
-    body                    = to_charlist(body)
+    body = to_charlist(body)
 
     {url, headers, content_type, body}
   end
 
   defp split_content_type_headers(headers) do
-    case List.keytake(headers, 'content-type', 0) do
-      nil -> {'text/plain', headers}
+    case List.keytake(headers, ~c"content-type", 0) do
+      nil -> {~c"text/plain", headers}
       {{_, ct}, headers} -> {ct, headers}
     end
   end
 
   defp format_response({:ok, {{_, status, _}, headers, body}}) do
-    headers = Enum.map(headers, fn {key, value} -> {String.downcase(to_string(key)), to_string(value)} end)
-    body    = IO.iodata_to_binary(body)
+    headers =
+      Enum.map(headers, fn {key, value} ->
+        {String.downcase(to_string(key)), to_string(value)}
+      end)
+
+    body = IO.iodata_to_binary(body)
 
     {:ok, %HTTPResponse{status: status, headers: headers, body: body}}
   end
+
   defp format_response({:error, error}), do: {:error, error}
 
   defp parse_httpc_ssl_opts(nil, url), do: parse_httpc_ssl_opts([], url)
+
   defp parse_httpc_ssl_opts(opts, url) do
     uri = URI.parse(url)
 
@@ -113,21 +121,30 @@ defmodule Assent.HTTPAdapter.Httpc do
         # OTP >= 22
         hostname_match_check =
           try do
-            [customize_hostname_check: [match_fun: :public_key.pkix_verify_hostname_match_fun(:https)]]
+            [
+              customize_hostname_check: [
+                match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
+              ]
+            ]
           rescue
             _e in UndefinedFunctionError -> []
           end
 
-        Keyword.merge([
-          verify: :verify_peer,
-          depth: 99,
-          verify_fun: {&:ssl_verify_hostname.verify_fun/3, check_hostname: to_charlist(uri.host)}
-        ] ++ hostname_match_check, ssl_opts)
-      end
+        Keyword.merge(
+          [
+            verify: :verify_peer,
+            depth: 99,
+            verify_fun:
+              {&:ssl_verify_hostname.verify_fun/3, check_hostname: to_charlist(uri.host)}
+          ] ++ hostname_match_check,
+          ssl_opts
+        )
+    end
   end
 
   defp raise_on_missing_ssl_verify_fun! do
-    Code.ensure_loaded?(:ssl_verify_hostname) || raise """
+    Code.ensure_loaded?(:ssl_verify_hostname) ||
+      raise """
       This request can NOT be verified for valid SSL certificate.
 
       Please add `:ssl_verify_fun` to your projects dependencies:
@@ -158,7 +175,8 @@ defmodule Assent.HTTPAdapter.Httpc do
   end
 
   defp raise_on_missing_certifi! do
-    Code.ensure_loaded?(:certifi) || raise """
+    Code.ensure_loaded?(:certifi) ||
+      raise """
       This request requires a CA trust store.
 
       Please add `:certifi` to your projects dependencies:

@@ -26,9 +26,15 @@ defmodule Assent.Strategy.InstagramTest do
     end
 
     test "normalizes data", %{config: config, callback_params: params} do
-      expect_oauth2_access_token_request([uri: "/oauth/access_token", params: %{access_token: "access_token", user: @user_response}], fn _conn, params ->
-        assert params["client_secret"] == config[:client_secret]
-      end)
+      expect_oauth2_access_token_request(
+        [
+          uri: "/oauth/access_token",
+          params: %{access_token: "access_token", user: @user_response}
+        ],
+        fn _conn, params ->
+          assert params["client_secret"] == config[:client_secret]
+        end
+      )
 
       expect_oauth2_user_request(@user_response, [uri: "/me"], fn conn ->
         conn = Plug.Conn.fetch_query_params(conn)

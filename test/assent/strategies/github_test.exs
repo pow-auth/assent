@@ -84,6 +84,7 @@ defmodule Assent.Strategy.GithubTest do
       expect_oauth2_access_token_request([uri: "/login/oauth/access_token"], fn _conn, params ->
         assert params["client_secret"] == config[:client_secret]
       end)
+
       expect_oauth2_user_request(@user_response, uri: "/user")
       expect_oauth2_api_request("/user/emails", @emails_response)
 

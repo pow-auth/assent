@@ -49,17 +49,19 @@ defmodule Assent.JWTAdapter.JOSE do
 
     {%{}, %{"signature" => signature}} = JOSE.JWS.expand(token)
 
-    {:ok, %{
-      header: header,
-      claims: claims,
-      signature: signature,
-      verified?: verified
-    }}
+    {:ok,
+     %{
+       header: header,
+       claims: claims,
+       signature: signature,
+       verified?: verified
+     }}
   end
 
   defp verify_message(token, _alg, nil) do
     {false, JOSE.JWT.peek_payload(token)}
   end
+
   defp verify_message(token, alg, secret_or_public_key) do
     {verified, payload, _} =
       alg
