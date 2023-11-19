@@ -6,7 +6,7 @@ defmodule Assent.Test.OAuth2TestCase do
     TestServer.start()
 
     params = %{"code" => "code_test_value", "state" => "state_test_value"}
-    config = [client_id: "id", client_secret: "secret", site: TestServer.url(), redirect_uri: "http://localhost:4000/auth/callback", session_params: %{state: "state_test_value"}]
+    config = [client_id: "id", client_secret: "secret", base_url: TestServer.url(), redirect_uri: "http://localhost:4000/auth/callback", session_params: %{state: "state_test_value"}]
 
     {:ok, callback_params: params, config: config}
   end

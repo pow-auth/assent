@@ -21,7 +21,7 @@ defmodule Assent.Strategy.Linkedin do
   @impl true
   def default_config(_config) do
     [
-      site: "https://www.linkedin.com/oauth",
+      base_url: "https://www.linkedin.com/oauth",
       authorization_params: [scope: "profile email"],
       client_authentication_method: "client_secret_post"
     ]

@@ -29,7 +29,7 @@ defmodule Assent.Strategy.Auth0 do
 
   defp append_domain_config(config, default) do
     case Config.fetch(config, :domain) do
-      {:ok, domain} -> Config.put(default, :site, prepend_scheme(domain))
+      {:ok, domain} -> Config.put(default, :base_url, prepend_scheme(domain))
       _error        -> default
     end
   end

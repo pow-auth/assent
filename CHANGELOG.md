@@ -8,6 +8,7 @@
 - `Req` supported by default as HTTP client
 - Global application config support for HTTP and JWT adapters
 - More expressive errors now including the whole HTTP response where applicable
+- Deprecated `:site` config in favor of `:base_url` config
 
 ## v0.2.7 (2023-09-12)
 

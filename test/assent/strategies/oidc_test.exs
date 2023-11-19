@@ -157,7 +157,7 @@ defmodule Assent.Strategy.OIDCTest do
       openid_config = %{
         "token_endpoint" => "/dynamic/token/path",
         "jwks_uri" => TestServer.url("/jwks_uri.json"),
-        "issuer" => config[:site]
+        "issuer" => config[:base_url]
       }
 
       {:ok, config: config, openid_config: openid_config}

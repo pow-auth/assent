@@ -22,7 +22,7 @@ defmodule Assent.Strategy.Basecamp do
   @impl true
   def default_config(_config) do
     [
-      site: "https://launchpad.37signals.com",
+      base_url: "https://launchpad.37signals.com",
       authorize_url: "/authorization/new",
       token_url: "/authorization/token",
       user_url: "/authorization.json",

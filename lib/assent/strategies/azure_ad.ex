@@ -41,7 +41,7 @@ defmodule Assent.Strategy.AzureAD do
     tenant_id = Config.get(config, :tenant_id, "common")
 
     [
-      site: "https://login.microsoftonline.com/#{tenant_id}/v2.0",
+      base_url: "https://login.microsoftonline.com/#{tenant_id}/v2.0",
       authorization_params: [scope: "email profile", response_mode: "form_post"],
       client_authentication_method: "client_secret_post"
     ]

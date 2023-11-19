@@ -6,7 +6,7 @@ defmodule Assent.Test.OAuthTestCase do
     TestServer.start()
 
     params = %{"oauth_token" => "hh5s93j4hdidpola", "oauth_verifier" => "hfdp7dh39dks9884"}
-    config = [consumer_key: "dpf43f3p2l4k3l03", consumer_secret: "kd94hf93k423kf44", site: TestServer.url(), redirect_uri: "http://localhost:4000/auth/callback", session_params: %{oauth_token_secret: "request_token_secret"}]
+    config = [consumer_key: "dpf43f3p2l4k3l03", consumer_secret: "kd94hf93k423kf44", base_url: TestServer.url(), redirect_uri: "http://localhost:4000/auth/callback", session_params: %{oauth_token_secret: "request_token_secret"}]
 
     {:ok, callback_params: params, config: config}
   end

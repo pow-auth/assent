@@ -9,7 +9,7 @@ defmodule Assent.Strategy.OIDC.Base do
 
         def default_config(_config) do
           [
-            site: "https://oidc.example.com"
+            base_url: "https://oidc.example.com"
           ]
         end
 

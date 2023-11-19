@@ -21,7 +21,7 @@ defmodule Assent.Strategy.Twitter do
   @impl true
   def default_config(_config) do
     [
-      site: "https://api.twitter.com",
+      base_url: "https://api.twitter.com",
       request_token_url: "/oauth/request_token",
       authorize_url: "/oauth/authenticate",
       access_token_url: "/oauth/access_token",

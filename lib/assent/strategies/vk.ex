@@ -32,7 +32,7 @@ defmodule Assent.Strategy.VK do
     user_url_params = Config.merge(@url_params, params)
 
     [
-      site: "https://api.vk.com",
+      base_url: "https://api.vk.com",
       authorize_url: "https://oauth.vk.com/authorize",
       token_url: "https://oauth.vk.com/access_token",
       user_url: "/method/users.get",

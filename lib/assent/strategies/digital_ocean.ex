@@ -18,7 +18,7 @@ defmodule Assent.Strategy.DigitalOcean do
   @impl true
   def default_config(config) do
     [
-      site: "https://api.digitalocean.com",
+      base_url: "https://api.digitalocean.com",
       authorize_url: "https://cloud.digitalocean.com/v1/oauth/authorize",
       token_url: "https://cloud.digitalocean.com/v1/oauth/token",
       user_url: "/v2/account",

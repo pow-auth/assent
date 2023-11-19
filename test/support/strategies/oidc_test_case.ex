@@ -68,7 +68,7 @@ defmodule Assent.Test.OIDCTestCase do
         "jwks_uri" => TestServer.url("/jwks_uri.json")
       },
       client_secret: @client_secret,
-      site: TestServer.url(),
+      base_url: TestServer.url(),
       redirect_uri: "http://localhost:4000/auth/callback",
       session_params: %{state: "test_state_value"}]
 

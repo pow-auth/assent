@@ -16,7 +16,7 @@ defmodule Assent.Strategy.Spotify do
   @impl true
   def default_config(_config) do
     [
-      site: "https://api.spotify.com/v1",
+      base_url: "https://api.spotify.com/v1",
       authorize_url: "https://accounts.spotify.com/authorize",
       token_url: "https://accounts.spotify.com/api/token",
       user_url: "/me",

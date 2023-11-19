@@ -19,7 +19,7 @@ defmodule Assent.Strategy.Strava do
   @impl true
   def default_config(_config) do
     [
-      site: "https://www.strava.com/api/v3",
+      base_url: "https://www.strava.com/api/v3",
       authorize_url: "https://www.strava.com/oauth/authorize",
       token_url: "/oauth/token",
       user_url: "/athlete",

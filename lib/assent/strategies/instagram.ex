@@ -21,7 +21,7 @@ defmodule Assent.Strategy.Instagram do
   @impl true
   def default_config(_config) do
     [
-      site: "https://graph.instagram.com",
+      base_url: "https://graph.instagram.com",
       authorize_url: "https://api.instagram.com/oauth/authorize",
       token_url: "https://api.instagram.com/oauth/access_token",
       user_url: "/me",

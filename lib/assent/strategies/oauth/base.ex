@@ -10,7 +10,7 @@ defmodule Assent.Strategy.OAuth.Base do
         @impl true
         def default_config(_config) do
           [
-            site: "https://api.example.com",
+            base_url: "https://api.example.com",
             authorize_url: "/authorization/new",
             access_token_url: "/authorization/access_token"
             request_token_url: "/authorization/request_token",

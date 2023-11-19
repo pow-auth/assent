@@ -9,7 +9,7 @@ defmodule Assent.Strategy.OAuth2.Base do
 
         def default_config(_config) do
           [
-            site: "https://api.example.com",
+            base_url: "https://api.example.com",
             user_url: "/authorization.json"
           ]
         end

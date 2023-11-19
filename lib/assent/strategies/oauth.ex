@@ -8,7 +8,7 @@ defmodule Assent.Strategy.OAuth do
   ## Configuration
 
     - `:consumer_key` - The OAuth consumer key, required
-    - `:site` - The domain of the OAuth server, required
+    - `:base_url` - The base URL of the OAuth server, required
     - `:signature_method` -  The signature method, optional, defaults to
       `:hmac_sha1`. The value may be one of the following:
 
@@ -28,7 +28,7 @@ defmodule Assent.Strategy.OAuth do
       config = [
         consumer_key: "REPLACE_WITH_CONSUMER_KEY",
         consumer_secret: "REPLACE_WITH_CONSUMER_SECRET",
-        site: "https://auth.example.com",
+        base_url: "https://auth.example.com",
         authorization_params: [scope: "user:read user:write"],
         user_url: "https://example.com/api/user"
       ]
@@ -81,25 +81,25 @@ defmodule Assent.Strategy.OAuth do
   end
 
   defp get_request_token(config, oauth_params) do
-    with {:ok, site} <- Config.fetch(config, :site) do
+    with {:ok, base_url} <- Config.__base_url__(config) do
       request_token_url = Config.get(config, :request_token_url, "/request_token")
-      url               = process_url(site, request_token_url)
+      url               = process_url(base_url, request_token_url)
 
       config
-      |> do_request(:post, site, url, [], oauth_params)
+      |> do_request(:post, base_url, url, [], oauth_params)
       |> process_token_response()
     end
   end
 
-  defp process_url(site, url) do
+  defp process_url(base_url, url) do
     case String.downcase(url) do
       <<"http://"::utf8, _::binary>>  -> url
       <<"https://"::utf8, _::binary>> -> url
-      _                               -> site <> url
+      _                               -> base_url <> url
     end
   end
 
-  defp do_request(config, method, site, url, params, oauth_params, headers \\ [], token_secret \\ nil) do
+  defp do_request(config, method, base_url, url, params, oauth_params, headers \\ [], token_secret \\ nil) do
     params =
       params
       |> Enum.to_list()
@@ -112,7 +112,7 @@ defmodule Assent.Strategy.OAuth do
       req_headers   = request_headers(method, [signed_header] ++ headers)
       req_body      = request_body(method, params)
       query_params  = url_params(method, params)
-      url           = Helpers.to_url(site, url, query_params)
+      url           = Helpers.to_url(base_url, url, query_params)
 
       Helpers.request(method, url, req_body, req_headers, config)
     end
@@ -249,12 +249,12 @@ defmodule Assent.Strategy.OAuth do
   defp process_response({:error, error}), do: {:error, error}
 
   defp build_authorize_url({:ok, token}, config) do
-    with {:ok, site} <- Config.fetch(config, :site),
+    with {:ok, base_url} <- Config.__base_url__(config),
          {:ok, oauth_token} <- fetch_from_token(token, "oauth_token"),
          {:ok, oauth_token_secret} <- fetch_from_token(token, "oauth_token_secret") do
       authorization_url = Config.get(config, :authorize_url, "/authorize")
       params            = authorization_params(config, oauth_token: oauth_token)
-      url               = Helpers.to_url(site, authorization_url, params)
+      url               = Helpers.to_url(base_url, authorization_url, params)
 
       {:ok, url, oauth_token_secret}
     end
@@ -304,13 +304,13 @@ defmodule Assent.Strategy.OAuth do
   defp fetch_oauth_verifier(params), do: {:error, MissingParamError.exception(expected_key: "oauth_verifier", params: params)}
 
   defp get_access_token(config, oauth_token, oauth_verifier) do
-    with {:ok, site} <- Config.fetch(config, :site) do
+    with {:ok, base_url} <- Config.__base_url__(config) do
       access_token_url   = Config.get(config, :access_token_url, "/access_token")
-      url                = process_url(site, access_token_url)
+      url                = process_url(base_url, access_token_url)
       oauth_token_secret = Kernel.get_in(config, [:session_params, :oauth_token_secret])
 
       config
-      |> do_request(:post, site, url, [], [{"oauth_token", oauth_token}, {"oauth_verifier", oauth_verifier}], [], oauth_token_secret)
+      |> do_request(:post, base_url, url, [], [{"oauth_token", oauth_token}, {"oauth_verifier", oauth_verifier}], [], oauth_token_secret)
       |> process_token_response()
     end
   end
@@ -320,12 +320,12 @@ defmodule Assent.Strategy.OAuth do
   """
   @spec request(Config.t(), map(), atom(), binary(), map() | Keyword.t(), [{binary(), binary()}]) :: {:ok, map()} | {:error, term()}
   def request(config, token, method, url, params \\ [], headers \\ []) do
-    with {:ok, site} <- Config.fetch(config, :site),
+    with {:ok, base_url} <- Config.__base_url__(config),
          {:ok, oauth_token} <- fetch_from_token(token, "oauth_token"),
          {:ok, oauth_token_secret} <- fetch_from_token(token, "oauth_token_secret") do
-      url = process_url(site, url)
+      url = process_url(base_url, url)
 
-      do_request(config, method, site, url, params, [{"oauth_token", oauth_token}], headers, oauth_token_secret)
+      do_request(config, method, base_url, url, params, [{"oauth_token", oauth_token}], headers, oauth_token_secret)
     end
   end
 

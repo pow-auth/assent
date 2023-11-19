@@ -200,9 +200,9 @@ defmodule TestProvider do
   @impl true
   def default_config(_config) do
     [
-      # `:site` is the base URL used for any paths below
-      site: "http://localhost:4000/api/v1",
-       # Definining an absolute URI overrides the `:site` base URL
+      # `:base_url` will be used for any paths below
+      base_url: "http://localhost:4000/api/v1",
+       # Definining an absolute URI overrides the `:base_url`
       authorize_url: "http://localhost:4000/oauth/authorize",
       token_url: "/oauth/access_token",
       user_url: "/user",
