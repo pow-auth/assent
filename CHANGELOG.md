@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.2.8 (TBA)
+## v0.2.8 (2023-11-19)
 
 `Req` will be used by default if available in your project, otherwise `:httpc` will be used.
 
