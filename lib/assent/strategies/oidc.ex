@@ -8,7 +8,7 @@ defmodule Assent.Strategy.OIDC do
   ## Configuration
 
     - `:client_id` - The client id, required
-    - `:site` - The OIDC issuer, required
+    - `:base_url` - The OIDC issuer, required
     - `:openid_configuration_uri` - The URI for OpenID Provider, optional,
       defaults to `/.well-known/openid-configuration`
     - `:client_authentication_method` - The Client Authentication method to
@@ -33,7 +33,7 @@ defmodule Assent.Strategy.OIDC do
 
       config =  [
         client_id: "REPLACE_WITH_CLIENT_ID",
-        site: "https://server.example.com",
+        base_url: "https://server.example.com",
         authorization_params: [scope: "user:read user:write"]
       ]
 
@@ -106,9 +106,9 @@ defmodule Assent.Strategy.OIDC do
   end
 
   defp fetch_openid_configuration(config) do
-    with {:ok, site} <- Config.fetch(config, :site) do
+    with {:ok, base_url} <- Config.__base_url__(config) do
       configuration_url = Config.get(config, :openid_configuration_uri, "/.well-known/openid-configuration")
-      url               = Helpers.to_url(site, configuration_url)
+      url               = Helpers.to_url(base_url, configuration_url)
 
       :get
       |> Helpers.request(url, nil, [], config)

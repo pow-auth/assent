@@ -31,13 +31,13 @@ defmodule Assent.Strategy.Auth0Test do
   @user @user_response
 
   describe "authorize_url/2" do
-    test "requires domain or site configuration", %{config: config} do
+    test "requires domain or base_url configuration", %{config: config} do
       config = Keyword.take(config, [:client_id, :redirect_uri])
 
       assert {:error, %MissingKeyError{} = error} = Auth0.authorize_url(config)
-      assert error.key == :site
+      assert error.key == :base_url
 
-      assert {:ok, %{url: url}} = Auth0.authorize_url(config ++ [site: "https://localhost"])
+      assert {:ok, %{url: url}} = Auth0.authorize_url(config ++ [base_url: "https://localhost"])
       assert url =~ "https://localhost/authorize"
 
       assert {:ok, %{url: url}} = Auth0.authorize_url(config ++ [domain: "demo.auth0.com"])

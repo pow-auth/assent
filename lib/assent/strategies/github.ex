@@ -24,7 +24,7 @@ defmodule Assent.Strategy.Github do
   @impl true
   def default_config(_config) do
     [
-      site: "https://api.github.com",
+      base_url: "https://api.github.com",
       authorize_url: "https://github.com/login/oauth/authorize",
       token_url: "https://github.com/login/oauth/access_token",
       user_url: "/user",

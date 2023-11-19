@@ -53,11 +53,11 @@ defmodule Assent.Strategy.OAuthTest do
       assert error.key == :redirect_uri
     end
 
-    test "with missing `:site` config", %{config: config} do
-      config = Keyword.delete(config, :site)
+    test "with missing `:base_url` config", %{config: config} do
+      config = Keyword.delete(config, :base_url)
 
       assert {:error, %MissingKeyError{} = error} = OAuth.authorize_url(config)
-      assert error.key == :site
+      assert error.key == :base_url
     end
 
     test "with missing `:consumer_key` config", %{config: config} do
@@ -316,11 +316,11 @@ defmodule Assent.Strategy.OAuthTest do
       assert error.params == %{"oauth_token" => "hh5s93j4hdidpola"}
     end
 
-    test "with missing `:site` config", %{config: config, callback_params: callback_params} do
-      config = Keyword.delete(config, :site)
+    test "with missing `:base_url` config", %{config: config, callback_params: callback_params} do
+      config = Keyword.delete(config, :base_url)
 
       assert {:error, %MissingKeyError{} = error} = OAuth.callback(config, callback_params)
-      assert error.key == :site
+      assert error.key == :base_url
     end
 
     test "with unreachable token url", %{config: config, callback_params: callback_params} do
@@ -396,11 +396,11 @@ defmodule Assent.Strategy.OAuthTest do
       {:ok, token: %{"oauth_token" => "token", "oauth_token_secret" => "token_secret"}}
     end
 
-    test "with missing `:site` config", %{config: config, token: token} do
-      config = Keyword.delete(config, :site)
+    test "with missing `:base_url` config", %{config: config, token: token} do
+      config = Keyword.delete(config, :base_url)
 
       assert {:error, %MissingKeyError{} = error} = OAuth.request(config, token, :get, "/info")
-      assert error.key == :site
+      assert error.key == :base_url
     end
 
     test "with missing `oauth_token` in token", %{config: config, token: token} do
@@ -493,7 +493,7 @@ defmodule Assent.Strategy.OAuthTest do
 
     test "with uppercase url", %{config: config, token: token} do
       shared_secret = "#{config[:consumer_secret]}&#{token["oauth_token_secret"]}"
-      config        = Keyword.put(config, :site, String.upcase(config[:site]))
+      config        = Keyword.put(config, :base_url, String.upcase(config[:base_url]))
       info_url      = TestServer.url("/info")
 
       expect_oauth_api_request("/INFO", %{"success" => true}, [], fn _conn, oauth_params ->

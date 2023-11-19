@@ -51,15 +51,15 @@ defmodule Assent.Strategy.Apple do
 
   @impl true
   def default_config(config) do
-    site = Config.get(config, :site, "https://appleid.apple.com")
+    base_url = Config.get(config, :base_url, "https://appleid.apple.com")
 
     [
-      site: site,
+      base_url: base_url,
       openid_configuration: %{
         "issuer" => "https://appleid.apple.com",
-        "authorization_endpoint" => site <> "/auth/authorize",
-        "token_endpoint" => site <> "/auth/token",
-        "jwks_uri" => site <> "/auth/keys",
+        "authorization_endpoint" => base_url <> "/auth/authorize",
+        "token_endpoint" => base_url <> "/auth/token",
+        "jwks_uri" => base_url <> "/auth/keys",
         "token_endpoint_auth_methods_supported" => ["client_secret_post"]
       },
       authorization_params: [scope: "email", response_mode: "form_post"],
@@ -89,14 +89,14 @@ defmodule Assent.Strategy.Apple do
       |> default_config()
       |> Keyword.merge(config)
 
-    with {:ok, site}        <- Config.fetch(config, :site),
+    with {:ok, base_url}    <- Config.fetch(config, :base_url),
          {:ok, client_id}   <- Config.fetch(config, :client_id),
          {:ok, team_id}     <- Config.fetch(config, :team_id),
          :ok                <- ensure_private_key_id(config),
          {:ok, private_key} <- JWTAdapter.load_private_key(config) do
 
       claims = %{
-        "aud" => site,
+        "aud" => base_url,
         "iss" => team_id,
         "sub" => client_id,
         "iat" => timestamp,

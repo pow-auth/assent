@@ -32,7 +32,7 @@ defmodule Assent.Strategy.Google do
   @impl true
   def default_config(_config) do
     [
-      site: "https://www.googleapis.com",
+      base_url: "https://www.googleapis.com",
       authorize_url: "https://accounts.google.com/o/oauth2/v2/auth",
       token_url: "/oauth2/v4/token",
       user_url: "/oauth2/v3/userinfo",

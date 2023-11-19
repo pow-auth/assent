@@ -48,4 +48,22 @@ defmodule Assent.Config do
         json_library
     end
   end
+
+  # TODO: Remove in next major version
+  def __base_url__(config) do
+    case fetch(config, :base_url) do
+      {:ok, base_url} ->
+        {:ok, base_url}
+
+      {:error, error} ->
+        case fetch(config, :site) do
+          {:ok, base_url} ->
+            IO.warn("The `:site` configuration key is deprecated, use `:base_url` instead")
+            {:ok, base_url}
+
+          {:error, _site_error} ->
+            {:error, error}
+        end
+    end
+  end
 end

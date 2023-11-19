@@ -421,11 +421,11 @@ defmodule Assent.Strategy.OAuth2Test do
       {:ok, token: %{"access_token" => "access_token"}}
     end
 
-    test "with missing `:site` config", %{config: config, token: token} do
-      config = Keyword.delete(config, :site)
+    test "with missing `:base_url` config", %{config: config, token: token} do
+      config = Keyword.delete(config, :base_url)
 
       assert {:error, %MissingKeyError{} = error} = OAuth2.request(config, token, :get, "/info")
-      assert error.key == :site
+      assert error.key == :base_url
     end
 
     test "with missing `access_token` in token", %{config: config, token: token} do

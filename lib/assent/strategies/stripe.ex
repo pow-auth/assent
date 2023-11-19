@@ -33,7 +33,7 @@ defmodule Assent.Strategy.Stripe do
   @impl true
   def default_config(_config) do
     [
-      site: "https://api.stripe.com/",
+      base_url: "https://api.stripe.com/",
       authorize_url: "https://connect.stripe.com/oauth/authorize",
       token_url: "https://connect.stripe.com/oauth/token",
       user_url: "/v1/account",

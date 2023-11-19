@@ -73,7 +73,7 @@ defmodule Assent.Strategy.Facebook do
   @impl true
   def default_config(_config) do
     [
-      site: "https://graph.facebook.com/v#{@api_version}",
+      base_url: "https://graph.facebook.com/v#{@api_version}",
       authorize_url: "https://www.facebook.com/v#{@api_version}/dialog/oauth",
       token_url: "/oauth/access_token",
       user_url: "/me",
@@ -85,7 +85,7 @@ defmodule Assent.Strategy.Facebook do
 
   @impl true
   def normalize(config, user) do
-    with {:ok, site} <- Config.fetch(config, :site) do
+    with {:ok, base_url} <- Config.fetch(config, :base_url) do
       {:ok, %{
         "sub"         => user["id"],
         "name"        => user["name"],
@@ -93,14 +93,14 @@ defmodule Assent.Strategy.Facebook do
         "middle_name" => user["middle_name"],
         "family_name" => user["last_name"],
         "profile"     => user["link"],
-        "picture"     => picture_url(site, user),
+        "picture"     => picture_url(base_url, user),
         "email"       => user["email"]
       }}
     end
   end
 
-  defp picture_url(site, user) do
-    "#{site}/#{user["id"]}/picture"
+  defp picture_url(base_url, user) do
+    "#{base_url}/#{user["id"]}/picture"
   end
 
   @impl true

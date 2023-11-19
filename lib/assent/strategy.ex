@@ -117,10 +117,10 @@ defmodule Assent.Strategy do
   Generates a URL
   """
   @spec to_url(binary(), binary(), Keyword.t()) :: binary()
-  def to_url(site, uri, params \\ [])
-  def to_url(site, uri, []), do: endpoint(site, uri)
-  def to_url(site, uri, params) do
-    endpoint(site, uri) <> "?" <> encode_query(params)
+  def to_url(base_url, uri, params \\ [])
+  def to_url(base_url, uri, []), do: endpoint(base_url, uri)
+  def to_url(base_url, uri, params) do
+    endpoint(base_url, uri) <> "?" <> encode_query(params)
   end
 
   defp encode_query(enumerable) do
@@ -154,9 +154,9 @@ defmodule Assent.Strategy do
 
   defp encode_value(value), do: URI.encode_www_form(Kernel.to_string(value))
 
-  defp endpoint(site, <<"/"::utf8, _::binary>> = uri),
-    do: site <> uri
-  defp endpoint(_site, url),
+  defp endpoint(base_url, <<"/"::utf8, _::binary>> = uri),
+    do: base_url <> uri
+  defp endpoint(_base_url, url),
     do: url
 
   @doc """

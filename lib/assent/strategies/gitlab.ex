@@ -16,7 +16,7 @@ defmodule Assent.Strategy.Gitlab do
   @impl true
   def default_config(_config) do
     [
-      site: "https://gitlab.com",
+      base_url: "https://gitlab.com",
       authorize_url: "/oauth/authorize",
       token_url: "/oauth/token",
       user_url: "/api/v4/user",

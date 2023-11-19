@@ -39,7 +39,7 @@ defmodule Assent.Strategy.Slack do
   @impl true
   def default_config(config) do
     [
-      site: "https://slack.com",
+      base_url: "https://slack.com",
       authorization_params: authorization_params(config),
       client_authentication_method: "client_secret_post"
     ]

@@ -17,7 +17,7 @@ defmodule Assent.Strategy.OAuth2 do
   ## Configuration
 
     - `:client_id` - The OAuth2 client id, required
-    - `:site` - The domain of the OAuth2 server, required
+    - `:base_url` - The base URL of the OAuth2 server, required
     - `:auth_method` - The authentication strategy used, optional. If not set,
       no authentication will be used during the access token request. The value
       may be one of the following:
@@ -47,7 +47,7 @@ defmodule Assent.Strategy.OAuth2 do
         client_id: "REPLACE_WITH_CLIENT_ID",
         client_secret: "REPLACE_WITH_CLIENT_SECRET",
         auth_method: :client_secret_post,
-        site: "https://auth.example.com",
+        base_url: "https://auth.example.com",
         authorization_params: [scope: "user:read user:write"],
         user_url: "https://example.com/api/user"
       ]
@@ -82,11 +82,11 @@ defmodule Assent.Strategy.OAuth2 do
   @spec authorize_url(Config.t()) :: {:ok, %{session_params: %{state: binary()}, url: binary()}} | {:error, term()}
   def authorize_url(config) do
     with {:ok, redirect_uri} <- Config.fetch(config, :redirect_uri),
-         {:ok, site}         <- Config.fetch(config, :site),
+         {:ok, base_url}     <- Config.__base_url__(config),
          {:ok, client_id}    <- Config.fetch(config, :client_id) do
       params        = authorization_params(config, client_id, redirect_uri)
       authorize_url = Config.get(config, :authorize_url, "/oauth/authorize")
-      url           = Helpers.to_url(site, authorize_url, params)
+      url           = Helpers.to_url(base_url, authorize_url, params)
 
       {:ok, %{url: url, session_params: %{state: params[:state]}}}
     end
@@ -225,13 +225,13 @@ defmodule Assent.Strategy.OAuth2 do
   defp jwt_claims(config) do
     timestamp = :os.system_time(:second)
 
-    with {:ok, site}      <- Config.fetch(config, :site),
+    with {:ok, base_url}  <- Config.__base_url__(config),
          {:ok, client_id} <- Config.fetch(config, :client_id) do
 
       {:ok, %{
         "iss" => client_id,
         "sub" => client_id,
-        "aud" => site,
+        "aud" => base_url,
         "iat" => timestamp,
         "exp" => timestamp + 60
       }}
@@ -246,11 +246,11 @@ defmodule Assent.Strategy.OAuth2 do
     auth_method  = Config.get(config, :auth_method, nil)
     token_url    = Config.get(config, :token_url, "/oauth/token")
 
-    with {:ok, site}                    <- Config.fetch(config, :site),
+    with {:ok, base_url}                <- Config.__base_url__(config),
          {:ok, auth_headers, auth_body} <- authentication_params(auth_method, config) do
       headers = [{"content-type", "application/x-www-form-urlencoded"}] ++ auth_headers
       params  = Keyword.merge(params, Keyword.put(auth_body, :grant_type, grant_type))
-      url     = Helpers.to_url(site, token_url)
+      url     = Helpers.to_url(base_url, token_url)
       body    = URI.encode_query(params)
 
       :post
@@ -290,13 +290,13 @@ defmodule Assent.Strategy.OAuth2 do
   """
   @spec request(Config.t(), map(), atom(), binary(), map() | Keyword.t(), [{binary(), binary()}]) :: {:ok, map()} | {:error, term()}
   def request(config, token, method, url, params \\ [], headers \\ []) do
-    with {:ok, site} <- Config.fetch(config, :site),
+    with {:ok, base_url}     <- Config.__base_url__(config),
          {:ok, auth_headers} <- authorization_headers(config, token) do
 
       req_headers = request_headers(method, auth_headers ++ headers)
       req_body    = request_body(method, params)
       params      = url_params(method, params)
-      url         = Helpers.to_url(site, url, params)
+      url         = Helpers.to_url(base_url, url, params)
 
       Helpers.request(method, url, req_body, req_headers, config)
     end
