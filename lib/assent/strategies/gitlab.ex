@@ -28,13 +28,14 @@ defmodule Assent.Strategy.Gitlab do
 
   @impl true
   def normalize(_config, user) do
-    {:ok, %{
-      "sub"                => user["id"],
-      "name"               => user["name"],
-      "preferred_username" => user["username"],
-      "picture"            => user["avatar_url"],
-      "email"              => user["email"],
-      "email_verified"     => not is_nil(user["confirmed_at"])
-    }}
+    {:ok,
+     %{
+       "sub" => user["id"],
+       "name" => user["name"],
+       "preferred_username" => user["username"],
+       "picture" => user["avatar_url"],
+       "email" => user["email"],
+       "email_verified" => not is_nil(user["confirmed_at"])
+     }}
   end
 end

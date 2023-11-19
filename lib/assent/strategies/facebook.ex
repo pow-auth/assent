@@ -87,16 +87,17 @@ defmodule Assent.Strategy.Facebook do
   @impl true
   def normalize(config, user) do
     with {:ok, base_url} <- Config.fetch(config, :base_url) do
-      {:ok, %{
-        "sub"         => user["id"],
-        "name"        => user["name"],
-        "given_name"  => user["first_name"],
-        "middle_name" => user["middle_name"],
-        "family_name" => user["last_name"],
-        "profile"     => user["link"],
-        "picture"     => picture_url(base_url, user),
-        "email"       => user["email"]
-      }}
+      {:ok,
+       %{
+         "sub" => user["id"],
+         "name" => user["name"],
+         "given_name" => user["first_name"],
+         "middle_name" => user["middle_name"],
+         "family_name" => user["last_name"],
+         "profile" => user["link"],
+         "picture" => picture_url(base_url, user),
+         "email" => user["email"]
+       }}
     end
   end
 

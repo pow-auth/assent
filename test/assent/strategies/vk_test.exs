@@ -38,14 +38,18 @@ defmodule Assent.Strategy.VKTest do
     test "normalizes data", %{config: config, callback_params: params} do
       expect_oauth2_access_token_request(uri: "/access_token", params: @token_response)
 
-      expect_oauth2_user_request(%{"response" => @users_response}, [uri: "/method/users.get"], fn conn ->
-        conn = Plug.Conn.fetch_query_params(conn)
+      expect_oauth2_user_request(
+        %{"response" => @users_response},
+        [uri: "/method/users.get"],
+        fn conn ->
+          conn = Plug.Conn.fetch_query_params(conn)
 
-        assert conn.params["access_token"] == "access_token"
-        assert conn.params["fields"] == "uid,first_name,last_name,photo_200,screen_name"
-        assert conn.params["v"] == "5.69"
-        assert conn.params["access_token"] == "access_token"
-      end)
+          assert conn.params["access_token"] == "access_token"
+          assert conn.params["fields"] == "uid,first_name,last_name,photo_200,screen_name"
+          assert conn.params["v"] == "5.69"
+          assert conn.params["access_token"] == "access_token"
+        end
+      )
 
       assert {:ok, %{user: user}} = VK.callback(config, params)
       assert user == @user
@@ -53,7 +57,7 @@ defmodule Assent.Strategy.VKTest do
 
     test "handles invalid user response", %{config: config, callback_params: params} do
       expect_oauth2_access_token_request(uri: "/access_token", params: @token_response)
-      expect_oauth2_user_request(%{"a" => 1}, [uri: "/method/users.get"])
+      expect_oauth2_user_request(%{"a" => 1}, uri: "/method/users.get")
 
       assert {:error, %RuntimeError{} = error} = VK.callback(config, params)
       assert error.message =~ "Retrieved an invalid response fetching VK user"

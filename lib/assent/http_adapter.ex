@@ -33,13 +33,13 @@ defmodule Assent.HTTPAdapter do
     """
 
     @type header :: {binary(), binary()}
-    @type t      :: %__MODULE__{
-      http_adapter: atom(),
-      request_url: binary(),
-      status: integer(),
-      headers: [header()],
-      body: binary() | term()
-    }
+    @type t :: %__MODULE__{
+            http_adapter: atom(),
+            request_url: binary(),
+            status: integer(),
+            headers: [header()],
+            body: binary() | term()
+          }
 
     defstruct http_adapter: nil, request_url: nil, status: 200, headers: [], body: ""
 
@@ -47,7 +47,7 @@ defmodule Assent.HTTPAdapter do
       [request_url | _rest] = String.split(response.request_url, "?", parts: 2)
 
       """
-      HTTP Adapter: #{inspect response.http_adapter}
+      HTTP Adapter: #{inspect(response.http_adapter)}
       Request URL: #{request_url}
 
       Response status: #{response.status}
@@ -56,7 +56,7 @@ defmodule Assent.HTTPAdapter do
       #{Enum.reduce(response.headers, "", fn {k, v}, acc -> acc <> "\n#{k}: #{v}" end)}
 
       Response body:
-      #{inspect response.body}
+      #{inspect(response.body)}
       """
     end
   end
@@ -65,7 +65,8 @@ defmodule Assent.HTTPAdapter do
   @type body :: binary() | nil
   @type headers :: [{binary(), binary()}]
 
-  @callback request(method(), binary(), body(), headers(), Keyword.t()) :: {:ok, map()} | {:error, any()}
+  @callback request(method(), binary(), body(), headers(), Keyword.t()) ::
+              {:ok, map()} | {:error, any()}
 
   @doc """
   Sets a user agent header

@@ -17,7 +17,8 @@ defmodule Assent.Strategy.DiscordTest do
   @user %{
     "email" => "nelly@discordapp.com",
     "email_verified" => true,
-    "picture" => "https://cdn.discordapp.com/avatars/80351110224678912/8342729096ea3675442027381ff50dfe",
+    "picture" =>
+      "https://cdn.discordapp.com/avatars/80351110224678912/8342729096ea3675442027381ff50dfe",
     "preferred_username" => "Nelly",
     "sub" => "80351110224678912"
   }
@@ -31,6 +32,7 @@ defmodule Assent.Strategy.DiscordTest do
     expect_oauth2_access_token_request([uri: "/oauth2/token"], fn _conn, params ->
       assert params["client_secret"] == config[:client_secret]
     end)
+
     expect_oauth2_user_request(@user_response, uri: "/users/@me")
 
     assert {:ok, %{user: user}} = Discord.callback(config, params)

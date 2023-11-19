@@ -26,7 +26,8 @@ defmodule Assent.Strategy.Twitter do
       request_token_url: "/oauth/request_token",
       authorize_url: "/oauth/authenticate",
       access_token_url: "/oauth/access_token",
-      user_url: "/1.1/account/verify_credentials.json?include_entities=false&skip_status=true&include_email=true",
+      user_url:
+        "/1.1/account/verify_credentials.json?include_entities=false&skip_status=true&include_email=true"
     ]
   end
 
@@ -34,22 +35,26 @@ defmodule Assent.Strategy.Twitter do
   @impl true
   def callback(config, params) do
     case Map.has_key?(params, "denied") do
-      true  -> {:error, CallbackError.exception(message: "The user denied the authorization request")}
-      false -> Base.callback(config, params, __MODULE__)
+      true ->
+        {:error, CallbackError.exception(message: "The user denied the authorization request")}
+
+      false ->
+        Base.callback(config, params, __MODULE__)
     end
   end
 
   @impl true
   def normalize(_config, user) do
-    {:ok, %{
-      "sub"                => user["id"],
-      "name"               => user["name"],
-      "preferred_username" => user["screen_name"],
-      "profile"            => "https://twitter.com/#{user["screen_name"]}",
-      "picture"            => user["profile_image_url_https"],
-      "website"            => user["url"],
-      "email"              => user["email"],
-      "email_verified"     => true
-    }}
+    {:ok,
+     %{
+       "sub" => user["id"],
+       "name" => user["name"],
+       "preferred_username" => user["screen_name"],
+       "profile" => "https://twitter.com/#{user["screen_name"]}",
+       "picture" => user["profile_image_url_https"],
+       "website" => user["url"],
+       "email" => user["email"],
+       "email_verified" => true
+     }}
   end
 end

@@ -100,7 +100,7 @@ defmodule Assent.Strategy.StripeTest do
     "type" => "custom"
   }
 
-  @user  %{
+  @user %{
     "email" => "site@stripe.com",
     "sub" => "acct_1032D82eZvKYlo2C"
   }
@@ -120,6 +120,7 @@ defmodule Assent.Strategy.StripeTest do
     expect_oauth2_access_token_request([], fn _conn, params ->
       assert params["client_secret"] == config[:client_secret]
     end)
+
     expect_oauth2_user_request(@user_response, uri: "/v1/account")
 
     assert {:ok, %{user: user}} = Stripe.callback(config, params)

@@ -20,8 +20,9 @@ defmodule Assent.MixProject do
       # Docs
       name: "Assent",
       docs: docs(),
-
-      xref: [exclude: [:certifi, :httpc, Mint.HTTP, JOSE.JWT, JOSE.JWK, JOSE.JWS, :ssl_verify_hostname]]
+      xref: [
+        exclude: [:certifi, :httpc, Mint.HTTP, JOSE.JWT, JOSE.JWK, JOSE.JWS, :ssl_verify_hostname]
+      ]
     ]
   end
 
@@ -33,18 +34,17 @@ defmodule Assent.MixProject do
 
   defp deps do
     [
+      # JWT libraries
       {:jose, "~> 1.8", optional: true},
-
+      # HTTP clients (Jason is required for Req)
       {:certifi, ">= 0.0.0", optional: true},
       {:ssl_verify_fun, ">= 0.0.0", optional: true},
-
       {:finch, "~> 0.15", optional: true},
       {:mint, "~> 1.0", optional: true},
       {:req, "~> 0.4", optional: true},
-      {:jason, "~> 1.0", optional: true}, # Required for Req
-
+      {:jason, "~> 1.0", optional: true},
+      # Docs and tests
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
-
       {:credo, "~> 1.1", only: [:dev, :test]},
       {:test_server, "~> 0.1.0", only: :test},
       {:bandit, ">= 0.0.0", only: :test}
@@ -74,12 +74,12 @@ defmodule Assent.MixProject do
       source_url: @source_url,
       extras: [
         "README.md": [filename: "README"],
-        "CHANGELOG.md": [filename: "CHANGELOG"],
+        "CHANGELOG.md": [filename: "CHANGELOG"]
       ],
       groups_for_modules: [
         Strategies: ~r/^Assent\.Strategy/,
-        "HTTP": ~r/^Assent\.HTTPAdapter.*(?<!Error)$/,
-        "JWT": ~r/^Assent\.JWTAdapter.*(?<!Error)$/
+        HTTP: ~r/^Assent\.HTTPAdapter.*(?<!Error)$/,
+        JWT: ~r/^Assent\.JWTAdapter.*(?<!Error)$/
       ],
       skip_undefined_reference_warnings_on: [
         "CHANGELOG.md"

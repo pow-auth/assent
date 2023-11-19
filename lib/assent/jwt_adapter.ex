@@ -34,7 +34,8 @@ defmodule Assent.JWTAdapter do
   alias Assent.Config
 
   @callback sign(map(), binary(), binary(), Keyword.t()) :: {:ok, binary()} | {:error, term()}
-  @callback verify(binary(), binary() | map() | nil, Keyword.t()) :: {:ok, map()} | {:error, term()}
+  @callback verify(binary(), binary() | map() | nil, Keyword.t()) ::
+              {:ok, map()} | {:error, term()}
 
   @doc """
   Generates a signed JSON Web Token signature
@@ -59,7 +60,7 @@ defmodule Assent.JWTAdapter do
     default_jwt_adapter = Application.get_env(:assent, :jwt_adapter, Assent.JWTAdapter.AssentJWT)
 
     case Keyword.get(opts, :jwt_adapter, default_jwt_adapter) do
-      {adapter, opts}               -> {adapter, Keyword.merge(default_opts, opts)}
+      {adapter, opts} -> {adapter, Keyword.merge(default_opts, opts)}
       adapter when is_atom(adapter) -> {adapter, default_opts}
     end
   end
@@ -70,14 +71,14 @@ defmodule Assent.JWTAdapter do
   @spec load_private_key(Config.t()) :: {:ok, binary()} | {:error, term()}
   def load_private_key(config) do
     case Config.fetch(config, :private_key_path) do
-      {:ok, path}    -> read(path)
+      {:ok, path} -> read(path)
       {:error, _any} -> Config.fetch(config, :private_key)
     end
   end
 
   defp read(path) do
     case File.read(path) do
-      {:error, error} -> {:error, "Failed to read \"#{path}\", got; #{inspect error}"}
+      {:error, error} -> {:error, "Failed to read \"#{path}\", got; #{inspect(error)}"}
       {:ok, content} -> {:ok, content}
     end
   end

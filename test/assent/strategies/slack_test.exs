@@ -61,7 +61,8 @@ defmodule Assent.Strategy.SlackTest do
   }
 
   setup %{config: config} do
-    openid_configuration = Map.merge(@openid_config, Map.delete(config[:openid_configuration], "issuer"))
+    openid_configuration =
+      Map.merge(@openid_config, Map.delete(config[:openid_configuration], "issuer"))
 
     config = Keyword.put(config, :openid_configuration, openid_configuration)
 

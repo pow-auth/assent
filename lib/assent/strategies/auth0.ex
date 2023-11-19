@@ -19,19 +19,19 @@ defmodule Assent.Strategy.Auth0 do
 
   @impl true
   def default_config(config) do
-    append_domain_config(config, [
+    append_domain_config(config,
       authorize_url: "/authorize",
       token_url: "/oauth/token",
       user_url: "/userinfo",
       authorization_params: [scope: "openid profile email"],
       auth_method: :client_secret_post
-    ])
+    )
   end
 
   defp append_domain_config(config, default) do
     case Config.fetch(config, :domain) do
       {:ok, domain} -> Config.put(default, :base_url, prepend_scheme(domain))
-      _error        -> default
+      _error -> default
     end
   end
 

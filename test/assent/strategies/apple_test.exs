@@ -39,7 +39,8 @@ defmodule Assent.Strategy.AppleTest do
     "kid" => "AIDOPK1",
     "use" => "sig",
     "alg" => "RS256",
-    "n" => "nzyis1ZjfNB0bBgKFMSvvkTtwlvBsaJq7S5wA-kzeVOVpVWwkWdVha4s38XM_pa_yr47av7-z3VTmvDRyAHcaT92whREFpLv9cj5lTeJSibyr_Mrm_YtjCZVWgaOYIhwrXwKLqPr_11inWsAkfIytvHWTxZYEcXLgAXFuUuaS3uF9gEiNQwzGTU1v0FqkqTBr4B8nW3HCN47XUu0t8Y0e-lf4s4OxQawWD79J9_5d3Ry0vbV3Am1FtGJiJvOwRsIfVChDpYStTcHTCMqtvWbV6L11BWkpzGXSW4Hv43qa-GSYOD2QU68Mb59oSk2OB-BtOLpJofmbGEGgvmwyCI9Mw",
+    "n" =>
+      "nzyis1ZjfNB0bBgKFMSvvkTtwlvBsaJq7S5wA-kzeVOVpVWwkWdVha4s38XM_pa_yr47av7-z3VTmvDRyAHcaT92whREFpLv9cj5lTeJSibyr_Mrm_YtjCZVWgaOYIhwrXwKLqPr_11inWsAkfIytvHWTxZYEcXLgAXFuUuaS3uF9gEiNQwzGTU1v0FqkqTBr4B8nW3HCN47XUu0t8Y0e-lf4s4OxQawWD79J9_5d3Ry0vbV3Am1FtGJiJvOwRsIfVChDpYStTcHTCMqtvWbV6L11BWkpzGXSW4Hv43qa-GSYOD2QU68Mb59oSk2OB-BtOLpJofmbGEGgvmwyCI9Mw",
     "e" => "AQAB"
   }
 
@@ -47,12 +48,12 @@ defmodule Assent.Strategy.AppleTest do
     config =
       config
       |> Keyword.delete(:openid_configuration)
-      |> Keyword.merge([
+      |> Keyword.merge(
         client_id: @client_id,
         team_id: @team_id,
         private_key_id: @private_key_id,
         private_key: @private_key
-      ])
+      )
 
     {:ok, config: config}
   end
@@ -68,17 +69,22 @@ defmodule Assent.Strategy.AppleTest do
     test "callback/2", %{config: config, callback_params: params} do
       url = TestServer.url()
 
-      expect_oidc_access_token_request([id_token_opts: [claims: @id_token_claims], uri: "/auth/token"], fn _conn, params ->
-        assert {:ok, jwt} = AssentJWT.verify(params["client_secret"], @public_key, json_library: Jason)
-        assert jwt.verified?
-        assert jwt.header["alg"] == "ES256"
-        assert jwt.header["typ"] == "JWT"
-        assert jwt.header["kid"] == @private_key_id
-        assert jwt.claims["iss"] == @team_id
-        assert jwt.claims["sub"] == @client_id
-        assert jwt.claims["aud"] == url
-        assert jwt.claims["exp"] > DateTime.to_unix(DateTime.utc_now())
-      end)
+      expect_oidc_access_token_request(
+        [id_token_opts: [claims: @id_token_claims], uri: "/auth/token"],
+        fn _conn, params ->
+          assert {:ok, jwt} =
+                   AssentJWT.verify(params["client_secret"], @public_key, json_library: Jason)
+
+          assert jwt.verified?
+          assert jwt.header["alg"] == "ES256"
+          assert jwt.header["typ"] == "JWT"
+          assert jwt.header["kid"] == @private_key_id
+          assert jwt.claims["iss"] == @team_id
+          assert jwt.claims["sub"] == @client_id
+          assert jwt.claims["aud"] == url
+          assert jwt.claims["exp"] > DateTime.to_unix(DateTime.utc_now())
+        end
+      )
 
       expect_oidc_jwks_uri_request(uri: "/auth/keys", keys: [@jwk])
 
@@ -90,14 +96,20 @@ defmodule Assent.Strategy.AppleTest do
       expected_user = Map.merge(@user, %{"given_name" => "John", "family_name" => "Doe"})
 
       encoded_user =
-        Jason.encode!(%{name: %{
-          firstName: "John",
-          lastName: "Doe"
-        }})
+        Jason.encode!(%{
+          name: %{
+            firstName: "John",
+            lastName: "Doe"
+          }
+        })
 
       params = Map.put(params, "user", encoded_user)
 
-      expect_oidc_access_token_request(id_token_opts: [claims: @id_token_claims, kid: @jwk["kid"]], uri: "/auth/token")
+      expect_oidc_access_token_request(
+        id_token_opts: [claims: @id_token_claims, kid: @jwk["kid"]],
+        uri: "/auth/token"
+      )
+
       expect_oidc_jwks_uri_request(uri: "/auth/keys", keys: [@jwk])
 
       assert {:ok, %{user: user}} = Apple.callback(config, params)
@@ -110,7 +122,8 @@ defmodule Assent.Strategy.AppleTest do
         |> Keyword.delete(:private_key)
         |> Keyword.put(:private_key_path, "tmp/missing.pem")
 
-      assert Apple.callback(config, params) == {:error, "Failed to read \"tmp/missing.pem\", got; :enoent"}
+      assert Apple.callback(config, params) ==
+               {:error, "Failed to read \"tmp/missing.pem\", got; :enoent"}
     end
   else
     IO.warn("No support curve algorithms, can't test #{__MODULE__}")

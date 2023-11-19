@@ -28,13 +28,14 @@ defmodule Assent.Strategy.Discord do
 
   @impl true
   def normalize(_config, user) do
-    {:ok, %{
-      "sub"                => user["id"],
-      "preferred_username" => user["username"],
-      "email"              => user["email"],
-      "email_verified"     => user["verified"],
-      "picture"            => picture_url(user),
-    }}
+    {:ok,
+     %{
+       "sub" => user["id"],
+       "preferred_username" => user["username"],
+       "email" => user["email"],
+       "email_verified" => user["verified"],
+       "picture" => picture_url(user)
+     }}
   end
 
   defp picture_url(user) do

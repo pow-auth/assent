@@ -59,14 +59,16 @@ defmodule Assent.Strategy.OAuth2.Base do
     end
   end
 
-  @spec authorize_url(Keyword.t(), module()) :: {:ok, %{session_params: %{state: binary()}, url: binary()}}
+  @spec authorize_url(Keyword.t(), module()) ::
+          {:ok, %{session_params: %{state: binary()}, url: binary()}}
   def authorize_url(config, strategy) do
     config
     |> set_config(strategy)
     |> OAuth2.authorize_url()
   end
 
-  @spec callback(Keyword.t(), map(), module()) :: {:ok, %{user: map(), token: map()}} | {:error, term()}
+  @spec callback(Keyword.t(), map(), module()) ::
+          {:ok, %{user: map(), token: map()}} | {:error, term()}
   def callback(config, params, strategy) do
     config = set_config(config, strategy)
 

@@ -49,9 +49,10 @@ defmodule Assent.Strategy.Slack do
 
   defp authorization_params(config) do
     default = [scope: "openid email profile"]
+
     case Config.fetch(config, :team_id) do
       {:ok, team_id} -> Config.put(default, :team, team_id)
-      _error         -> default
+      _error -> default
     end
   end
 end

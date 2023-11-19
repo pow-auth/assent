@@ -9,7 +9,7 @@ defmodule Assent.Config do
     defexception [:key]
 
     def message(exception) do
-      "Key #{inspect exception.key} not found in config"
+      "Key #{inspect(exception.key)} not found in config"
     end
   end
 
@@ -22,7 +22,7 @@ defmodule Assent.Config do
   def fetch(config, key) do
     case Keyword.fetch(config, key) do
       {:ok, value} -> {:ok, value}
-      :error       -> {:error, MissingKeyError.exception(key: key)}
+      :error -> {:error, MissingKeyError.exception(key: key)}
     end
   end
 

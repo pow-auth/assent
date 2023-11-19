@@ -40,14 +40,14 @@ defmodule Assent.Strategy.Stripe do
       user_url: "/v1/account",
       auth_method: :client_secret_post
     ]
-
   end
 
   @impl true
   def normalize(_config, user) do
-    {:ok, %{
-      "sub"   => user["id"],
-      "email" => user["email"]
-    }}
+    {:ok,
+     %{
+       "sub" => user["id"],
+       "email" => user["email"]
+     }}
   end
 end

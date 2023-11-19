@@ -66,7 +66,18 @@ defmodule Assent.Strategy.OAuth2 do
   @behaviour Assent.Strategy
 
   alias Assent.Strategy, as: Helpers
-  alias Assent.{CallbackCSRFError, CallbackError, Config, HTTPAdapter.HTTPResponse, JWTAdapter, MissingParamError, InvalidResponseError, RequestError, UnexpectedResponseError}
+
+  alias Assent.{
+    CallbackCSRFError,
+    CallbackError,
+    Config,
+    HTTPAdapter.HTTPResponse,
+    InvalidResponseError,
+    JWTAdapter,
+    MissingParamError,
+    RequestError,
+    UnexpectedResponseError
+  }
 
   @doc """
   Generate authorization URL for request phase.
@@ -80,14 +91,15 @@ defmodule Assent.Strategy.OAuth2 do
     - `:authorization_params` - The authorization parameters, defaults to `[]`
   """
   @impl true
-  @spec authorize_url(Config.t()) :: {:ok, %{session_params: %{state: binary()}, url: binary()}} | {:error, term()}
+  @spec authorize_url(Config.t()) ::
+          {:ok, %{session_params: %{state: binary()}, url: binary()}} | {:error, term()}
   def authorize_url(config) do
     with {:ok, redirect_uri} <- Config.fetch(config, :redirect_uri),
-         {:ok, base_url}     <- Config.__base_url__(config),
-         {:ok, client_id}    <- Config.fetch(config, :client_id) do
-      params        = authorization_params(config, client_id, redirect_uri)
+         {:ok, base_url} <- Config.__base_url__(config),
+         {:ok, client_id} <- Config.fetch(config, :client_id) do
+      params = authorization_params(config, client_id, redirect_uri)
       authorize_url = Config.get(config, :authorize_url, "/oauth/authorize")
-      url           = Helpers.to_url(base_url, authorize_url, params)
+      url = Helpers.to_url(base_url, authorize_url, params)
 
       {:ok, %{url: url, session_params: %{state: params[:state]}}}
     end
@@ -100,7 +112,8 @@ defmodule Assent.Strategy.OAuth2 do
       response_type: "code",
       client_id: client_id,
       state: gen_state(),
-      redirect_uri: redirect_uri]
+      redirect_uri: redirect_uri
+    ]
     |> Keyword.merge(params)
     |> List.keysort(0)
   end
@@ -127,30 +140,39 @@ defmodule Assent.Strategy.OAuth2 do
       `authorize_url/1`, optional
   """
   @impl true
-  @spec callback(Config.t(), map(), atom()) :: {:ok, %{user: map(), token: map()}} | {:error, term()}
+  @spec callback(Config.t(), map(), atom()) ::
+          {:ok, %{user: map(), token: map()}} | {:error, term()}
   def callback(config, params, strategy \\ __MODULE__) do
     with {:ok, session_params} <- Config.fetch(config, :session_params),
-         :ok                   <- check_error_params(params),
-         {:ok, code}           <- fetch_code_param(params),
-         {:ok, redirect_uri}   <- Config.fetch(config, :redirect_uri),
-         :ok                   <- maybe_check_state(session_params, params),
-         {:ok, token}          <- grant_access_token(config, "authorization_code", code: code, redirect_uri: redirect_uri) do
-
+         :ok <- check_error_params(params),
+         {:ok, code} <- fetch_code_param(params),
+         {:ok, redirect_uri} <- Config.fetch(config, :redirect_uri),
+         :ok <- maybe_check_state(session_params, params),
+         {:ok, token} <-
+           grant_access_token(
+             config,
+             "authorization_code",
+             code: code,
+             redirect_uri: redirect_uri
+           ) do
       fetch_user_with_strategy(config, token, strategy)
     end
   end
 
   defp check_error_params(%{"error" => _} = params) do
-    message   = params["error_description"] || params["error_reason"] || params["error"]
-    error     = params["error"]
+    message = params["error_description"] || params["error_reason"] || params["error"]
+    error = params["error"]
     error_uri = params["error_uri"]
 
     {:error, CallbackError.exception(message: message, error: error, error_uri: error_uri)}
   end
+
   defp check_error_params(_params), do: :ok
 
   defp fetch_code_param(%{"code" => code}), do: {:ok, code}
-  defp fetch_code_param(params), do: {:error, MissingParamError.exception(expected_key: "code", params: params)}
+
+  defp fetch_code_param(params),
+    do: {:error, MissingParamError.exception(expected_key: "code", params: params)}
 
   defp maybe_check_state(%{state: stored_state}, %{"state" => provided_state}) do
     case Assent.constant_time_compare(stored_state, provided_state) do
@@ -158,41 +180,43 @@ defmodule Assent.Strategy.OAuth2 do
       false -> {:error, CallbackCSRFError.exception(key: "state")}
     end
   end
+
   defp maybe_check_state(%{state: _state}, params) do
     {:error, MissingParamError.exception(expected_key: "state", params: params)}
   end
+
   defp maybe_check_state(_session_params, _params), do: :ok
 
   defp authentication_params(nil, config) do
     with {:ok, client_id} <- Config.fetch(config, :client_id) do
-
       headers = []
-      body    = [client_id: client_id]
+      body = [client_id: client_id]
 
       {:ok, headers, body}
     end
   end
+
   defp authentication_params(:client_secret_basic, config) do
-    with {:ok, client_id}     <- Config.fetch(config, :client_id),
+    with {:ok, client_id} <- Config.fetch(config, :client_id),
          {:ok, client_secret} <- Config.fetch(config, :client_secret) do
-
-      auth    = Base.encode64("#{client_id}:#{client_secret}")
+      auth = Base.encode64("#{client_id}:#{client_secret}")
       headers = [{"authorization", "Basic #{auth}"}]
-      body    = []
+      body = []
 
       {:ok, headers, body}
     end
   end
+
   defp authentication_params(:client_secret_post, config) do
-    with {:ok, client_id}     <- Config.fetch(config, :client_id),
+    with {:ok, client_id} <- Config.fetch(config, :client_id),
          {:ok, client_secret} <- Config.fetch(config, :client_secret) do
-
       headers = []
-      body    = [client_id: client_id, client_secret: client_secret]
+      body = [client_id: client_id, client_secret: client_secret]
 
       {:ok, headers, body}
     end
   end
+
   defp authentication_params(:client_secret_jwt, config) do
     alg = Config.get(config, :jwt_algorithm, "HS256")
 
@@ -200,24 +224,29 @@ defmodule Assent.Strategy.OAuth2 do
       jwt_authentication_params(alg, client_secret, config)
     end
   end
+
   defp authentication_params(:private_key_jwt, config) do
     alg = Config.get(config, :jwt_algorithm, "RS256")
 
-    with {:ok, pem}             <- JWTAdapter.load_private_key(config),
+    with {:ok, pem} <- JWTAdapter.load_private_key(config),
          {:ok, _private_key_id} <- Config.fetch(config, :private_key_id) do
       jwt_authentication_params(alg, pem, config)
     end
   end
+
   defp authentication_params(method, _config) do
     {:error, "Invalid `:auth_method` #{method}"}
   end
 
   defp jwt_authentication_params(alg, secret, config) do
-    with {:ok, claims}    <- jwt_claims(config),
-         {:ok, token}     <- Helpers.sign_jwt(claims, alg, secret, config) do
-
+    with {:ok, claims} <- jwt_claims(config),
+         {:ok, token} <- Helpers.sign_jwt(claims, alg, secret, config) do
       headers = []
-      body    = [client_assertion: token, client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"]
+
+      body = [
+        client_assertion: token,
+        client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+      ]
 
       {:ok, headers, body}
     end
@@ -226,16 +255,16 @@ defmodule Assent.Strategy.OAuth2 do
   defp jwt_claims(config) do
     timestamp = :os.system_time(:second)
 
-    with {:ok, base_url}  <- Config.__base_url__(config),
+    with {:ok, base_url} <- Config.__base_url__(config),
          {:ok, client_id} <- Config.fetch(config, :client_id) do
-
-      {:ok, %{
-        "iss" => client_id,
-        "sub" => client_id,
-        "aud" => base_url,
-        "iat" => timestamp,
-        "exp" => timestamp + 60
-      }}
+      {:ok,
+       %{
+         "iss" => client_id,
+         "sub" => client_id,
+         "aud" => base_url,
+         "iat" => timestamp,
+         "exp" => timestamp + 60
+       }}
     end
   end
 
@@ -243,16 +272,16 @@ defmodule Assent.Strategy.OAuth2 do
   Grants an access token.
   """
   @spec grant_access_token(Config.t(), binary(), Keyword.t()) :: {:ok, map()} | {:error, term()}
-  def grant_access_token(config, grant_type, params)  do
-    auth_method  = Config.get(config, :auth_method, nil)
-    token_url    = Config.get(config, :token_url, "/oauth/token")
+  def grant_access_token(config, grant_type, params) do
+    auth_method = Config.get(config, :auth_method, nil)
+    token_url = Config.get(config, :token_url, "/oauth/token")
 
-    with {:ok, base_url}                <- Config.__base_url__(config),
+    with {:ok, base_url} <- Config.__base_url__(config),
          {:ok, auth_headers, auth_body} <- authentication_params(auth_method, config) do
       headers = [{"content-type", "application/x-www-form-urlencoded"}] ++ auth_headers
-      params  = Keyword.merge(params, Keyword.put(auth_body, :grant_type, grant_type))
-      url     = Helpers.to_url(base_url, token_url)
-      body    = URI.encode_query(params)
+      params = Keyword.merge(params, Keyword.put(auth_body, :grant_type, grant_type))
+      url = Helpers.to_url(base_url, token_url)
+      body = URI.encode_query(params)
 
       :post
       |> Helpers.request(url, body, headers, config)
@@ -260,18 +289,28 @@ defmodule Assent.Strategy.OAuth2 do
     end
   end
 
-  defp process_access_token_response({:ok, %HTTPResponse{status: status, body: %{"access_token" => _} = token}}) when status in [200, 201], do: {:ok, token}
+  defp process_access_token_response(
+         {:ok, %HTTPResponse{status: status, body: %{"access_token" => _} = token}}
+       )
+       when status in [200, 201] do
+    {:ok, token}
+  end
+
   defp process_access_token_response(any), do: process_response(any)
 
-  defp process_response({:ok, %HTTPResponse{} = response}), do: {:error, UnexpectedResponseError.exception(response: response)}
-  defp process_response({:error, %HTTPResponse{} = response}), do: {:error, InvalidResponseError.exception(response: response)}
+  defp process_response({:ok, %HTTPResponse{} = response}),
+    do: {:error, UnexpectedResponseError.exception(response: response)}
+
+  defp process_response({:error, %HTTPResponse{} = response}),
+    do: {:error, InvalidResponseError.exception(response: response)}
+
   defp process_response({:error, error}), do: {:error, error}
 
   defp fetch_user_with_strategy(config, token, strategy) do
     config
     |> strategy.fetch_user(token)
     |> case do
-      {:ok, user}     -> {:ok, %{token: token, user: user}}
+      {:ok, user} -> {:ok, %{token: token, user: user}}
       {:error, error} -> {:error, error}
     end
   end
@@ -282,28 +321,34 @@ defmodule Assent.Strategy.OAuth2 do
   @spec refresh_access_token(Config.t(), map(), Keyword.t()) :: {:ok, map()} | {:error, term()}
   def refresh_access_token(config, token, params \\ []) do
     with {:ok, refresh_token} <- fetch_from_token(token, "refresh_token") do
-      grant_access_token(config, "refresh_token", Keyword.put(params, :refresh_token, refresh_token))
+      grant_access_token(
+        config,
+        "refresh_token",
+        Keyword.put(params, :refresh_token, refresh_token)
+      )
     end
   end
 
   @doc """
   Performs a HTTP request to the API using the access token.
   """
-  @spec request(Config.t(), map(), atom(), binary(), map() | Keyword.t(), [{binary(), binary()}]) :: {:ok, map()} | {:error, term()}
+  @spec request(Config.t(), map(), atom(), binary(), map() | Keyword.t(), [{binary(), binary()}]) ::
+          {:ok, map()} | {:error, term()}
   def request(config, token, method, url, params \\ [], headers \\ []) do
-    with {:ok, base_url}     <- Config.__base_url__(config),
+    with {:ok, base_url} <- Config.__base_url__(config),
          {:ok, auth_headers} <- authorization_headers(config, token) do
-
       req_headers = request_headers(method, auth_headers ++ headers)
-      req_body    = request_body(method, params)
-      params      = url_params(method, params)
-      url         = Helpers.to_url(base_url, url, params)
+      req_body = request_body(method, params)
+      params = url_params(method, params)
+      url = Helpers.to_url(base_url, url, params)
 
       Helpers.request(method, url, req_body, req_headers, config)
     end
   end
 
-  defp request_headers(:post, headers), do: [{"content-type", "application/x-www-form-urlencoded"}] ++ headers
+  defp request_headers(:post, headers),
+    do: [{"content-type", "application/x-www-form-urlencoded"}] ++ headers
+
   defp request_headers(_method, headers), do: headers
 
   defp request_body(:post, params), do: URI.encode_query(params)
@@ -317,7 +362,8 @@ defmodule Assent.Strategy.OAuth2 do
 
   Uses `request/6` to fetch the user data.
   """
-  @spec fetch_user(Config.t(), map(), map() | Keyword.t(), [{binary(), binary()}]) :: {:ok, map()} | {:error, term()}
+  @spec fetch_user(Config.t(), map(), map() | Keyword.t(), [{binary(), binary()}]) ::
+          {:ok, map()} | {:error, term()}
   def fetch_user(config, token, params \\ [], headers \\ []) do
     with {:ok, user_url} <- Config.fetch(config, :user_url) do
       config
@@ -334,11 +380,13 @@ defmodule Assent.Strategy.OAuth2 do
 
     authorization_headers(config, token, type)
   end
+
   defp authorization_headers(_config, token, "bearer") do
     with {:ok, access_token} <- fetch_from_token(token, "access_token") do
       {:ok, [{"authorization", "Bearer #{access_token}"}]}
     end
   end
+
   defp authorization_headers(_config, _token, type) do
     {:error, "Authorization with token type `#{type}` not supported"}
   end
@@ -346,11 +394,14 @@ defmodule Assent.Strategy.OAuth2 do
   defp fetch_from_token(token, key) do
     case Map.fetch(token, key) do
       {:ok, value} -> {:ok, value}
-      :error       -> {:error, "No `#{key}` in token map"}
+      :error -> {:error, "No `#{key}` in token map"}
     end
   end
 
   defp process_user_response({:ok, %HTTPResponse{status: 200, body: user}}), do: {:ok, user}
-  defp process_user_response({:error, %HTTPResponse{status: 401} = response}), do: {:error, RequestError.exception(message: "Unauthorized token", response: response)}
+
+  defp process_user_response({:error, %HTTPResponse{status: 401} = response}),
+    do: {:error, RequestError.exception(message: "Unauthorized token", response: response)}
+
   defp process_user_response(any), do: process_response(any)
 end

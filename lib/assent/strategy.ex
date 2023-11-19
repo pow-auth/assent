@@ -28,13 +28,16 @@ defmodule Assent.Strategy do
   """
   alias Assent.{Config, HTTPAdapter.HTTPResponse, ServerUnreachableError}
 
-  @callback authorize_url(Config.t()) :: {:ok, %{:url => binary(), optional(atom()) => any()}} | {:error, term()}
-  @callback callback(Config.t(), map()) :: {:ok, %{:user => map(), optional(atom()) => any()}} | {:error, term()}
+  @callback authorize_url(Config.t()) ::
+              {:ok, %{:url => binary(), optional(atom()) => any()}} | {:error, term()}
+  @callback callback(Config.t(), map()) ::
+              {:ok, %{:user => map(), optional(atom()) => any()}} | {:error, term()}
 
   @doc """
   Makes a HTTP request.
   """
-  @spec request(atom(), binary(), binary() | nil, list(), Config.t()) :: {:ok, HTTPResponse.t()} | {:error, HTTPResponse.t()} | {:error, term()}
+  @spec request(atom(), binary(), binary() | nil, list(), Config.t()) ::
+          {:ok, HTTPResponse.t()} | {:error, HTTPResponse.t()} | {:error, term()}
   def request(method, url, body, headers, config) do
     {http_adapter, opts} = fetch_http_adapter(config)
 
@@ -44,40 +47,51 @@ defmodule Assent.Strategy do
     |> decode_response(config)
   end
 
-  @default_http_client Enum.find_value([
-    {Req1, Assent.HTTPAdapter.Req},
-    {:httpc, Assent.HTTPAdapter.Httpc}
-  ],
-  fn {dep, module} ->
-    Code.ensure_loaded?(dep) && {module, []}
-  end)
+  @default_http_client Enum.find_value(
+                         [
+                           {Req1, Assent.HTTPAdapter.Req},
+                           {:httpc, Assent.HTTPAdapter.Httpc}
+                         ],
+                         fn {dep, module} ->
+                           Code.ensure_loaded?(dep) && {module, []}
+                         end
+                       )
 
   defp fetch_http_adapter(config) do
     default_http_adapter = Application.get_env(:assent, :http_adapter, @default_http_client)
 
     case Config.get(config, :http_adapter, default_http_adapter) do
-      {http_adapter, opts}                    -> {http_adapter, opts}
+      {http_adapter, opts} -> {http_adapter, opts}
       http_adapter when is_atom(http_adapter) -> {http_adapter, nil}
     end
   end
 
-  defp parse_status_response({:ok, %{status: status} = resp}, http_adapter, url) when status in 200..399 do
+  defp parse_status_response({:ok, %{status: status} = resp}, http_adapter, url)
+       when status in 200..399 do
     {:ok, %{resp | http_adapter: http_adapter, request_url: url}}
   end
-  defp parse_status_response({:ok, %{status: status} = resp}, http_adapter, url) when status in 400..599 do
+
+  defp parse_status_response({:ok, %{status: status} = resp}, http_adapter, url)
+       when status in 400..599 do
     {:error, %{resp | http_adapter: http_adapter, request_url: url}}
   end
+
   defp parse_status_response({:error, error}, http_adapter, url) do
-    {:error, ServerUnreachableError.exception(reason: error, http_adapter: http_adapter, request_url: url)}
+    {:error,
+     ServerUnreachableError.exception(reason: error, http_adapter: http_adapter, request_url: url)}
   end
 
   @doc """
   Decodes a request response.
   """
-  @spec decode_response({:ok, HTTPResponse.t()} | {:error, HTTPResponse.t()} | {:error, term()}, Config.t()) :: {:ok, HTTPResponse.t()} | {:error, HTTPResponse.t()} | {:error, term()}
-  def decode_response({ok_or_error, %{body: body, headers: headers} = resp}, config) when is_binary(body) do
+  @spec decode_response(
+          {:ok, HTTPResponse.t()} | {:error, HTTPResponse.t()} | {:error, term()},
+          Config.t()
+        ) :: {:ok, HTTPResponse.t()} | {:error, HTTPResponse.t()} | {:error, term()}
+  def decode_response({ok_or_error, %{body: body, headers: headers} = resp}, config)
+      when is_binary(body) do
     case decode_body(headers, body, config) do
-      {:ok, body}     -> {ok_or_error, %{resp | body: body}}
+      {:ok, body} -> {ok_or_error, %{resp | body: body}}
       {:error, error} -> {:error, error}
     end
   end
@@ -86,10 +100,17 @@ defmodule Assent.Strategy do
 
   defp decode_body(headers, body, config) do
     case List.keyfind(headers, "content-type", 0) do
-      {"content-type", "application/json" <> _rest} -> decode_json(body, config)
-      {"content-type", "text/javascript" <> _rest} -> decode_json(body, config)
-      {"content-type", "application/x-www-form-urlencoded" <> _reset} -> {:ok, URI.decode_query(body)}
-      _any -> {:ok, body}
+      {"content-type", "application/json" <> _rest} ->
+        decode_json(body, config)
+
+      {"content-type", "text/javascript" <> _rest} ->
+        decode_json(body, config)
+
+      {"content-type", "application/x-www-form-urlencoded" <> _reset} ->
+        {:ok, URI.decode_query(body)}
+
+      _any ->
+        {:ok, body}
     end
   end
 
@@ -103,15 +124,18 @@ defmodule Assent.Strategy do
   Verifies a JWT
   """
   @spec verify_jwt(binary(), binary() | map() | nil, Config.t()) :: {:ok, map()} | {:error, any()}
-  def verify_jwt(token, secret, config), do: Assent.JWTAdapter.verify(token, secret, jwt_adapter_opts(config))
+  def verify_jwt(token, secret, config),
+    do: Assent.JWTAdapter.verify(token, secret, jwt_adapter_opts(config))
 
-  defp jwt_adapter_opts(config), do: Keyword.take(config, [:json_library, :jwt_adapter, :private_key_id])
+  defp jwt_adapter_opts(config),
+    do: Keyword.take(config, [:json_library, :jwt_adapter, :private_key_id])
 
   @doc """
   Signs a JWT
   """
   @spec sign_jwt(map(), binary(), binary(), Config.t()) :: {:ok, binary()} | {:error, term()}
-  def sign_jwt(claims, alg, secret, config), do: Assent.JWTAdapter.sign(claims, alg, secret, jwt_adapter_opts(config))
+  def sign_jwt(claims, alg, secret, config),
+    do: Assent.JWTAdapter.sign(claims, alg, secret, jwt_adapter_opts(config))
 
   @doc """
   Generates a URL
@@ -119,6 +143,7 @@ defmodule Assent.Strategy do
   @spec to_url(binary(), binary(), Keyword.t()) :: binary()
   def to_url(base_url, uri, params \\ [])
   def to_url(base_url, uri, []), do: endpoint(base_url, uri)
+
   def to_url(base_url, uri, params) do
     endpoint(base_url, uri) <> "?" <> encode_query(params)
   end
@@ -135,19 +160,23 @@ defmodule Assent.Strategy do
 
     encode_pair(value, key)
   end
+
   defp encode_pair({key, value}, encoded_key) do
     key = encoded_key <> "[" <> encode_value(key) <> "]"
 
     encode_pair(value, key)
   end
+
   defp encode_pair([{_key, _value} | _rest] = values, encoded_key) do
     Enum.map(values, &encode_pair(&1, encoded_key))
   end
+
   defp encode_pair(values, encoded_key) when is_list(values) do
     key = encoded_key <> "[]"
 
     Enum.map(values, &encode_pair(&1, key))
   end
+
   defp encode_pair(value, encoded_key) do
     encoded_key <> "=" <> encode_value(value)
   end
@@ -156,6 +185,7 @@ defmodule Assent.Strategy do
 
   defp endpoint(base_url, <<"/"::utf8, _::binary>> = uri),
     do: base_url <> uri
+
   defp endpoint(_base_url, url),
     do: url
 
@@ -166,11 +196,14 @@ defmodule Assent.Strategy do
   """
   @spec normalize_userinfo(map(), map()) :: {:ok, map()}
   def normalize_userinfo(claims, extra \\ %{}) do
-    standard_claims = Map.take(claims,
-      ~w(sub name given_name family_name middle_name nickname
+    standard_claims =
+      Map.take(
+        claims,
+        ~w(sub name given_name family_name middle_name nickname
          preferred_username profile picture website email email_verified
          gender birthdate zoneinfo locale phone_number phone_number_verified
-         address updated_at))
+         address updated_at)
+      )
 
     {:ok, prune(Map.merge(extra, standard_claims))}
   end
@@ -191,14 +224,15 @@ defmodule Assent.Strategy do
     config
     |> strategy.normalize(user)
     |> case do
-      {:ok, user}        -> normalize_userinfo(user)
+      {:ok, user} -> normalize_userinfo(user)
       {:ok, user, extra} -> normalize_userinfo(user, extra)
-      {:error, error}    -> {:error, error}
+      {:error, error} -> {:error, error}
     end
     |> case do
       {:error, error} -> {:error, error}
-      {:ok, user}     -> {:ok, %{results | user: user}}
+      {:ok, user} -> {:ok, %{results | user: user}}
     end
   end
+
   def __normalize__({:error, error}, _config, _strategy), do: {:error, error}
 end

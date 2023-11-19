@@ -57,6 +57,7 @@ defmodule Assent.Strategy.GitlabTest do
     expect_oauth2_access_token_request([uri: "/oauth/token"], fn _conn, params ->
       assert params["client_secret"] == config[:client_secret]
     end)
+
     expect_oauth2_user_request(@user_response, uri: "/api/v4/user")
 
     assert {:ok, %{user: user}} = Gitlab.callback(config, params)

@@ -25,11 +25,11 @@ defmodule Assent.Strategy.VK do
   alias Assent.{Config, Strategy.OAuth2}
 
   @profile_fields ["uid", "first_name", "last_name", "photo_200", "screen_name"]
-  @url_params     [fields: Enum.join(@profile_fields, ","), v: "5.69", https: "1"]
+  @url_params [fields: Enum.join(@profile_fields, ","), v: "5.69", https: "1"]
 
   @impl true
   def default_config(config) do
-    params          = Config.get(config, :user_url_params, [])
+    params = Config.get(config, :user_url_params, [])
     user_url_params = Config.merge(@url_params, params)
 
     [
@@ -45,13 +45,14 @@ defmodule Assent.Strategy.VK do
 
   @impl true
   def normalize(_config, user) do
-    {:ok, %{
-      "sub"                => user["id"],
-      "given_name"         => user["first_name"],
-      "family_name"        => user["last_name"],
-      "picture"            => user["photo_200"],
-      "email"              => user["email"]
-    }}
+    {:ok,
+     %{
+       "sub" => user["id"],
+       "given_name" => user["first_name"],
+       "family_name" => user["last_name"],
+       "picture" => user["photo_200"],
+       "email" => user["email"]
+     }}
   end
 
   @impl true
@@ -82,7 +83,7 @@ defmodule Assent.Strategy.VK do
       Retrieved an invalid response fetching VK user.
 
       User response:
-      #{inspect user}
+      #{inspect(user)}
       """)
     }
   end
