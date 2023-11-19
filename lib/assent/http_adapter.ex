@@ -2,6 +2,19 @@ defmodule Assent.HTTPAdapter do
   @moduledoc """
   HTTP adapter helper module.
 
+  You can configure the which HTTP adapter Assent uses by setting the
+  configuring:
+
+      http_adapter: Assent.HTTPAdapter.Httpc
+
+  Default options can be set by passing a list of options:
+
+      http_adapter: {Assent.HTTPAdapter.Httpc, [...]}
+
+  You can also set global application config:
+
+      config :assent, :http_adapter, Assent.HTTPAdapter.Httpc
+
   ## Usage
 
       defmodule MyApp.MyHTTPAdapter do

@@ -2,6 +2,18 @@ defmodule Assent.JWTAdapter do
   @moduledoc """
   JWT adapter helper module.
 
+  You can configure the JWT adapter by updating the configuration:
+
+      jwt_adapter: {Assent.JWTAdapter.AssentJWT, [...]}
+
+  Default options can be set by passing a list of options:
+
+      jwt_adapter: {Assent.JWTAdapter.AssentJWT, [...]}
+
+  You can also set global application config:
+
+      config :assent, :jwt_adapter, Assent.JWTAdapter.AssentJWT
+
   ## Usage
 
       defmodule MyApp.MyJWTAdapter do
@@ -44,10 +56,11 @@ defmodule Assent.JWTAdapter do
 
   defp fetch_adapter(opts) do
     default_opts = Keyword.put(opts, :json_library, Config.json_library(opts))
+    default_jwt_adapter = Application.get_env(:assent, :jwt_adapter, Assent.JWTAdapter.AssentJWT)
 
-    case Keyword.get(opts, :jwt_adapter, Assent.JWTAdapter.AssentJWT) do
-      {adapter, opts} -> {adapter, Keyword.merge(default_opts, opts)}
-      adapter         -> {adapter, default_opts}
+    case Keyword.get(opts, :jwt_adapter, default_jwt_adapter) do
+      {adapter, opts}               -> {adapter, Keyword.merge(default_opts, opts)}
+      adapter when is_atom(adapter) -> {adapter, default_opts}
     end
   end
 

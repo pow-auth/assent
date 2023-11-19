@@ -44,10 +44,20 @@ defmodule Assent.Strategy do
     |> decode_response(config)
   end
 
+  @default_http_client Enum.find_value([
+    {Req1, Assent.HTTPAdapter.Req},
+    {:httpc, Assent.HTTPAdapter.Httpc}
+  ],
+  fn {dep, module} ->
+    Code.ensure_loaded?(dep) && {module, []}
+  end)
+
   defp fetch_http_adapter(config) do
-    case Config.get(config, :http_adapter, Assent.HTTPAdapter.Httpc) do
-      {http_adapter, opts} -> {http_adapter, opts}
-      http_adapter         -> {http_adapter, nil}
+    default_http_adapter = Application.get_env(:assent, :http_adapter, @default_http_client)
+
+    case Config.get(config, :http_adapter, default_http_adapter) do
+      {http_adapter, opts}                    -> {http_adapter, opts}
+      http_adapter when is_atom(http_adapter) -> {http_adapter, nil}
     end
   end
 

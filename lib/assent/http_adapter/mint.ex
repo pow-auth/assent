@@ -1,14 +1,6 @@
 if Code.ensure_loaded?(Mint.HTTP) do
 defmodule Assent.HTTPAdapter.Mint do
-  @moduledoc """
-  HTTP adapter module for making http requests with Mint.
-
-  Mint can be configured by updating the configuration:
-
-      http_adapter: {Assent.HTTPAdapter.Mint, [...]}
-
-  See `Assent.HTTPAdapter` for more.
-  """
+  @moduledoc false
   alias Assent.{HTTPAdapter, HTTPAdapter.HTTPResponse}
 
   @behaviour HTTPAdapter

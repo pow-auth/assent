@@ -41,20 +41,31 @@ Add Assent to your list of dependencies in `mix.exs`:
 defp deps do
   [
     # ...
-    {:assent, "~> 0.2.7"},
-
-     # Required for SSL validation with :httpc adapter
-    {:certifi, "~> 2.4"},
-    {:ssl_verify_fun, "~> 1.1"}
+    {:assent, "~> 0.2.7"}
   ]
 end
 ```
 
 Run `mix deps.get` to install it.
 
-### Releases
+#### HTTP client installation
 
-By default, `:httpc` will be used for HTTP requests. To compile the app with `:httpc` support, please add `:inets` to `:extra_applications` in `mix.exs`:
+By default, `Req` is used if you have it in your dependency list. If not, Erlang's `:httpc` will be used instead.
+
+If you are using `:httpc` you should add the following dependencies to enable SSL validation:
+
+```elixir
+defp deps do
+  [
+    # ...
+    # Required for SSL validation when using the `:httpc` adapter
+    {:certifi, "~> 2.4"},
+    {:ssl_verify_fun, "~> 1.1"}
+  ]
+end
+```
+
+You must also add `:inets` to `:extra_applications` in `mix.exs`:
 
 ```elixir
 def application do
@@ -68,7 +79,7 @@ def application do
 end
 ```
 
-This is not necessary if you use another HTTP adapter like Finch.
+This is not necessary if you use another HTTP adapter like `Req` or `Finch`.
 
 ## Getting started
 
@@ -241,13 +252,59 @@ defmodule TestProvider do
 end
 ```
 
-## HTTP Adapter
+## HTTP Client
 
-By default Erlangs built-in `:httpc` is used for requests. SSL verification is automatically enabled when `:certifi` and `:ssl_verify_fun` packages are available. `:httpc` only supports HTTP/1.1.
+Assent supports [`Req`](https://github.com/wojtekmach/req), [`Finch`](https://github.com/sneako/finch), and [`:httpc`](https://www.erlang.org/doc/man/httpc.html) out of the box. The `Req` HTTP client adapter will be used by default if enabled, otherwise Erlang's `:httpc` adapter will be included.
 
-If you would like HTTP/2 support, you should consider adding [`Finch`](https://github.com/sneako/finch) to your project.
+You can explicitly set the HTTP client adapter in the configuration:
+
+```elixir
+config = [
+  client_id: "REPLACE_WITH_CLIENT_ID",
+  client_secret: "REPLACE_WITH_CLIENT_SECRET",
+  http_adapter: Assent.HTTPAdapter.Httpc
+]
+```
+
+Or globally in the config:
+
+```elixir
+config :assent, http_adapter: Assent.HTTPAdapter.Httpc
+```
+
+### `Req`
+
+Req doesn't require any additional configuration and will work out of the box:
+
+```elixir
+defp deps do
+  [
+    # ...
+    {:req, "~> 0.4"}
+  ]
+end
+```
+
+### `:httpc`
+
+If `Req` is not available, Erlangs built-in `:httpc` is used for requests. SSL verification is automatically enabled when `:certifi` and `:ssl_verify_fun` packages are available. `:httpc` only supports HTTP/1.1.
+
+```elixir
+defp deps do
+  [
+    # ...
+    # Required for SSL validation if using the `:httpc` adapter
+    {:certifi, "~> 2.4"},
+    {:ssl_verify_fun, "~> 1.1"}
+  ]
+end
+```
+
+You must include `:inets` to `:extra_applications` to include `:httpc` in your release.
 
 ### Finch
+
+Finch will require a supervisor in your application.
 
 Update `mix.exs`:
 
@@ -293,6 +350,12 @@ config = [
   client_secret: "REPLACE_WITH_CLIENT_SECRET",
   jwt_adapter: Assent.JWTAdapter.JOSE
 ]
+```
+
+Or globally in the config:
+
+```elixir
+config :assent, jwt_adapter: AssAssent.JWTAdapter.JOSE
 ```
 
 ## LICENSE
