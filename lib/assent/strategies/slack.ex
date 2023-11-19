@@ -15,7 +15,8 @@ defmodule Assent.Strategy.Slack do
 
       config = [
         client_id: "REPLACE_WITH_CLIENT_ID",
-        client_secret: "REPLACE_WITH_CLIENT_SECRET"
+        client_secret: "REPLACE_WITH_CLIENT_SECRET",
+        redirect_uri: "http://localhost:4000/auth/callback"
       ]
 
   By default, the user can decide what team should be used for authorization.
@@ -25,7 +26,8 @@ defmodule Assent.Strategy.Slack do
       config = [
         client_id: "REPLACE_WITH_CLIENT_ID",
         client_secret: "REPLACE_WITH_CLIENT_SECRET",
-        team_id: "XXXXXXX"
+        team_id: "REPLACE_WITH_TEAM_ID",
+        redirect_uri: "http://localhost:4000/auth/callback"
       ]
 
   This value will be not be used if you set a `authorization_params` key.

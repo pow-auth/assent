@@ -12,7 +12,8 @@ defmodule Assent.Strategy.AzureAD do
 
       config = [
         client_id: "REPLACE_WITH_CLIENT_ID",
-        client_secret: "REPLACE_WITH_CLIENT_SECRET"
+        client_secret: "REPLACE_WITH_CLIENT_SECRET",
+        redirect_uri: "http://localhost:4000/auth/callback"
       ]
 
   A tenant id can be set to limit scope of users who can get access (defaults
@@ -21,7 +22,8 @@ defmodule Assent.Strategy.AzureAD do
       config = [
         client_id: "REPLACE_WITH_CLIENT_ID",
         client_secret: "REPLACE_WITH_CLIENT_SECRET",
-        tenant_id: "REPLACE_WITH_TENANT_ID"
+        tenant_id: "REPLACE_WITH_TENANT_ID",
+        redirect_uri: "http://localhost:4000/auth/callback"
       ]
 
   ## Setting up Azure AD

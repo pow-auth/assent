@@ -10,7 +10,8 @@ defmodule Assent.Strategy.Google do
 
       config = [
         client_id: "REPLACE_WITH_CLIENT_ID",
-        client_secret: "REPLACE_WITH_CLIENT_SECRET"
+        client_secret: "REPLACE_WITH_CLIENT_SECRET",
+        redirect_uri: "http://localhost:4000/auth/callback"
       ]
 
   To get the refresh token, it's necessary to pass `access_type: "offline"` in

@@ -7,7 +7,8 @@ defmodule Assent.Strategy.Auth0 do
       config = [
         client_id: "REPLACE_WITH_CLIENT_ID",
         client_secret: "REPLACE_WITH_CLIENT_SECRET",
-        domain: "REPLACE_WITH_DOMAIN"
+        domain: "REPLACE_WITH_DOMAIN",
+        redirect_uri: "http://localhost:4000/auth/callback"
       ]
 
   See `Assent.Strategy.OAuth2` for more.

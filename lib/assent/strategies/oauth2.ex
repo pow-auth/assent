@@ -59,6 +59,7 @@ defmodule Assent.Strategy.OAuth2 do
 
       {:ok, %{user: user, token: token}} =
         config
+        |> Assent.Config.put(:redirect_uri, "http://localhost:4000/auth/callback")
         |> Assent.Config.put(:session_params, session_params)
         |> Assent.Strategy.OAuth2.callback(params)
   """

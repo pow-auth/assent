@@ -9,7 +9,8 @@ defmodule Assent.Strategy.Twitter do
 
       config = [
         consumer_key: "REPLACE_WITH_CONSUMER_KEY",
-        consumer_secret: "REPLACE_WITH_CONSUMER_SECRET"
+        consumer_secret: "REPLACE_WITH_CONSUMER_SECRET",
+        redirect_uri: "http://localhost:4000/auth/callback"
       ]
 
   See `Assent.Strategy.OAuth` for more.

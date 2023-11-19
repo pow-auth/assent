@@ -13,7 +13,8 @@ defmodule Assent.Strategy.Apple do
         client_id: "REPLACE_WITH_SERVICES_ID",
         team_id: "REPLACE_WITH_TEAM_ID",
         private_key_id: "REPLACE_WITH_PRIVATE_KEY_ID",
-        private_key_path: "/path/to/key.p8"
+        private_key_path: "/path/to/private_key.p8",
+        redirect_uri: "http://localhost:4000/auth/callback"
       ]
 
   ## With JS SDK
