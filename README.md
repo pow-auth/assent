@@ -41,7 +41,7 @@ Add Assent to your list of dependencies in `mix.exs`:
 defp deps do
   [
     # ...
-    {:assent, "~> 0.2.8"}
+    {:assent, "~> 0.2.9"}
   ]
 end
 ```
