@@ -3,6 +3,7 @@
 ## v0.2.9 (TBA)
 
 - Fixed bug where `Req` was not used by default if included in project
+- `Assent.Strategy.Httpc.request/5` now sets content length header
 
 ## v0.2.8 (2023-11-19)
 

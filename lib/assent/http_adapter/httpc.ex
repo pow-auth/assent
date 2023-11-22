@@ -65,6 +65,7 @@ defmodule Assent.HTTPAdapter.Httpc do
   defp do_httpc_request(url, body, headers) do
     {content_type, headers} = split_content_type_headers(headers)
     body = to_charlist(body)
+    headers = set_content_length_header(headers, body)
 
     {url, headers, content_type, body}
   end
@@ -73,6 +74,17 @@ defmodule Assent.HTTPAdapter.Httpc do
     case List.keytake(headers, ~c"content-type", 0) do
       nil -> {~c"text/plain", headers}
       {{_, ct}, headers} -> {ct, headers}
+    end
+  end
+
+  defp set_content_length_header(headers, body) do
+    case List.keyfind(headers, ~c"content-length", 0) do
+      nil ->
+        length = body |> IO.iodata_length() |> Integer.to_string()
+        [{~c"content-length", length} | headers]
+
+      _ ->
+        headers
     end
   end
 

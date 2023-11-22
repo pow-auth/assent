@@ -116,6 +116,8 @@ defmodule Assent.HTTPAdapter.HttpcTest do
                    "application/x-www-form-urlencoded"
                  ]
 
+          assert Plug.Conn.get_req_header(conn, "content-length") == ["7"]
+
           Plug.Conn.send_resp(conn, 200, "")
         end
       )
