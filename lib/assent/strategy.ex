@@ -49,7 +49,7 @@ defmodule Assent.Strategy do
 
   @default_http_client Enum.find_value(
                          [
-                           {Req1, Assent.HTTPAdapter.Req},
+                           {Req, Assent.HTTPAdapter.Req},
                            {:httpc, Assent.HTTPAdapter.Httpc}
                          ],
                          fn {dep, module} ->

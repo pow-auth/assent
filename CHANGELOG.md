@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.2.9 (TBA)
+
+- Fixed bug where `Req` was not used by default if included in project
+
 ## v0.2.8 (2023-11-19)
 
 `Req` will be used by default if available in your project, otherwise `:httpc` will be used.
