@@ -78,7 +78,7 @@ defmodule Assent.Test.OAuthTestCase do
     {_, value} = List.keyfind(conn.req_headers, "authorization", 0)
 
     value
-    |> String.slice(6..-1)
+    |> String.slice(6..-1//1)
     |> String.split(",")
     |> Enum.into(%{}, fn string ->
       [_, key, value] = Regex.run(~r/^([a-zA-Z_]+)=\"(.*?)\"$/i, String.trim(string))
