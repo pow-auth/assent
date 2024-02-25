@@ -12,7 +12,7 @@ defmodule Assent.HTTPAdapter.ReqTest do
 
       req_opts = [connect_options: [transport_opts: [cacerts: TestServer.x509_suite().cacerts]]]
 
-      assert {:ok, %HTTPResponse{status: 200, body: "HTTP/1.1"}} =
+      assert {:ok, %HTTPResponse{status: 200, body: "HTTP/2"}} =
                Req.request(:get, TestServer.url(), nil, [], req_opts)
     end
 

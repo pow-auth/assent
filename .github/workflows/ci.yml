@@ -31,7 +31,7 @@ jobs:
             elixir: 1.16
             os: ubuntu-latest
           - otp: 22.0
-            elixir: 1.12
+            elixir: 1.13
             # It's necessary to run on ubuntu 20.04 for OTP 20 - 23
             # See https://github.com/erlef/setup-beam
             os: ubuntu-20.04

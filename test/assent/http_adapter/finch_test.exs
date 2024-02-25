@@ -22,7 +22,7 @@ defmodule Assent.HTTPAdapter.FinchTest do
     test "handles HTTP/1" do
       TestServer.add("/", via: :get)
 
-      supervisor = start_supervised_finch!(protocol: :http1)
+      supervisor = start_supervised_finch!(protocols: [:http1])
 
       assert {:ok, %HTTPResponse{status: 200, body: "HTTP/1.1"}} =
                FinchAdapter.request(:get, TestServer.url(), nil, [], supervisor: supervisor)
@@ -138,7 +138,7 @@ defmodule Assent.HTTPAdapter.FinchTest do
 
   defp start_supervised_finch!(opts \\ []) do
     start_supervised!(
-      {Finch, name: FinchTest, pools: %{:default => Keyword.put_new(opts, :protocol, :http2)}}
+      {Finch, name: FinchTest, pools: %{:default => Keyword.put_new(opts, :protocols, [:http2])}}
     )
 
     FinchTest

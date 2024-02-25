@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.2.10 (TBA)
+
+Requires Elixir 1.13+
+
 ## v0.2.9 (2023-11-22)
 
 - Fixed bug where `Req` was not used by default if included in project
