@@ -166,15 +166,16 @@ defmodule MultiProviderAuth do
 
   @spec request(atom()) :: {:ok, map()} | {:error, term()}
   def request(provider) do
-    provider
-    |> config!()
-    |> config[:strategy].authorize_url()
+    config = config!(provider)
+
+    config[:strategy].authorize_url()
   end
 
   @spec callback(atom(), map(), map()) :: {:ok, map()} | {:error, term()}
   def callback(provider, params, session_params) do
-    provider
-    |> config!()
+    config = config!(provider)
+
+    config
     |> Assent.Config.put(:session_params, session_params)
     |> config[:strategy].callback(params)
   end
