@@ -146,15 +146,24 @@ defmodule Assent.Strategy.OAuth2 do
     with {:ok, session_params} <- Config.fetch(config, :session_params),
          :ok <- check_error_params(params),
          {:ok, code} <- fetch_code_param(params),
+         code_verifier <- Config.fetch(config, :code_verifier),
          {:ok, redirect_uri} <- Config.fetch(config, :redirect_uri),
-         :ok <- maybe_check_state(session_params, params),
-         {:ok, token} <-
-           grant_access_token(
-             config,
-             "authorization_code",
-             code: code,
-             redirect_uri: redirect_uri
-           ) do
+         :ok <- maybe_check_state(session_params, params) do
+      opts = [
+        code: code,
+        redirect_uri: redirect_uri
+      ]
+
+      opts =
+        case code_verifier do
+          {:ok, code_verifier} ->
+            Keyword.put(opts, :code_verifier, code_verifier)
+
+          _ ->
+            opts
+        end
+
+      {:ok, token} = grant_access_token(config, "authorization_code", opts)
       fetch_user_with_strategy(config, token, strategy)
     end
   end
