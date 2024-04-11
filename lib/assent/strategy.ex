@@ -183,11 +183,8 @@ defmodule Assent.Strategy do
 
   defp encode_value(value), do: URI.encode_www_form(Kernel.to_string(value))
 
-  defp endpoint(base_url, <<"/"::utf8, _::binary>> = uri),
-    do: base_url <> uri
-
-  defp endpoint(_base_url, url),
-    do: url
+  defp endpoint(base_url, uri),
+    do: URI.merge(URI.parse(base_url), uri) |> URI.to_string()
 
   @doc """
   Normalize API user request response into standard claims
