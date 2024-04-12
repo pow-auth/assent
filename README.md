@@ -17,6 +17,7 @@ Multi-provider authentication framework.
   * Auth0 - `Assent.Strategy.Auth0`
   * Azure AD - `Assent.Strategy.AzureAD`
   * Basecamp - `Assent.Strategy.Basecamp`
+  * Bitbucket - `Assent.Strategy.Bitbucket`
   * DigitalOcean - `Assent.Strategy.DigitalOcean`
   * Discord - `Assent.Strategy.Discord`
   * Facebook - `Assent.Strategy.Facebook`
