@@ -4,6 +4,8 @@
 
 Requires Elixir 1.13+
 
+- Fixed bug with trailing slash in `:base_url` not being ommitted when concatenating with relative path
+
 ## v0.2.9 (2023-11-22)
 
 - Fixed bug where `Req` was not used by default if included in project

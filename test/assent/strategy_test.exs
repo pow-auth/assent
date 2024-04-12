@@ -247,23 +247,21 @@ defmodule Assent.StrategyTest do
              Strategy.verify_jwt(@token, @secret, json_library: CustomJSONLibrary)
   end
 
-  describe "to_url/3" do
-    test "with trailing slash in domain and leading slash in path" do
-      assert Strategy.to_url("http://localhost/", "/path") == "http://localhost/path"
-    end
+  test "to_url/3" do
+    assert Strategy.to_url("http://example.com", "/path") == "http://example.com/path"
+    assert Strategy.to_url("http://example.com/", "/path") == "http://example.com/path"
 
-    test "with trailing slash in domain" do
-      assert Strategy.to_url("http://localhost/", "path") == "http://localhost/path"
-    end
+    assert Strategy.to_url("http://example.com/path", "/other-path") ==
+             "http://example.com/path/other-path"
 
-    test "with leading slash in path" do
-      assert Strategy.to_url("http://localhost", "/path") == "http://localhost/path"
-    end
+    assert Strategy.to_url("http://example.com/path/", "/other-path") ==
+             "http://example.com/path/other-path"
 
-    test "with valid inputs" do
-      assert Strategy.to_url("http://localhost", "path", a: 1, b: [c: 2, d: [e: 3]], f: [4, 5]) ==
-             "http://localhost/path?a=1&b[c]=2&b[d][e]=3&f[]=4&f[]=5"
-    end
+    assert Strategy.to_url("http://example.com/path", "http://example.org/other-path") ==
+             "http://example.org/other-path"
+
+    assert Strategy.to_url("http://example.com", "/path", a: 1, b: [c: 2, d: [e: 3]], f: [4, 5]) ==
+             "http://example.com/path?a=1&b[c]=2&b[d][e]=3&f[]=4&f[]=5"
   end
 
   test "normalize_userinfo/2" do
