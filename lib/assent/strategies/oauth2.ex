@@ -9,7 +9,9 @@ defmodule Assent.Strategy.OAuth2 do
   `:session_params` should be stored and passed back into `callback/3` as part
   of config when the user returns. The `:session_params` carries a `:state`
   value for the request [to prevent
-  CSRF](https://tools.ietf.org/html/rfc6749#section-4.1.1).
+  CSRF](https://tools.ietf.org/html/rfc6749#section-4.1.1). If `:code_verifier`
+  is set to true, the `:session_params` will also carry PKCE [code verification
+  parameters](https://datatracker.ietf.org/doc/html/rfc7636#section-4).
 
   This library also supports JWT tokens for client authentication as per
   [RFC 7523](https://tools.ietf.org/html/rfc7523).
@@ -43,6 +45,10 @@ defmodule Assent.Strategy.OAuth2 do
     - `:state` - A boolean or a string with the value of the state, optional,
       defaults to `true`. When set to `true` a random 32 byte long url safe
       string is generated. When set to `false` state will not be verified.
+    - `:code_verifier` - Boolean to generate and use a random 128 byte long
+      url safe code verifier for PKCE flow, optional, defaults to `false`. When
+      set to `true` the session params will contain `:code_verifier`,
+      `:code_challenge`, and `:code_challenge_method` params.
 
   ## Usage
 
@@ -84,7 +90,10 @@ defmodule Assent.Strategy.OAuth2 do
   }
 
   @type session_params :: %{
-          optional(:state) => binary()
+          optional(:state) => binary(),
+          optional(:code_verifier) => binary(),
+          optional(:code_challenge) => binary(),
+          optional(:code_challenge_method) => binary()
         }
 
   @doc """
@@ -136,6 +145,10 @@ defmodule Assent.Strategy.OAuth2 do
   end
 
   defp session_params(config) do
+    state_params(config) ++ code_verifier_params(config)
+  end
+
+  defp state_params(config) do
     case Config.get(config, :state, true) do
       state when is_binary(state) -> [state: state]
       true -> [state: gen_url_encoded_base64(32)]
@@ -151,6 +164,22 @@ defmodule Assent.Strategy.OAuth2 do
     |> Base.url_encode64(padding: false)
   end
 
+  defp code_verifier_params(config) do
+    case Config.get(config, :code_verifier, false) do
+      true ->
+        code_verifier = gen_url_encoded_base64(128)
+
+        [
+          code_verifier: code_verifier,
+          code_challenge: Base.url_encode64(:crypto.hash(:sha256, code_verifier), padding: false),
+          code_challenge_method: "S256"
+        ]
+
+      false ->
+        []
+    end
+  end
+
   defp authorization_params(config, client_id, redirect_uri, session_params) do
     params = Config.get(config, :authorization_params, [])
 
@@ -160,7 +189,9 @@ defmodule Assent.Strategy.OAuth2 do
       redirect_uri: redirect_uri
     ]
     |> Keyword.merge(params)
-    |> Keyword.merge(Keyword.take(session_params, [:state]))
+    |> Keyword.merge(
+      Keyword.take(session_params, [:state, :code_challenge, :code_challenge_method])
+    )
     |> List.keysort(0)
   end
 
@@ -184,7 +215,7 @@ defmodule Assent.Strategy.OAuth2 do
     with {:ok, session_params} <- Config.fetch(config, :session_params),
          :ok <- check_error_params(params),
          :ok <- verify_state(config, session_params, params),
-         {:ok, grant_params} <- fetch_grant_access_token_params(config, params),
+         {:ok, grant_params} <- fetch_grant_access_token_params(config, params, session_params),
          {:ok, token} <- grant_access_token(config, "authorization_code", grant_params) do
       fetch_user_with_strategy(config, token, strategy)
     end
@@ -218,10 +249,11 @@ defmodule Assent.Strategy.OAuth2 do
     {:error, MissingParamError.exception(expected_key: "state", params: params)}
   end
 
-  defp fetch_grant_access_token_params(config, params) do
+  defp fetch_grant_access_token_params(config, params, session_params) do
     with {:ok, code} <- fetch_code_param(params),
-         {:ok, redirect_uri} <- Config.fetch(config, :redirect_uri) do
-      {:ok, [code: code, redirect_uri: redirect_uri]}
+         {:ok, redirect_uri} <- Config.fetch(config, :redirect_uri),
+         {:ok, code_verifier_params} <- fetch_code_verifer_params(config, session_params) do
+      {:ok, [code: code, redirect_uri: redirect_uri] ++ code_verifier_params}
     end
   end
 
@@ -229,6 +261,13 @@ defmodule Assent.Strategy.OAuth2 do
 
   defp fetch_code_param(params),
     do: {:error, MissingParamError.exception(expected_key: "code", params: params)}
+
+  defp fetch_code_verifer_params(config, session_params) do
+    case Config.get(config, :code_verifier, false) do
+      true -> {:ok, [code_verifier: Map.fetch!(session_params, :code_verifier)]}
+      false -> {:ok, []}
+    end
+  end
 
   defp authentication_params(nil, config) do
     with {:ok, client_id} <- Config.fetch(config, :client_id) do

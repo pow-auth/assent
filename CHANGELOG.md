@@ -8,6 +8,7 @@
 * `Assent.Strategy.OIDC` now supports `none` authentication method
 * `Assent.Strategy.Bitbucket` added
 * `Assent.Strategy.Twitch` added
+* `Assent.Strategy.OAuth2` now supports PKCE
 
 ## v0.2.10 (2024-04-11)
 

@@ -96,6 +96,29 @@ defmodule Assent.Strategy.OAuth2Test do
     assert session_params == %{}
   end
 
+  test "authorize_url/2 with `code_verifier: true`", %{config: config} do
+    assert {:ok, %{url: url, session_params: session_params}} =
+             config
+             |> Keyword.put(:code_verifier, true)
+             |> OAuth2.authorize_url()
+
+    assert session_params.code_verifier
+    assert String.length(session_params.code_verifier) == 128
+
+    assert session_params.code_challenge ==
+             Base.url_encode64(:crypto.hash(:sha256, session_params.code_verifier),
+               padding: false
+             )
+
+    assert session_params.code_challenge_method == "S256"
+
+    query_params = url |> URI.parse() |> Map.fetch!(:query) |> URI.decode_query()
+
+    assert query_params["code_challenge"] == session_params.code_challenge
+    assert query_params["code_challenge_method"] == session_params.code_challenge_method
+    refute query_params["code_verifier"]
+  end
+
   describe "callback/2" do
     setup %{config: config} do
       config =
@@ -189,6 +212,36 @@ defmodule Assent.Strategy.OAuth2Test do
       params = Map.put(params, "state", "custom_state")
 
       expect_oauth2_access_token_request([])
+      expect_oauth2_user_request(%{})
+
+      assert {:ok, _any} = OAuth2.callback(config, params)
+    end
+
+    test "with `code_verifier: true` with missing code_verifier in session params", %{
+      config: config,
+      callback_params: params
+    } do
+      config = Keyword.put(config, :code_verifier, true)
+
+      assert_raise KeyError, fn ->
+        OAuth2.callback(config, params)
+      end
+    end
+
+    test "with `code_verifier: true`", %{config: config, callback_params: params} do
+      session_params = Map.put(config[:session_params], :code_verifier, "code_verifier_value")
+
+      config =
+        config
+        |> Keyword.put(:code_verifier, true)
+        |> Keyword.put(:session_params, session_params)
+
+      expect_oauth2_access_token_request([], fn _conn, params ->
+        assert params["code_verifier"] == "code_verifier_value"
+        refute params["code_challenge"]
+        refute params["code_challenge_method"]
+      end)
+
       expect_oauth2_user_request(%{})
 
       assert {:ok, _any} = OAuth2.callback(config, params)
