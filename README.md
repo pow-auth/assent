@@ -35,6 +35,7 @@ Multi-provider authentication framework.
   * Twitch - `Assent.Strategy.Twitch`
   * Twitter - `Assent.Strategy.Twitter`
   * VK - `Assent.Strategy.VK`
+  * Zitadel - `Assent.Strategy.Zitadel`
 
 ## Installation
 
