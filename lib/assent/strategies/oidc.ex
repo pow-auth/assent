@@ -12,9 +12,18 @@ defmodule Assent.Strategy.OIDC do
     - `:openid_configuration_uri` - The URI for OpenID Provider, optional,
       defaults to `/.well-known/openid-configuration`
     - `:client_authentication_method` - The Client Authentication method to
-      use, optional, defaults to `client_secret_basic`
+      use, optional, defaults to `client_secret_basic`.  The value may be one
+      of the following:
+
+      - `none` - No client authentication, used with public clients
+      - `client_secret_basic` - Authenticate with basic authorization header
+      - `client_secret_post` - Authenticate with post params
+      - `client_secret_jwt` - Authenticate with JWT using `:client_secret` as
+        secret
+      - `private_key_jwt` - Authenticate with JWT using `:private_key_path` or
+        `:private_key` as secret
     - `:client_secret` - The client secret, required if
-      `:client_authentication_method` is `:client_secret_basic`,
+      `:client_authentication_method` is `client_secret_basic`,
       `:client_secret_post`, or `:client_secret_jwt`
     - `:openid_configuration` - The OpenID configuration, optional, the
       configuration will be fetched from `:openid_configuration_uri` if this is
@@ -242,6 +251,7 @@ defmodule Assent.Strategy.OIDC do
     end
   end
 
+  defp to_client_auth_method("none"), do: {:ok, nil}
   defp to_client_auth_method("client_secret_basic"), do: {:ok, :client_secret_basic}
   defp to_client_auth_method("client_secret_post"), do: {:ok, :client_secret_post}
   defp to_client_auth_method("client_secret_jwt"), do: {:ok, :client_secret_jwt}

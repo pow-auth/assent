@@ -96,6 +96,28 @@ defmodule Assent.Strategy.OIDCTest do
                {:error, "Unsupported client authentication method: client_secret_basic"}
     end
 
+    test "with `none` authentication method", %{
+      config: config,
+      callback_params: params
+    } do
+      expect_oidc_access_token_request(
+        [id_token_opts: [claims: @user_claims, iss: "http://localhost"]],
+        fn conn, params ->
+          assert Plug.Conn.get_req_header(conn, "authorization") == []
+          assert params["client_id"] == config[:client_id]
+          refute params["client_secret"]
+        end
+      )
+
+      expect_oidc_jwks_uri_request(count: 1)
+
+      config = Keyword.put(config, :client_authentication_method, "none")
+
+      assert {:ok, %{user: user, token: token}} = OIDC.callback(config, params)
+      assert user == @user
+      assert %{"access_token" => "access_token", "id_token" => _id_token} = token
+    end
+
     test "with `client_secret_basic` authentication method", %{
       config: config,
       callback_params: params
