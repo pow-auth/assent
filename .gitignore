@@ -24,4 +24,5 @@ assent-*.tar
 
 .DS_Store
 /.elixir_ls
+/.elixir-tools
 /tmp
