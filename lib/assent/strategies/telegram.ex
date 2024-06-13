@@ -1,124 +1,129 @@
 defmodule Assent.Strategies.Telegram do
   @moduledoc """
-  Sing in with Telegram strategy.
+  ### Sign in with Telegram strategy
 
-  As [Telegram Login Widget](https://core.telegram.org/widgets/login) only supports authentication requests via embedded widget or a JS call,
-  and for the [Web Mini App](https://core.telegram.org/bots/webapps) authentication data sent when a user opens a mini app in Telegram,
-  the strategy does not implement `authorize_url/1` method.
+  As the [Telegram Login Widget](https://core.telegram.org/widgets/login) only supports authentication requests
+  via an embedded widget or a JS call, and for the [Web Mini App](https://core.telegram.org/bots/webapps) authentication data is
+  sent when a user opens a mini app in Telegram, the strategy does not implement the `authorize_url/1` method.
 
-  Default TTL for the authentication data is 60 seconds. This can be increased by the `max_auth_validity_sec` config key.
+  The default TTL for the authentication data is 60 seconds. This can be increased by the `max_auth_validity_sec` config key.
 
   ## Usage
+
   ### Login Widget
 
-    config = [
-      authentication_channel: :login_widget,
-      bot_token: "YOUR_FULL_BOT_TOKEN",
-      max_auth_validity_sec: 60
-    ]
+      config = [
+        authentication_channel: :login_widget,
+        bot_token: "YOUR_FULL_BOT_TOKEN",
+        max_auth_validity_sec: 60
+      ]
 
-  Please note that in case of the JavaScript authentication callback if a user declined
-  to authenticate, the `false` respone from the telegram widget library should be handled
-  client-side.
 
-  Basic implementation described in the Telegram Login Widget docs, more advanced option without embedded iframe
-  and with custom buttons can be found on [stackoverflow](https://stackoverflow.com/a/63593384/899911).
+  Please note that in the case of the JavaScript authentication callback, if a user declines to authenticate,
+  the `false` response from the Telegram widget library should be handled client-side.
 
-  Current strategy supports both redirect and function callback options.
+  A basic implementation is described in the Telegram Login Widget docs. A more advanced option without
+  an embedded iframe via direct JS call and with custom login button can be found on [Stack Overflow](https://stackoverflow.com/a/63593384/899911).
 
+  The Telegram strategy supports both redirect and function callback options.
 
   ### Web Mini App
 
-    config = [
-      authentication_channel: :web_mini_app,
-      bot_token: "YOUR_FULL_BOT_TOKEN",
-      max_auth_validity_sec: 60
-    ]
+      config = [
+        authentication_channel: :web_mini_app,
+        bot_token: "YOUR_FULL_BOT_TOKEN",
+        max_auth_validity_sec: 60
+      ]
 
-  For the Web mini app authentication, the strategy expects the original `initData` string
-  to be passed in as is, in the url-encoded form, wrapped by a map as value for the `init_data` key:
+  For the Web Mini App authentication, the strategy expects the original `initData` string to be passed in as-is,
+  in URL-encoded form, wrapped by a map as the value for the `init_data` key:
 
-    %{ init_data: "original%20initData%20string" }
-
-
-  ## Possible response details
-  As Telegram states that returning claims are vary (marked as `optional`) and heavily depend on the authentication channel
-  and user settings, the returned from `callback/2` claims are also vary.
-
-  All fields have been renamed to comply with the OpenID Connect standard, and the sub claim is (likely) always present.
-
-  The most full set of claims looks like this:
-    %{
-      # standard OpenID Connect claims
-      "sub" => integer(),
-      "name" => String.t(),
-      "given_name" => String.t(),
-      "family_name" => String.t(),
-      "preferred_username" => String.t(),
-      "picture" => String.t(),
-      "locale" => String.t(),
-
-      # extra claims
-      "is_bot" => boolean(),
-      "is_premium" => boolean(),
-      "added_to_attachment_menu" => boolean(),
-      "allows_write_to_pm" => boolean(),
-      "authenticated_at" => DateTime.t()
-    }
+      %{ init_data: "original%20initData%20string" }
 
 
-  ### Original Telegram full login success respose for the login widget:
-    %{
-      "id" => integer(),
-      "first_name" => String.t(),
-      "last_name" => String.t(),
-      "username" => String.t(),
-      "photo_url" => String.t(),
-      "auth_date" => integer(),
-      "hash" => String.t()
-    }
+  ## Possible Response Details
 
-  ### Original possible Telegram full decoded initData for the web mini app:
-    %{
-      "query_id" => String.t(),
-      "user" => %{
-        "id" => integer(),
+  As Telegram states that the returning claims can vary (marked as `optional`) and heavily depend on the authentication
+  channel and user settings, the claims returned from `callback/2` can also vary.
+
+  All fields have been renamed to comply with the OpenID Connect standard, and the `sub` claim is (likely) always present.
+
+  The most complete set of claims looks like this:
+
+      %{
+        # Standard OpenID Connect claims
+        "sub" => integer(),
+        "name" => String.t(),
+        "given_name" => String.t(),
+        "family_name" => String.t(),
+        "preferred_username" => String.t(),
+        "picture" => String.t(),
+        "locale" => String.t(),
+
+        # Extra claims
         "is_bot" => boolean(),
-        "first_name" => String.t(),
-        "last_name" => String.t(),
-        "username" => String.t(),
-        "language_code" => String.t(),
         "is_premium" => boolean(),
         "added_to_attachment_menu" => boolean(),
         "allows_write_to_pm" => boolean(),
-        "photo_url" => String.t()
-      },
-      "receiver" => %{
+        "authenticated_at" => DateTime.t()
+      }
+
+
+  ### Original Telegram Full Login Success Response for the Login Widget:
+
+      %{
         "id" => integer(),
-        "is_bot" => boolean(),
         "first_name" => String.t(),
         "last_name" => String.t(),
         "username" => String.t(),
-        "language_code" => String.t(),
-        "is_premium" => boolean(),
-        "added_to_attachment_menu" => boolean(),
-        "allows_write_to_pm" => boolean(),
-        "photo_url" => String.t()
-      },
-      "chat" => %{
-        "id" => integer(),
-        "type" => String.t(),
-        "title" => String.t(),
-        "username" => String.t(),
-        "photo_url" => String.t()
-      },
-      "chat_type" => String.t(),
-      "chat_instance" => String.t(),
-      "start_param" => String.t(),
-      "can_send_after" => integer(),
-      "auth_date" => integer(),
-      "hash" => String.t()
-    }
+        "photo_url" => String.t(),
+        "auth_date" => integer(),
+        "hash" => String.t()
+      }
+
+  ### Original possible Telegram full decoded initData for the Web Mini App:
+
+      %{
+        "query_id" => String.t(),
+        "user" => %{
+          "id" => integer(),
+          "is_bot" => boolean(),
+          "first_name" => String.t(),
+          "last_name" => String.t(),
+          "username" => String.t(),
+          "language_code" => String.t(),
+          "is_premium" => boolean(),
+          "added_to_attachment_menu" => boolean(),
+          "allows_write_to_pm" => boolean(),
+          "photo_url" => String.t()
+        },
+        "receiver" => %{
+          "id" => integer(),
+          "is_bot" => boolean(),
+          "first_name" => String.t(),
+          "last_name" => String.t(),
+          "username" => String.t(),
+          "language_code" => String.t(),
+          "is_premium" => boolean(),
+          "added_to_attachment_menu" => boolean(),
+          "allows_write_to_pm" => boolean(),
+          "photo_url" => String.t()
+        },
+        "chat" => %{
+          "id" => integer(),
+          "type" => String.t(),
+          "title" => String.t(),
+          "username" => String.t(),
+          "photo_url" => String.t()
+        },
+        "chat_type" => String.t(),
+        "chat_instance" => String.t(),
+        "start_param" => String.t(),
+        "can_send_after" => integer(),
+        "auth_date" => integer(),
+        "hash" => String.t()
+      }
+      ```
   """
 
   @behaviour Assent.Strategy
