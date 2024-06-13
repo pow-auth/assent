@@ -150,7 +150,7 @@ defmodule Assent.Strategies.Telegram do
   end
 
   @impl Assent.Strategy
-  def callback(config, response_params) do
+  def callback(config, %{} = response_params) do
     config = enrich_config(config)
 
     with :ok <- do_preflight_checks(config, response_params),
