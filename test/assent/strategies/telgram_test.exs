@@ -1,7 +1,6 @@
 defmodule Assent.Strategies.TelgramTest do
   use ExUnit.Case
 
-
   alias Assent.Strategies.Telegram
 
   # 1_000 years
@@ -77,6 +76,15 @@ defmodule Assent.Strategies.TelgramTest do
     test "user claims for the web mini app" do
       assert {:ok, %{user: user}} =
                Telegram.callback(@config_mini_app, @web_app_callback_request_params)
+
+      assert user == @web_app_claims
+
+      request_params_with_string_key = %{
+        "init_data" => @web_app_callback_request_params.init_data
+      }
+
+      assert {:ok, %{user: user}} =
+               Telegram.callback(@config_mini_app, request_params_with_string_key)
 
       assert user == @web_app_claims
     end
