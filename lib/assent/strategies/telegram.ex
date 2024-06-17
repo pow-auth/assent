@@ -142,7 +142,9 @@ defmodule Assent.Strategies.Telegram do
 
   @type login_widget_response :: %{String.t() => String.t()}
   @type mini_app_init_data :: String.t()
-  @type response_params :: %{init_data: mini_app_init_data()} | login_widget_response()
+  @type mini_app_response ::
+          %{init_data: mini_app_init_data()} | %{String.t() => mini_app_init_data()}
+  @type response_params :: mini_app_response() | login_widget_response()
 
   @impl Assent.Strategy
   def authorize_url(_config) do
@@ -150,6 +152,9 @@ defmodule Assent.Strategies.Telegram do
   end
 
   @impl Assent.Strategy
+  def callback(config, %{"init_data" => init_data} = _response_params),
+    do: callback(config, %{init_data: init_data})
+
   def callback(config, %{} = response_params) do
     config = enrich_config(config)
 
