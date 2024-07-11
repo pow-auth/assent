@@ -25,7 +25,7 @@ defmodule Assent.Strategy.ZitadelTest do
       "token_endpoint" => TestServer.url("/oauth/v2/token"),
       "userinfo_endpoint" => TestServer.url("/userinfo"),
       "jwks_uri" => TestServer.url("/jwks_uri.json"),
-      "token_endpoint_auth_methods_supported" => ["client_secret_post"]
+      "token_endpoint_auth_methods_supported" => ["client_secret_post", nil]
     }
 
     openid_configuration =

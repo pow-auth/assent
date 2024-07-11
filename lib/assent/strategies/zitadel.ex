@@ -30,10 +30,10 @@ defmodule Assent.Strategy.Zitadel do
         "authorization_endpoint" => base_url <> "/oauth/v2/authorize",
         "token_endpoint" => base_url <> "/oauth/v2/token",
         "jwks_uri" => base_url <> "/oauth/v2/keys",
-        "token_endpoint_auth_methods_supported" => ["client_secret_post"]
+        "token_endpoint_auth_methods_supported" => ["client_secret_post", nil]
       },
       authorization_params: [scope: "email", response_type: "code"],
-      client_authentication_method: "client_secret_post",
+      client_authentication_method: nil,
       openid_default_scope: "openid"
     ]
   end
