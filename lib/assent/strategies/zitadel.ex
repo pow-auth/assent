@@ -22,11 +22,12 @@ defmodule Assent.Strategy.Zitadel do
   @impl true
   def default_config(config) do
     {:ok, base_url} = Config.fetch(config, :base_url)
+    {:ok, issuer} = Config.fetch(config, :issuer)
 
     [
       base_url: base_url,
       openid_configuration: %{
-        "issuer" => "https://zitadel.cloud",
+        "issuer" => issuer,
         "authorization_endpoint" => base_url <> "/oauth/v2/authorize",
         "token_endpoint" => base_url <> "/oauth/v2/token",
         "jwks_uri" => base_url <> "/oauth/v2/keys",
