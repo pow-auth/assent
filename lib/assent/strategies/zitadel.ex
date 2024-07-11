@@ -33,7 +33,6 @@ defmodule Assent.Strategy.Zitadel do
         "token_endpoint_auth_methods_supported" => ["client_secret_post", nil]
       },
       authorization_params: [scope: "email", response_type: "code"],
-      client_authentication_method: nil,
       openid_default_scope: "openid"
     ]
   end
