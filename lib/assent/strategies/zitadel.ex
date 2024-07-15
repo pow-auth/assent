@@ -38,7 +38,7 @@ defmodule Assent.Strategy.Zitadel do
   @impl true
   def default_config(config) do
     {:ok, base_url} = Config.fetch(config, :base_url)
-    issuer = get_in(config, [:openid_configuration, "issuer"])
+    {:ok, issuer} = Config.fetch(config, :issuer)
 
     if is_nil(issuer) do
       {:error, Assent.Config.MissingKeyError.exception(key: "issuer")}
@@ -68,25 +68,4 @@ defmodule Assent.Strategy.Zitadel do
     config
     |> Base.callback(params, __MODULE__)
   end
-
-  # @impl true
-  # def fetch_user(config, token) do
-  #  with {:ok, user} <- OIDC.fetch_user(config, token),
-  #       {:ok, user_info} <- Config.fetch(config, :user) do
-  #    {:ok, Map.merge(user, user_info)}
-  #  end
-  # end
-
-  # @impl true
-  # def normalize(_config, user) do
-  #  {:ok,
-  #   %{
-  #     "sub" => user["sub"],
-  #     "email" => user["email"],
-  #     "email_verified" => true,
-  #     "given_name" => Map.get(user, "name", %{})["firstName"],
-  #     "family_name" => Map.get(user, "name", %{})["lastName"],
-  #     "roles" => Map.get(user["profile"], "urn:zitadel:iam:org:project:roles")
-  #   }}
-  # end
 end
