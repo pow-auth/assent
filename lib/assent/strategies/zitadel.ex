@@ -78,7 +78,7 @@ defmodule Assent.Strategy.Zitadel do
   defp maybe_add(list, config_key, config) do
     case Config.get(config, config_key, nil) do
       nil -> list
-      value -> list ++ {config_key, value}
+      value -> list ++ [{config_key, value}]
     end
   end
 end
