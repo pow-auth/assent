@@ -28,7 +28,8 @@ defmodule Assent.Strategy.Zitadel do
         response_type: one of code, id_token token, id_token,
         scope: openid is required other options [email, profile]
         code_challenge:	The SHA-256 value of the generated code_verifier,
-        code_challenge_method: "S256"
+        code_challenge_method: "S256",
+        onboard: use Zitadel form to onboard users, true | false if true scope must include `urn:zitadel:iam:org:id:{id}`
       ]
   """
   use Assent.Strategy.OIDC.Base
@@ -39,7 +40,6 @@ defmodule Assent.Strategy.Zitadel do
   def default_config(config) do
     {:ok, base_url} = Config.fetch(config, :base_url)
     {:ok, issuer} = Config.fetch(config, :issuer)
-    {:ok, scope} = Config.fetch(config, :scope)
 
     if is_nil(issuer) do
       {:error, Assent.Config.MissingKeyError.exception(key: "issuer")}
@@ -57,7 +57,10 @@ defmodule Assent.Strategy.Zitadel do
         "jwks_uri" => base_url <> "/oauth/v2/keys",
         "token_endpoint_auth_methods_supported" => ["none"]
       },
-      authorization_params: [scope: scope, response_type: "code"],
+      authorization_params:
+        [response_type: "code"]
+        |> maybe_add(:scope, config)
+        |> maybe_add(:prompt, config),
       client_authentication_method: client_authentication_method,
       openid_default_scope: "openid"
     ]
@@ -68,5 +71,13 @@ defmodule Assent.Strategy.Zitadel do
   def callback(config, params) do
     config
     |> Base.callback(params, __MODULE__)
+  end
+
+  defp maybe_add(list, config_key, config) do
+    if value = Config.get(config, config_key, nil) do
+      list ++ {config_key, value}
+    else
+      list
+    end
   end
 end
