@@ -48,6 +48,11 @@ defmodule Assent.Strategy.Zitadel do
     client_authentication_method =
       Config.get(config, :client_authentication_method, "none")
 
+    authorization_params =
+      [response_type: "code"]
+      |> maybe_add(:scope, config)
+      |> maybe_add(:prompt, config)
+
     [
       base_url: base_url,
       openid_configuration: %{
@@ -57,10 +62,7 @@ defmodule Assent.Strategy.Zitadel do
         "jwks_uri" => base_url <> "/oauth/v2/keys",
         "token_endpoint_auth_methods_supported" => ["none"]
       },
-      authorization_params:
-        [response_type: "code"]
-        |> maybe_add(:scope, config)
-        |> maybe_add(:prompt, config),
+      authorization_params: authorization_params,
       client_authentication_method: client_authentication_method,
       openid_default_scope: "openid"
     ]
@@ -74,10 +76,9 @@ defmodule Assent.Strategy.Zitadel do
   end
 
   defp maybe_add(list, config_key, config) do
-    if value = Config.get(config, config_key, nil) do
-      list ++ {config_key, value}
-    else
-      list
+    case Config.get(config, config_key, nil) do
+      nil -> list
+      value -> list ++ {config_key, value}
     end
   end
 end
