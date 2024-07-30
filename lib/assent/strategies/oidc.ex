@@ -440,7 +440,16 @@ defmodule Assent.Strategy.OIDC do
 
   defp maybe_add_resource_id(trusted_audiences, config) do
     with {:ok, resource_id} <- Config.fetch(config, :resource_id) do
-      trusted_audiences ++ [resource_id]
+      cond do
+        is_binary(resource_id) ->
+          trusted_audiences ++ [resource_id]
+
+        is_list(resource_id) ->
+          trusted_audiences ++ resource_id
+
+        true ->
+          trusted_audiences
+      end
     else
       _ ->
         trusted_audiences
