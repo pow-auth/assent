@@ -37,7 +37,7 @@ defmodule Assent.Strategy.ZitadelTest do
 
   setup %{config: config, callback_params: callback_params} do
     openid_configuration = %{
-      "issuer" => "https://zitadel.cloud",
+      # "issuer" => "https://zitadel.cloud",
       "authorization_endpoint" => TestServer.url("/oauth/v2/authorize"),
       "token_endpoint" => TestServer.url("/oauth/v2/token"),
       "userinfo_endpoint" => TestServer.url("/userinfo"),
@@ -46,7 +46,9 @@ defmodule Assent.Strategy.ZitadelTest do
     }
 
     config = Keyword.put(config, :openid_configuration, openid_configuration)
+    config = Keyword.put(config, :openid_default_scope, "openid+email")
     config = Keyword.put(config, :client_authentication_method, "none")
+    config = Keyword.put(config, :issuer, "https://zitadel.cloud")
 
     callback_params =
       Map.merge(callback_params, %{"code" => "123523", "state" => "456856"})
@@ -57,14 +59,14 @@ defmodule Assent.Strategy.ZitadelTest do
   test "authorize_url/2", %{config: config} do
     assert {:ok, %{url: url}} = Zitadel.authorize_url(config)
     assert url =~ "/oauth/v2/authorize?client_id=id"
-    assert url =~ "scope=openid+email"
+    assert url =~ "scope=openid%2Bemail"
     assert url =~ "response_type=code"
   end
 
   test "authorize_url/2 with PKCE", %{config: config} do
     assert {:ok, %{url: url}} = Zitadel.authorize_url(config ++ [code_verifier: true, nonce: true])
     assert url =~ "/oauth/v2/authorize?client_id=id"
-    assert url =~ "scope=openid+email"
+    assert url =~ "scope=openid%2Bemail"
     assert url =~ "response_type=code"
     assert url =~ "code_challenge="
     assert url =~ "nonce="
@@ -75,7 +77,7 @@ defmodule Assent.Strategy.ZitadelTest do
 
   test "callback/2", %{config: config, callback_params: params} do
     openid_config =
-      config[:openid_configuration]
+      Map.merge(config[:openid_configuration], %{"issuer" => config[:issuer]})
 
     session_params = %{nonce: "123523", state: "456856", code_verifier: "ttt333qqq000"}
 
@@ -104,8 +106,7 @@ defmodule Assent.Strategy.ZitadelTest do
         client_id: @client_id,
         resource_id: @resource_id,
         private_key: @private_key,
-        private_key_id: @private_key_id,
-        issuer: "https://zitadel.cloud"
+        private_key_id: @private_key_id
       )
 
     expect_api_access_token_request()

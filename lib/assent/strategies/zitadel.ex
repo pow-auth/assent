@@ -40,7 +40,6 @@ defmodule Assent.Strategy.Zitadel do
   alias Assent.{
     Config,
     Strategy.OIDC.Base,
-    JWTAdapter,
     HTTPAdapter.HTTPResponse,
     InvalidResponseError,
     UnexpectedResponseError
