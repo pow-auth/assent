@@ -110,6 +110,20 @@ defmodule Assent.Strategy.Zitadel do
     end
   end
 
+  defp jwt_authentication_params(config) do
+    with {:ok, token} <- gen_client_secret(config) do
+      headers = []
+
+      body = [
+        scope: "openid",
+        assertion: token,
+        grant_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+      ]
+
+      {:ok, headers, body}
+    end
+  end
+
   defp process_access_token_response(
          {:ok, %HTTPResponse{status: status, body: %{"access_token" => _} = token}}
        )
@@ -127,18 +141,44 @@ defmodule Assent.Strategy.Zitadel do
 
   defp process_response({:error, error}), do: {:error, error}
 
-  defp jwt_authentication_params(config) do
+  @doc """
+  Introspects a given tokein with zitadel with JWT
+  """
+  @spec introspect_token(Config.t(), binary()) :: {:ok, map()} | {:error, term()}
+  def introspect_token(config, access_token) do
+    introspect_url = Config.get(config, :introspect_url, "/oauth/v2/introspect")
+
+    with {:ok, base_url} <- Config.__base_url__(config),
+         {:ok, auth_headers, params} <- jwt_introspection_params(config, access_token) do
+      headers = [{"content-type", "application/x-www-form-urlencoded"}] ++ auth_headers
+      url = Helpers.to_url(base_url, introspect_url)
+      body = URI.encode_query(params)
+
+      :post
+      |> Helpers.request(url, body, headers, config)
+      |> process_introspect_token_response()
+    end
+  end
+
+  defp jwt_introspection_params(config, access_token) do
     with {:ok, token} <- gen_client_secret(config) do
       headers = []
 
       body = [
-        scope: "openid",
-        assertion: token,
-        grant_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+        client_assertion: token,
+        client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+        token: access_token
       ]
 
       {:ok, headers, body}
     end
+  end
+
+  defp process_introspect_token_response(
+         {:ok, %HTTPResponse{status: status, body: %{"active" => _} = token}}
+       )
+       when status in [200, 201] do
+    {:ok, token}
   end
 
   @jwt_expiration_seconds 3600

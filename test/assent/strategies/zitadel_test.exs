@@ -114,6 +114,33 @@ defmodule Assent.Strategy.ZitadelTest do
     assert {:ok, %{"access_token" => "access_token"}} == Zitadel.authenticate_api(config)
   end
 
+  test "introspect_token/2", %{config: config} do
+    config =
+      Keyword.merge(config,
+        client_id: @client_id,
+        resource_id: @resource_id,
+        private_key: @private_key,
+        private_key_id: @private_key_id
+      )
+
+    expect_introspect_token_request(
+      response: %{
+        active: true,
+        client_id: @client_id,
+        scope: "openid email profile",
+        username: "username@example.com"
+      }
+    )
+
+    assert {:ok,
+            %{
+              "active" => true,
+              "client_id" => "3425235252@nameofproject",
+              "scope" => "openid email profile",
+              "username" => "username@example.com"
+            }} == Zitadel.introspect_token(config, "access_token")
+  end
+
   @spec expect_api_access_token_request(Keyword.t(), function() | nil) :: :ok
   defp expect_api_access_token_request(opts \\ [], assert_fn \\ nil) do
     access_token = Keyword.get(opts, :access_token, "access_token")
@@ -130,6 +157,25 @@ defmodule Assent.Strategy.ZitadelTest do
         if assert_fn, do: assert_fn.(conn, params)
 
         send_json_resp(conn, token_params, status_code)
+      end
+    )
+  end
+
+  @spec expect_introspect_token_request(Keyword.t(), function() | nil) :: :ok
+  defp expect_introspect_token_request(opts \\ [], assert_fn \\ nil) do
+    resp_body = Keyword.get(opts, :response)
+    uri = Keyword.get(opts, :uri, "/oauth/v2/introspect")
+    status_code = Keyword.get(opts, :status_code, 200)
+
+    TestServer.add(uri,
+      via: :post,
+      to: fn conn ->
+        {:ok, body, _conn} = Plug.Conn.read_body(conn, [])
+        params = URI.decode_query(body)
+
+        if assert_fn, do: assert_fn.(conn, params)
+
+        send_json_resp(conn, resp_body, status_code)
       end
     )
   end
