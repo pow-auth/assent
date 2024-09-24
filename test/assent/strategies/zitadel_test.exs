@@ -2,6 +2,22 @@ defmodule Assent.Strategy.ZitadelTest do
   use Assent.Test.OIDCTestCase
 
   alias Assent.Strategy.Zitadel
+  alias Plug.Conn
+
+  @private_key_id "key_id"
+  @private_key """
+  -----BEGIN PRIVATE KEY-----
+  MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgevZzL1gdAFr88hb2
+  OF/2NxApJCzGCEDdfSp6VQO30hyhRANCAAQRWz+jn65BtOMvdyHKcvjBeBSDZH2r
+  1RTwjmYSi9R/zpBnuQ4EiMnCqfMPWiZqB4QdbAd0E7oH50VpuZ1P087G
+  -----END PRIVATE KEY-----
+  """
+  @public_key """
+  -----BEGIN PUBLIC KEY-----
+  MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEEVs/o5+uQbTjL3chynL4wXgUg2R9
+  q9UU8I5mEovUf86QZ7kOBIjJwqnzD1omageEHWwHdBO6B+dFabmdT9POxg==
+  -----END PUBLIC KEY-----
+  """
 
   @client_id "3425235252@nameofproject"
   @resource_id "3425296767"
@@ -80,5 +96,46 @@ defmodule Assent.Strategy.ZitadelTest do
 
     assert {:ok, %{user: user}} = Zitadel.callback(config, params)
     assert user == @user
+  end
+
+  test "authenticate_api/1", %{config: config} do
+    config =
+      Keyword.merge(config,
+        client_id: @client_id,
+        resource_id: @resource_id,
+        private_key: @private_key,
+        private_key_id: @private_key_id,
+        issuer: "https://zitadel.cloud"
+      )
+
+    expect_api_access_token_request()
+
+    assert {:ok, %{"access_token" => "access_token"}} == Zitadel.authenticate_api(config)
+  end
+
+  @spec expect_api_access_token_request(Keyword.t(), function() | nil) :: :ok
+  defp expect_api_access_token_request(opts \\ [], assert_fn \\ nil) do
+    access_token = Keyword.get(opts, :access_token, "access_token")
+    token_params = Keyword.get(opts, :params, %{access_token: access_token})
+    uri = Keyword.get(opts, :uri, "/oauth/v2/token")
+    status_code = Keyword.get(opts, :status_code, 200)
+
+    TestServer.add(uri,
+      via: :post,
+      to: fn conn ->
+        {:ok, body, _conn} = Plug.Conn.read_body(conn, [])
+        params = URI.decode_query(body)
+
+        if assert_fn, do: assert_fn.(conn, params)
+
+        send_json_resp(conn, token_params, status_code)
+      end
+    )
+  end
+
+  defp send_json_resp(conn, body, status_code) do
+    conn
+    |> Conn.put_resp_content_type("application/json")
+    |> Conn.send_resp(status_code, Jason.encode!(body))
   end
 end

@@ -27,6 +27,7 @@ defmodule Assent.Strategy.Zitadel do
         redirect_uri: "http://localhost:4000/auth/callback",
         response_type: one of code, id_token token, id_token,
         scope: openid is required other options [email, profile]
+        client_authentication_method: can use special :private_key_jwt_zitadel
         code_challenge:	The SHA-256 value of the generated code_verifier,
         code_challenge_method: "S256",
         onboard: use Zitadel form to onboard users, true | false if true scope must include `urn:zitadel:iam:org:id:{id}`
@@ -34,7 +35,16 @@ defmodule Assent.Strategy.Zitadel do
   """
   use Assent.Strategy.OIDC.Base
 
-  alias Assent.{Config, Strategy.OIDC.Base}
+  alias Assent.Strategy, as: Helpers
+
+  alias Assent.{
+    Config,
+    Strategy.OIDC.Base,
+    JWTAdapter,
+    HTTPAdapter.HTTPResponse,
+    InvalidResponseError,
+    UnexpectedResponseError
+  }
 
   @impl true
   def default_config(config) do
@@ -79,6 +89,82 @@ defmodule Assent.Strategy.Zitadel do
     case Config.get(config, config_key, nil) do
       nil -> list
       value -> list ++ [{config_key, value}]
+    end
+  end
+
+  @doc """
+  Authenticates a zitadel api with JWT
+  """
+  @spec authenticate_api(Config.t()) :: {:ok, map()} | {:error, term()}
+  def authenticate_api(config) do
+    token_url = Config.get(config, :token_url, "/oauth/v2/token")
+
+    with {:ok, base_url} <- Config.__base_url__(config),
+         {:ok, auth_headers, params} <- jwt_authentication_params(config) do
+      headers = [{"content-type", "application/x-www-form-urlencoded"}] ++ auth_headers
+      url = Helpers.to_url(base_url, token_url)
+      body = URI.encode_query(params)
+
+      :post
+      |> Helpers.request(url, body, headers, config)
+      |> process_access_token_response()
+    end
+  end
+
+  defp process_access_token_response(
+         {:ok, %HTTPResponse{status: status, body: %{"access_token" => _} = token}}
+       )
+       when status in [200, 201] do
+    {:ok, token}
+  end
+
+  defp process_access_token_response(any), do: process_response(any)
+
+  defp process_response({:ok, %HTTPResponse{} = response}),
+    do: {:error, UnexpectedResponseError.exception(response: response)}
+
+  defp process_response({:error, %HTTPResponse{} = response}),
+    do: {:error, InvalidResponseError.exception(response: response)}
+
+  defp process_response({:error, error}), do: {:error, error}
+
+  defp jwt_authentication_params(config) do
+    with {:ok, token} <- gen_client_secret(config) do
+      headers = []
+
+      body = [
+        scope: "openid",
+        assertion: token,
+        grant_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+      ]
+
+      {:ok, headers, body}
+    end
+  end
+
+  @jwt_expiration_seconds 3600
+
+  defp gen_client_secret(config) do
+    timestamp = :os.system_time(:second)
+
+    config =
+      config
+      |> default_config()
+      |> Keyword.merge(config)
+
+    with {:ok, base_url} <- Config.fetch(config, :base_url),
+         {:ok, client_id} <- Config.fetch(config, :client_id),
+         {:ok, _private_key_id} <- Config.fetch(config, :private_key_id),
+         {:ok, private_key} <- Config.fetch(config, :private_key) do
+      claims = %{
+        "aud" => base_url,
+        "iss" => client_id,
+        "sub" => client_id,
+        "iat" => timestamp,
+        "exp" => timestamp + @jwt_expiration_seconds
+      }
+
+      Helpers.sign_jwt(claims, "RS256", private_key, config)
     end
   end
 end
