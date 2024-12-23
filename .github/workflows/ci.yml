@@ -29,13 +29,9 @@ jobs:
         version:
           - otp: 27.0
             elixir: 1.18
-            os: ubuntu-latest
-          - otp: 22.0
+          - otp: 24.0
             elixir: 1.13
-            # It's necessary to run on ubuntu 20.04 for OTP 20 - 23
-            # See https://github.com/erlef/setup-beam
-            os: ubuntu-20.04
-    runs-on: ${{ matrix.version.os }}
+    runs-on: ubuntu-latest
     name: OTP ${{matrix.version.otp}} / Elixir ${{matrix.version.elixir}}
     env:
       MIX_ENV: test
