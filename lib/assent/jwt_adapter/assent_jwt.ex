@@ -42,9 +42,15 @@ defmodule Assent.JWTAdapter.AssentJWT do
 
   defp encode_json_base64(map, opts) do
     with {:ok, json_library} <- Config.fetch(opts, :json_library),
-         {:ok, json} <- json_library.encode(map) do
+         {:ok, json} <- json_encode(json_library, map) do
       {:ok, Base.url_encode64(json, padding: false)}
     end
+  end
+
+  defp json_encode(json_library, map) do
+    {:ok, json_library.encode!(map)}
+  rescue
+    error -> {:error, error}
   end
 
   defp encode_claims(claims, opts) do

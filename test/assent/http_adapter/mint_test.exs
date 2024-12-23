@@ -1,5 +1,5 @@
 defmodule Assent.HTTPAdapter.MintTest do
-  use ExUnit.Case
+  use Assent.TestCase
   doctest Assent.HTTPAdapter.Mint
 
   alias ExUnit.CaptureIO

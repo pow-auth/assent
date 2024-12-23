@@ -73,7 +73,11 @@ defmodule Assent.Strategy.AppleTest do
         [id_token_opts: [claims: @id_token_claims], uri: "/auth/token"],
         fn _conn, params ->
           assert {:ok, jwt} =
-                   AssentJWT.verify(params["client_secret"], @public_key, json_library: Jason)
+                   AssentJWT.verify(
+                     params["client_secret"],
+                     @public_key,
+                     json_library: @json_library
+                   )
 
           assert jwt.verified?
           assert jwt.header["alg"] == "ES256"
@@ -96,7 +100,7 @@ defmodule Assent.Strategy.AppleTest do
       expected_user = Map.merge(@user, %{"given_name" => "John", "family_name" => "Doe"})
 
       encoded_user =
-        Jason.encode!(%{
+        @json_library.encode!(%{
           name: %{
             firstName: "John",
             lastName: "Doe"

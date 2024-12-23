@@ -1,16 +1,25 @@
 defmodule Assent.HTTPAdapter.ReqTest do
-  use ExUnit.Case
+  use Assent.TestCase
   doctest Assent.HTTPAdapter.Req
 
-  alias Mint.TransportError
+  alias Req.TransportError
   alias Assent.HTTPAdapter.{HTTPResponse, Req}
+
+  # Test retries quickly
+  @req_opts [retry_delay: 0]
 
   describe "request/4" do
     test "handles SSL" do
       TestServer.start(scheme: :https)
       TestServer.add("/", via: :get)
 
-      req_opts = [connect_options: [transport_opts: [cacerts: TestServer.x509_suite().cacerts]]]
+      req_opts =
+        Keyword.put(
+          @req_opts,
+          :connect_options,
+          transport_opts: [cacerts: TestServer.x509_suite().cacerts],
+          protocols: [:http2]
+        )
 
       assert {:ok, %HTTPResponse{status: 200, body: "HTTP/2"}} =
                Req.request(:get, TestServer.url(), nil, [], req_opts)
@@ -20,7 +29,13 @@ defmodule Assent.HTTPAdapter.ReqTest do
       TestServer.start(scheme: :https)
 
       bad_host_url = TestServer.url(host: "bad-host.localhost")
-      req_opts = [connect_options: [transport_opts: [cacerts: TestServer.x509_suite().cacerts]]]
+
+      req_opts =
+        Keyword.put(
+          @req_opts,
+          :connect_options,
+          transport_opts: [cacerts: TestServer.x509_suite().cacerts]
+        )
 
       assert {:error, %TransportError{reason: {:tls_alert, {:handshake_failure, _error}}}} =
                Req.request(:get, bad_host_url, nil, [], req_opts)
@@ -32,11 +47,12 @@ defmodule Assent.HTTPAdapter.ReqTest do
 
       bad_host_url = TestServer.url(host: "bad-host.localhost")
 
-      req_opts = [
-        connect_options: [
+      req_opts =
+        Keyword.put(
+          @req_opts,
+          :connect_options,
           transport_opts: [cacerts: TestServer.x509_suite().cacerts, verify: :verify_none]
-        ]
-      ]
+        )
 
       assert {:ok, %HTTPResponse{status: 200}} =
                Req.request(:get, bad_host_url, nil, [], req_opts)
@@ -62,7 +78,7 @@ defmodule Assent.HTTPAdapter.ReqTest do
       )
 
       assert {:ok, %HTTPResponse{status: 200}} =
-               Req.request(:get, TestServer.url("/get?a=1"), nil, [])
+               Req.request(:get, TestServer.url("/get?a=1"), nil, [], @req_opts)
     end
 
     test "handles POST" do
@@ -84,9 +100,15 @@ defmodule Assent.HTTPAdapter.ReqTest do
       )
 
       assert {:ok, %HTTPResponse{status: 200}} =
-               Req.request(:post, TestServer.url("/post"), "a=1&b=2", [
-                 {"content-type", "application/x-www-form-urlencoded"}
-               ])
+               Req.request(
+                 :post,
+                 TestServer.url("/post"),
+                 "a=1&b=2",
+                 [
+                   {"content-type", "application/x-www-form-urlencoded"}
+                 ],
+                 @req_opts
+               )
     end
   end
 end

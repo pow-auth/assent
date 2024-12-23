@@ -2,6 +2,8 @@ defmodule Assent.Test.OAuthTestCase do
   @moduledoc false
   use ExUnit.CaseTemplate
 
+  @json_library (Code.ensure_loaded?(JSON) && JSON) || Jason
+
   setup _context do
     TestServer.start()
 
@@ -20,7 +22,7 @@ defmodule Assent.Test.OAuthTestCase do
 
   using do
     quote do
-      use ExUnit.Case
+      use Assent.TestCase
 
       import unquote(__MODULE__)
     end
@@ -48,7 +50,7 @@ defmodule Assent.Test.OAuthTestCase do
     response =
       case content_type do
         "application/x-www-form-urlencoded" -> URI.encode_query(response)
-        "application/json" -> Jason.encode!(response)
+        "application/json" -> @json_library.encode!(response)
         _any -> response
       end
 

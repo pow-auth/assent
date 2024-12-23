@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.2.11 (TBA)
+
+* Default to using `JSON` instead of `Jason` for JSON parsing on Elixir 1.18
+
 ## v0.2.10 (2024-04-11)
 
 Requires Elixir 1.13+

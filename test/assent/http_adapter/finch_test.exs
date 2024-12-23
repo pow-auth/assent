@@ -1,5 +1,5 @@
 defmodule Assent.HTTPAdapter.FinchTest do
-  use ExUnit.Case
+  use Assent.TestCase
   doctest Assent.HTTPAdapter.Finch
 
   alias Assent.HTTPAdapter.Finch, as: FinchAdapter
@@ -54,7 +54,7 @@ defmodule Assent.HTTPAdapter.FinchTest do
       assert capture_log(fn ->
                assert {:error, %Error{reason: :disconnected}} =
                         FinchAdapter.request(:get, bad_host_url, nil, [], supervisor: supervisor)
-             end) =~ "{bad_cert,hostname_check_failed}"
+             end) =~ "hostname_check_failed"
     end
 
     test "handles SSL with bad certificate and no verification" do

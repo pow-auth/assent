@@ -1,5 +1,5 @@
 defmodule Assent.JWTAdapter.JOSETest do
-  use ExUnit.Case
+  use Assent.TestCase
   doctest Assent.JWTAdapter.JOSE
 
   alias Assent.JWTAdapter.JOSE
@@ -9,15 +9,15 @@ defmodule Assent.JWTAdapter.JOSETest do
   @secret "your-256-bit-secret"
 
   test "sign/2" do
-    assert JOSE.sign(@claims, "HS256", @secret, json_library: Jason) == {:ok, @token}
+    assert JOSE.sign(@claims, "HS256", @secret, json_library: @json_library) == {:ok, @token}
   end
 
   test "verify/3" do
-    assert {:ok, jwt} = JOSE.verify(@token, "invalid", json_library: Jason)
+    assert {:ok, jwt} = JOSE.verify(@token, "invalid", json_library: @json_library)
     refute jwt.verified?
     assert jwt.claims == @claims
 
-    assert {:ok, jwt} = JOSE.verify(@token, @secret, json_library: Jason)
+    assert {:ok, jwt} = JOSE.verify(@token, @secret, json_library: @json_library)
     assert jwt.verified?
     assert jwt.claims == @claims
   end
@@ -66,16 +66,17 @@ defmodule Assent.JWTAdapter.JOSETest do
     """
 
     test "sign/2" do
-      assert JOSE.sign(@claims, "RS256", @private_key, json_library: Jason) == {:ok, @token}
+      assert JOSE.sign(@claims, "RS256", @private_key, json_library: @json_library) ==
+               {:ok, @token}
 
       refute JOSE.sign(@claims, "RS256", @private_key,
-               json_library: Jason,
+               json_library: @json_library,
                private_key_id: "key_id"
              ) == {:ok, @token}
     end
 
     test "verify/3" do
-      assert {:ok, jwt} = JOSE.verify(@token, @public_key, json_library: Jason)
+      assert {:ok, jwt} = JOSE.verify(@token, @public_key, json_library: @json_library)
       assert jwt.verified?
       assert jwt.claims == @claims
     end
@@ -88,13 +89,13 @@ defmodule Assent.JWTAdapter.JOSETest do
     }
 
     test "verify/3 with JWK" do
-      assert {:ok, jwt} = JOSE.verify(@token, @jwk, json_library: Jason)
+      assert {:ok, jwt} = JOSE.verify(@token, @jwk, json_library: @json_library)
       assert jwt.verified?
       assert jwt.claims == @claims
     end
 
     test "verify/3 with nil secret" do
-      assert {:ok, jwt} = JOSE.verify(@token, nil, json_library: Jason)
+      assert {:ok, jwt} = JOSE.verify(@token, nil, json_library: @json_library)
       refute jwt.verified?
       assert jwt.claims == @claims
     end

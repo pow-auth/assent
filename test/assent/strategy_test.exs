@@ -1,5 +1,5 @@
 defmodule Assent.StrategyTest do
-  use ExUnit.Case
+  use Assent.TestCase
   doctest Assent.Strategy
 
   alias Assent.{HTTPAdapter.HTTPResponse, Strategy}
@@ -8,7 +8,7 @@ defmodule Assent.StrategyTest do
     expected = %{"a" => "1", "b" => "2"}
 
     headers = [{"content-type", "application/json"}]
-    body = Jason.encode!(expected)
+    body = @json_library.encode!(expected)
 
     assert Strategy.decode_response({:ok, %{body: body, headers: headers}}, []) ==
              {:ok, %{body: expected, headers: headers}}
@@ -50,6 +50,8 @@ defmodule Assent.StrategyTest do
   end
 
   defmodule HTTPMock do
+    @json_library (Code.ensure_loaded?(JSON) && JSON) || Jason
+
     def request(:get, "http-adapter", nil, [], nil) do
       {:ok, %HTTPResponse{status: 200, headers: [], body: nil}}
     end
@@ -63,7 +65,7 @@ defmodule Assent.StrategyTest do
        %HTTPResponse{
          status: 200,
          headers: [{"content-type", "application/json"}],
-         body: Jason.encode!(%{"a" => 1})
+         body: @json_library.encode!(%{"a" => 1})
        }}
     end
 
@@ -81,7 +83,7 @@ defmodule Assent.StrategyTest do
        %HTTPResponse{
          status: 200,
          headers: [{"content-type", "text/javascript"}],
-         body: Jason.encode!(%{"a" => 1})
+         body: @json_library.encode!(%{"a" => 1})
        }}
     end
 
@@ -91,7 +93,7 @@ defmodule Assent.StrategyTest do
     end
 
     def request(:get, "json-no-headers", nil, [], nil) do
-      {:ok, %HTTPResponse{status: 200, headers: [], body: Jason.encode!(%{"a" => 1})}}
+      {:ok, %HTTPResponse{status: 200, headers: [], body: @json_library.encode!(%{"a" => 1})}}
     end
 
     def request(:get, "form-data-body", nil, [], nil) do
@@ -170,15 +172,21 @@ defmodule Assent.StrategyTest do
                 request_url: "json-encoded-body-text/javascript-header"
               }}
 
-    assert {:error, %Jason.DecodeError{}} =
+    assert {:error, error} =
              Strategy.request(:get, "invalid-json-body", nil, [], http_adapter: HTTPMock)
+
+    if unquote(@json_library == Jason) do
+      assert %Jason.DecodeError{} = error
+    else
+      assert error == {:invalid_byte, 0, 37}
+    end
 
     assert Strategy.request(:get, "json-no-headers", nil, [], http_adapter: HTTPMock) ==
              {:ok,
               %HTTPResponse{
                 status: 200,
                 headers: [],
-                body: Jason.encode!(%{"a" => 1}),
+                body: @json_library.encode!(%{"a" => 1}),
                 http_adapter: HTTPMock,
                 request_url: "json-no-headers"
               }}
@@ -219,7 +227,7 @@ defmodule Assent.StrategyTest do
 
     def decode(_binary), do: {:ok, %{"alg" => "none", "custom_json" => true}}
 
-    def encode(_binary), do: {:ok, ""}
+    def encode!(_any), do: ""
   end
 
   @claims %{"iat" => 1_516_239_022, "name" => "John Doe", "sub" => "1234567890"}
