@@ -1,4 +1,4 @@
 defmodule AssentTest do
-  use ExUnit.Case
+  use Assent.TestCase
   doctest Assent
 end

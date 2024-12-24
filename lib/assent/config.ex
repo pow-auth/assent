@@ -32,17 +32,20 @@ defmodule Assent.Config do
 
   defdelegate merge(config_a, config_b), to: Keyword
 
+  @default_json_library (Code.ensure_loaded?(JSON) && JSON) || Jason
+
   @doc """
   Fetches the JSON library in config.
 
   If not found in provided config, this will attempt to load the JSON library
-  from global application environment for `:assent`. Defaults to `Jason`.
+  from global application environment for `:assent`. Defaults to
+  `#{@default_json_library}`.
   """
   @spec json_library(t()) :: module()
   def json_library(config) do
     case get(config, :json_library, nil) do
       nil ->
-        Application.get_env(:assent, :json_library, Jason)
+        Application.get_env(:assent, :json_library, @default_json_library)
 
       json_library ->
         json_library

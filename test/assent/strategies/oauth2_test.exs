@@ -297,7 +297,11 @@ defmodule Assent.Strategy.OAuth2Test do
                  "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
 
         assert {:ok, jwt} =
-                 AssentJWT.verify(params["client_assertion"], @client_secret, json_library: Jason)
+                 AssentJWT.verify(
+                   params["client_assertion"],
+                   @client_secret,
+                   json_library: @json_library
+                 )
 
         assert jwt.verified?
         assert jwt.header["alg"] == "HS256"
@@ -332,7 +336,11 @@ defmodule Assent.Strategy.OAuth2Test do
                  "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
 
         assert {:ok, jwt} =
-                 AssentJWT.verify(params["client_assertion"], @public_key, json_library: Jason)
+                 AssentJWT.verify(
+                   params["client_assertion"],
+                   @public_key,
+                   json_library: @json_library
+                 )
 
         assert jwt.verified?
         assert jwt.header["alg"] == "RS256"
@@ -365,7 +373,11 @@ defmodule Assent.Strategy.OAuth2Test do
 
       expect_oauth2_access_token_request([], fn _conn, params ->
         assert {:ok, jwt} =
-                 AssentJWT.verify(params["client_assertion"], @public_key, json_library: Jason)
+                 AssentJWT.verify(
+                   params["client_assertion"],
+                   @public_key,
+                   json_library: @json_library
+                 )
 
         assert jwt.verified?
         assert jwt.header["kid"] == @private_key_id

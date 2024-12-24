@@ -1,5 +1,5 @@
 defmodule Assent.JWTAdapter.AssentJWTTest do
-  use ExUnit.Case
+  use Assent.TestCase
   doctest Assent.JWTAdapter.AssentJWT
 
   alias Assent.JWTAdapter.AssentJWT
@@ -10,7 +10,7 @@ defmodule Assent.JWTAdapter.AssentJWTTest do
   @secret "your-256-bit-secret"
 
   test "sign/2" do
-    assert AssentJWT.sign(@claims, "HS256", @secret, json_library: Jason) == {:ok, @token}
+    assert AssentJWT.sign(@claims, "HS256", @secret, json_library: @json_library) == {:ok, @token}
   end
 
   test "sign/2 with invalid header" do
@@ -18,7 +18,7 @@ defmodule Assent.JWTAdapter.AssentJWTTest do
 
     assert {:error, error} =
              AssentJWT.sign(@claims, "HS256", @secret,
-               json_library: Jason,
+               json_library: @json_library,
                private_key_id: unencodable
              )
 
@@ -30,30 +30,34 @@ defmodule Assent.JWTAdapter.AssentJWTTest do
   test "sign/2 with invalid claims" do
     unencodable = & &1
 
-    assert {:error, error} = AssentJWT.sign(unencodable, "HS256", @secret, json_library: Jason)
+    assert {:error, error} =
+             AssentJWT.sign(unencodable, "HS256", @secret, json_library: @json_library)
+
     assert error.message == "Failed to encode claims"
     assert %Protocol.UndefinedError{} = error.reason
     assert error.data == unencodable
   end
 
   test "sign/2 with invalid algorithm" do
-    assert {:error, error} = AssentJWT.sign(@claims, "none", @secret, json_library: Jason)
+    assert {:error, error} = AssentJWT.sign(@claims, "none", @secret, json_library: @json_library)
     assert error.message == "Failed to sign JWT"
     assert error.reason == "Unsupported JWT alg none or invalid JWK"
     assert {_, "none"} = error.data
 
-    assert {:error, error} = AssentJWT.sign(@claims, "HS000", @secret, json_library: Jason)
+    assert {:error, error} =
+             AssentJWT.sign(@claims, "HS000", @secret, json_library: @json_library)
+
     assert error.message == "Failed to sign JWT"
     assert error.reason == "Invalid SHA-2 algorithm bit size: 000"
     assert {_, "HS000"} = error.data
   end
 
   test "verify/3" do
-    assert {:ok, jwt} = AssentJWT.verify(@token, "invalid", json_library: Jason)
+    assert {:ok, jwt} = AssentJWT.verify(@token, "invalid", json_library: @json_library)
     refute jwt.verified?
     assert jwt.claims == @claims
 
-    assert {:ok, jwt} = AssentJWT.verify(@token, @secret, json_library: Jason)
+    assert {:ok, jwt} = AssentJWT.verify(@token, @secret, json_library: @json_library)
     assert jwt.verified?
     assert jwt.claims == @claims
   end
@@ -61,14 +65,14 @@ defmodule Assent.JWTAdapter.AssentJWTTest do
   test "verify/3 with invalid JWT format" do
     too_long = @token <> ".value"
 
-    assert {:error, error} = AssentJWT.verify(too_long, @secret, json_library: Jason)
+    assert {:error, error} = AssentJWT.verify(too_long, @secret, json_library: @json_library)
     assert error.message == "JWT must have exactly three parts"
     assert error.reason == :invalid_format
     assert [_, _, _, "value"] = error.data
 
     too_short = @token |> String.split(".") |> Enum.take(2) |> Enum.join(".")
 
-    assert {:error, error} = AssentJWT.verify(too_short, @secret, json_library: Jason)
+    assert {:error, error} = AssentJWT.verify(too_short, @secret, json_library: @json_library)
     assert error.message == "JWT must have exactly three parts"
     assert error.reason == :invalid_format
     assert [_, _] = error.data
@@ -78,7 +82,7 @@ defmodule Assent.JWTAdapter.AssentJWTTest do
   test "verify/3 with header with invalid base64" do
     token = replace_jwt_at(@token, 0, @invalid_base64)
 
-    assert {:error, error} = AssentJWT.verify(token, @secret, json_library: Jason)
+    assert {:error, error} = AssentJWT.verify(token, @secret, json_library: @json_library)
     assert error.message == "Failed to decode header"
     assert error.reason == "Invalid Base64URL"
     assert error.data == @invalid_base64
@@ -95,17 +99,23 @@ defmodule Assent.JWTAdapter.AssentJWTTest do
   test "verify/3 with header with invalid json" do
     token = replace_jwt_at(@token, 0, @invalid_json)
 
-    assert {:error, error} = AssentJWT.verify(token, @secret, json_library: Jason)
+    assert {:error, error} = AssentJWT.verify(token, @secret, json_library: @json_library)
     assert error.message == "Failed to decode header"
-    assert %Jason.DecodeError{} = error.reason
+
+    if unquote(@json_library == Jason) do
+      assert %Jason.DecodeError{} = error.reason
+    else
+      assert error.reason == {:invalid_byte, 0, 37}
+    end
+
     assert error.data == @invalid_json
   end
 
-  @header Base.url_encode64(Jason.encode!(%{}), padding: false)
+  @header Base.url_encode64(@json_library.encode!(%{}), padding: false)
   test "verify/3 with header with missing \"alg\"" do
     token = replace_jwt_at(@token, 0, @header)
 
-    assert {:error, error} = AssentJWT.verify(token, @secret, json_library: Jason)
+    assert {:error, error} = AssentJWT.verify(token, @secret, json_library: @json_library)
     assert error.message == "Failed to decode header"
     assert error.reason == "No \"alg\" found in header"
     assert error.data == @header
@@ -115,7 +125,7 @@ defmodule Assent.JWTAdapter.AssentJWTTest do
   test "verify/3 with claims with invalid base64" do
     token = replace_jwt_at(@token, 1, @invalid_base64)
 
-    assert {:error, error} = AssentJWT.verify(token, @secret, json_library: Jason)
+    assert {:error, error} = AssentJWT.verify(token, @secret, json_library: @json_library)
     assert error.message == "Failed to decode claims"
     assert error.reason == "Invalid Base64URL"
     assert error.data == @invalid_base64
@@ -125,9 +135,15 @@ defmodule Assent.JWTAdapter.AssentJWTTest do
   test "verify/3 with claims with invalid json" do
     token = replace_jwt_at(@token, 1, @invalid_json)
 
-    assert {:error, error} = AssentJWT.verify(token, @secret, json_library: Jason)
+    assert {:error, error} = AssentJWT.verify(token, @secret, json_library: @json_library)
     assert error.message == "Failed to decode claims"
-    assert %Jason.DecodeError{} = error.reason
+
+    if unquote(@json_library == Jason) do
+      assert %Jason.DecodeError{} = error.reason
+    else
+      assert error.reason == {:invalid_byte, 0, 37}
+    end
+
     assert error.data == @invalid_json
   end
 
@@ -135,14 +151,14 @@ defmodule Assent.JWTAdapter.AssentJWTTest do
   test "verify/3 with signature with invalid base64" do
     token = replace_jwt_at(@token, 2, @invalid_base64)
 
-    assert {:error, error} = AssentJWT.verify(token, @secret, json_library: Jason)
+    assert {:error, error} = AssentJWT.verify(token, @secret, json_library: @json_library)
     assert error.message == "Failed to decode signature"
     assert error.reason == "Invalid Base64URL"
     assert error.data == @invalid_base64
   end
 
   test "verify/3 with no secret" do
-    assert {:ok, jwt} = AssentJWT.verify(@token, nil, json_library: Jason)
+    assert {:ok, jwt} = AssentJWT.verify(@token, nil, json_library: @json_library)
     refute jwt.verified?
   end
 
@@ -190,35 +206,42 @@ defmodule Assent.JWTAdapter.AssentJWTTest do
     """
 
     test "sign/2" do
-      assert AssentJWT.sign(@claims, "RS256", @private_key, json_library: Jason) == {:ok, @token}
+      assert AssentJWT.sign(@claims, "RS256", @private_key, json_library: @json_library) ==
+               {:ok, @token}
 
       refute AssentJWT.sign(@claims, "RS256", @private_key,
-               json_library: Jason,
+               json_library: @json_library,
                private_key_id: "key_id"
              ) == {:ok, @token}
     end
 
     test "sign/2 with invalid algorithm" do
-      assert {:error, error} = AssentJWT.sign(@claims, "RS000", @private_key, json_library: Jason)
+      assert {:error, error} =
+               AssentJWT.sign(@claims, "RS000", @private_key, json_library: @json_library)
+
       assert error.message == "Failed to sign JWT"
       assert error.reason == "Invalid SHA-2 algorithm bit size: 000"
       assert {_, "RS000"} = error.data
     end
 
     test "sign/2 with invalid pem" do
-      assert {:error, error} = AssentJWT.sign(@claims, "RS256", "invalid", json_library: Jason)
+      assert {:error, error} =
+               AssentJWT.sign(@claims, "RS256", "invalid", json_library: @json_library)
+
       assert error.message == "Failed to sign JWT"
       assert error.reason == "Invalid private key"
 
       assert {:error, error} =
-               AssentJWT.sign(@claims, "RS256", @private_key <> @private_key, json_library: Jason)
+               AssentJWT.sign(@claims, "RS256", @private_key <> @private_key,
+                 json_library: @json_library
+               )
 
       assert error.message == "Failed to sign JWT"
       assert error.reason == "Private key should only have one entry"
     end
 
     test "verify/3" do
-      assert {:ok, jwt} = AssentJWT.verify(@token, @public_key, json_library: Jason)
+      assert {:ok, jwt} = AssentJWT.verify(@token, @public_key, json_library: @json_library)
       assert jwt.verified?
       assert jwt.claims == @claims
     end
@@ -231,13 +254,13 @@ defmodule Assent.JWTAdapter.AssentJWTTest do
     }
 
     test "verify/3 with JWK" do
-      assert {:ok, jwt} = AssentJWT.verify(@token, @jwk, json_library: Jason)
+      assert {:ok, jwt} = AssentJWT.verify(@token, @jwk, json_library: @json_library)
       assert jwt.verified?
       assert jwt.claims == @claims
     end
 
     test "verify/3 with nil secret" do
-      assert {:ok, jwt} = AssentJWT.verify(@token, nil, json_library: Jason)
+      assert {:ok, jwt} = AssentJWT.verify(@token, nil, json_library: @json_library)
       refute jwt.verified?
       assert jwt.claims == @claims
     end
@@ -267,18 +290,19 @@ defmodule Assent.JWTAdapter.AssentJWTTest do
       }
 
       test "signs and verifies" do
-        assert {:ok, token} = AssentJWT.sign(@claims, "ES256", @private_key, json_library: Jason)
+        assert {:ok, token} =
+                 AssentJWT.sign(@claims, "ES256", @private_key, json_library: @json_library)
 
-        assert {:ok, jwt} = AssentJWT.verify(token, @public_key, json_library: Jason)
+        assert {:ok, jwt} = AssentJWT.verify(token, @public_key, json_library: @json_library)
         assert jwt.verified?
 
-        assert {:ok, jwt} = AssentJWT.verify(@token, @public_key, json_library: Jason)
+        assert {:ok, jwt} = AssentJWT.verify(@token, @public_key, json_library: @json_library)
         assert jwt.verified?
       end
 
       test "sign/2 with invalid algorithm" do
         assert {:error, error} =
-                 AssentJWT.sign(@claims, "ES000", @private_key, json_library: Jason)
+                 AssentJWT.sign(@claims, "ES000", @private_key, json_library: @json_library)
 
         assert error.message == "Failed to sign JWT"
         assert error.reason == "Invalid SHA-2 algorithm bit size: 000"
@@ -286,13 +310,15 @@ defmodule Assent.JWTAdapter.AssentJWTTest do
       end
 
       test "sign/2 with invalid pem" do
-        assert {:error, error} = AssentJWT.sign(@claims, "ES256", "invalid", json_library: Jason)
+        assert {:error, error} =
+                 AssentJWT.sign(@claims, "ES256", "invalid", json_library: @json_library)
+
         assert error.message == "Failed to sign JWT"
         assert error.reason == "Invalid private key"
 
         assert {:error, error} =
                  AssentJWT.sign(@claims, "ES256", @private_key <> @private_key,
-                   json_library: Jason
+                   json_library: @json_library
                  )
 
         assert error.message == "Failed to sign JWT"

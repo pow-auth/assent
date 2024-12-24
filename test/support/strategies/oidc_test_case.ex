@@ -5,6 +5,8 @@ defmodule Assent.Test.OIDCTestCase do
   alias Assent.Test.OAuth2TestCase
   alias Plug.Conn
 
+  @json_library (Code.ensure_loaded?(JSON) && JSON) || Jason
+
   @private_key """
   -----BEGIN RSA PRIVATE KEY-----
   MIIEogIBAAKCAQEAnzyis1ZjfNB0bBgKFMSvvkTtwlvBsaJq7S5wA+kzeVOVpVWw
@@ -79,7 +81,7 @@ defmodule Assent.Test.OIDCTestCase do
 
   using do
     quote do
-      use ExUnit.Case
+      use Assent.TestCase
 
       import unquote(__MODULE__)
       import OAuth2TestCase, only: [expect_oauth2_user_request: 2, expect_oauth2_user_request: 3]
@@ -130,7 +132,7 @@ defmodule Assent.Test.OIDCTestCase do
       to: fn conn ->
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(status_code, Jason.encode!(%{"keys" => keys}))
+        |> Plug.Conn.send_resp(status_code, @json_library.encode!(%{"keys" => keys}))
       end
     )
 
@@ -222,6 +224,6 @@ defmodule Assent.Test.OIDCTestCase do
   defp send_json_resp(conn, body, status_code) do
     conn
     |> Conn.put_resp_content_type("application/json")
-    |> Conn.send_resp(status_code, Jason.encode!(body))
+    |> Conn.send_resp(status_code, @json_library.encode!(body))
   end
 end
