@@ -40,17 +40,21 @@ defmodule Assent.Strategy.OAuth2 do
     - `:jwt_algorithm` - The algorithm to use for JWT signing, optional,
       defaults to `HS256` for `:client_secret_jwt` and `RS256` for
       `:private_key_jwt`
+    - `:state` - A boolean or a string with the value of the state, optional,
+      defaults to `true`. When set to `true` a random 32 byte long url safe
+      string is generated. When set to `false` state will not be verified.
 
   ## Usage
 
-      config =  [
-        client_id: "REPLACE_WITH_CLIENT_ID",
-        client_secret: "REPLACE_WITH_CLIENT_SECRET",
-        auth_method: :client_secret_post,
-        base_url: "https://auth.example.com",
-        authorization_params: [scope: "user:read user:write"],
-        user_url: "https://example.com/api/user"
-      ]
+      config =
+        [
+          client_id: "REPLACE_WITH_CLIENT_ID",
+          client_secret: "REPLACE_WITH_CLIENT_SECRET",
+          auth_method: :client_secret_post,
+          base_url: "https://auth.example.com",
+          authorization_params: [scope: "user:read user:write"],
+          user_url: "https://example.com/api/user"
+        ]
 
       {:ok, %{url: url, session_params: session_params}} =
         config
@@ -79,6 +83,10 @@ defmodule Assent.Strategy.OAuth2 do
     UnexpectedResponseError
   }
 
+  @type session_params :: %{
+          optional(:state) => binary()
+        }
+
   @doc """
   Generate authorization URL for request phase.
 
@@ -92,38 +100,68 @@ defmodule Assent.Strategy.OAuth2 do
   """
   @impl true
   @spec authorize_url(Config.t()) ::
-          {:ok, %{session_params: %{state: binary()}, url: binary()}} | {:error, term()}
+          {:ok, %{session_params: session_params(), url: binary()}} | {:error, term()}
   def authorize_url(config) do
+    config = deprecated_state_handling(config)
+
     with {:ok, redirect_uri} <- Config.fetch(config, :redirect_uri),
          {:ok, base_url} <- Config.__base_url__(config),
          {:ok, client_id} <- Config.fetch(config, :client_id) do
-      params = authorization_params(config, client_id, redirect_uri)
-      authorize_url = Config.get(config, :authorize_url, "/oauth/authorize")
-      url = Helpers.to_url(base_url, authorize_url, params)
+      session_params = session_params(config)
+      url_params = authorization_params(config, client_id, redirect_uri, session_params)
 
-      {:ok, %{url: url, session_params: %{state: params[:state]}}}
+      authorize_url = Config.get(config, :authorize_url, "/oauth/authorize")
+      url = Helpers.to_url(base_url, authorize_url, url_params)
+
+      {:ok, %{url: url, session_params: Enum.into(session_params, %{})}}
     end
   end
 
-  defp authorization_params(config, client_id, redirect_uri) do
+  # TODO: Remove in >= 0.3
+  defp deprecated_state_handling(config) do
+    config
+    |> Config.get(:authorization_params, [])
+    |> Keyword.get(:state)
+    |> case do
+      nil ->
+        config
+
+      state ->
+        IO.warn(
+          "Passing `:state` key in `:authorization_params` is deprecated, set it in the config instead."
+        )
+
+        Keyword.put(config, :state, state)
+    end
+  end
+
+  defp session_params(config) do
+    case Config.get(config, :state, true) do
+      state when is_binary(state) -> [state: state]
+      true -> [state: gen_url_encoded_base64(32)]
+      false -> []
+    end
+  end
+
+  defp gen_url_encoded_base64(length) do
+    length
+    |> Kernel.*(3)
+    |> Kernel.div(4)
+    |> :crypto.strong_rand_bytes()
+    |> Base.url_encode64(padding: false)
+  end
+
+  defp authorization_params(config, client_id, redirect_uri, session_params) do
     params = Config.get(config, :authorization_params, [])
 
     [
       response_type: "code",
       client_id: client_id,
-      state: gen_state(),
       redirect_uri: redirect_uri
     ]
     |> Keyword.merge(params)
+    |> Keyword.merge(Keyword.take(session_params, [:state]))
     |> List.keysort(0)
-  end
-
-  defp gen_state do
-    24
-    |> :crypto.strong_rand_bytes()
-    |> :erlang.bitstring_to_list()
-    |> Enum.map_join(fn x -> :erlang.integer_to_binary(x, 16) end)
-    |> String.downcase()
   end
 
   @doc """
@@ -145,16 +183,9 @@ defmodule Assent.Strategy.OAuth2 do
   def callback(config, params, strategy \\ __MODULE__) do
     with {:ok, session_params} <- Config.fetch(config, :session_params),
          :ok <- check_error_params(params),
-         {:ok, code} <- fetch_code_param(params),
-         {:ok, redirect_uri} <- Config.fetch(config, :redirect_uri),
-         :ok <- maybe_check_state(session_params, params),
-         {:ok, token} <-
-           grant_access_token(
-             config,
-             "authorization_code",
-             code: code,
-             redirect_uri: redirect_uri
-           ) do
+         :ok <- verify_state(config, session_params, params),
+         {:ok, grant_params} <- fetch_grant_access_token_params(config, params),
+         {:ok, token} <- grant_access_token(config, "authorization_code", grant_params) do
       fetch_user_with_strategy(config, token, strategy)
     end
   end
@@ -169,23 +200,35 @@ defmodule Assent.Strategy.OAuth2 do
 
   defp check_error_params(_params), do: :ok
 
-  defp fetch_code_param(%{"code" => code}), do: {:ok, code}
+  defp verify_state(config, session_params, params) do
+    case Config.get(config, :state, true) do
+      false -> :ok
+      _true -> verify_state(session_params.state, params)
+    end
+  end
 
-  defp fetch_code_param(params),
-    do: {:error, MissingParamError.exception(expected_key: "code", params: params)}
-
-  defp maybe_check_state(%{state: stored_state}, %{"state" => provided_state}) do
+  defp verify_state(stored_state, %{"state" => provided_state}) do
     case Assent.constant_time_compare(stored_state, provided_state) do
       true -> :ok
       false -> {:error, CallbackCSRFError.exception(key: "state")}
     end
   end
 
-  defp maybe_check_state(%{state: _state}, params) do
+  defp verify_state(_stored_state, params) do
     {:error, MissingParamError.exception(expected_key: "state", params: params)}
   end
 
-  defp maybe_check_state(_session_params, _params), do: :ok
+  defp fetch_grant_access_token_params(config, params) do
+    with {:ok, code} <- fetch_code_param(params),
+         {:ok, redirect_uri} <- Config.fetch(config, :redirect_uri) do
+      {:ok, [code: code, redirect_uri: redirect_uri]}
+    end
+  end
+
+  defp fetch_code_param(%{"code" => code}), do: {:ok, code}
+
+  defp fetch_code_param(params),
+    do: {:error, MissingParamError.exception(expected_key: "code", params: params)}
 
   defp authentication_params(nil, config) do
     with {:ok, client_id} <- Config.fetch(config, :client_id) do
