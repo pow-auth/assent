@@ -19,8 +19,8 @@ defmodule Assent.Strategy.OAuth2 do
     - `:client_id` - The OAuth2 client id, required
     - `:base_url` - The base URL of the OAuth2 server, required
     - `:auth_method` - The authentication strategy used, optional. If not set,
-      no authentication will be used during the access token request. The value
-      may be one of the following:
+      no authentication will be used during the access token request (e.g.
+      public clients). The value may be one of the following:
 
       - `:client_secret_basic` - Authenticate with basic authorization header
       - `:client_secret_post` - Authenticate with post params

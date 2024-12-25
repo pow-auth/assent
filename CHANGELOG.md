@@ -5,6 +5,7 @@
 * Default to using `JSON` instead of `Jason` for JSON parsing on Elixir 1.18
 * Added `:state` config option to OAuth 2.0 strategy
 * Deprecated ability to override `:state` by setting it in `:authorization_params`
+* Support `none` authentication method for OIDC strategy
 
 ## v0.2.10 (2024-04-11)
 
