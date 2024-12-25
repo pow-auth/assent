@@ -60,27 +60,40 @@ defmodule Assent.Strategy.OAuth2Test do
   """
 
   test "authorize_url/2", %{config: config} do
-    assert {:ok, %{url: url, session_params: %{state: state}}} =
+    assert {:ok, %{url: url, session_params: session_params}} =
              config
              |> Keyword.put(:client_id, @client_id)
              |> OAuth2.authorize_url()
 
-    refute is_nil(state)
+    assert session_params.state
+    assert url =~ TestServer.url("/oauth/authorize?")
 
-    assert url =~
-             TestServer.url(
-               "/oauth/authorize?client_id=#{@client_id}&redirect_uri=http%3A%2F%2Flocalhost%3A4000%2Fauth%2Fcallback&response_type=code&state=#{state}"
-             )
+    query_params = url |> URI.parse() |> Map.fetch!(:query) |> URI.decode_query()
+
+    assert query_params == %{
+             "client_id" => @client_id,
+             "redirect_uri" => "http://localhost:4000/auth/callback",
+             "response_type" => "code",
+             "state" => session_params.state
+           }
   end
 
-  test "authorize_url/2 with state in authorization_param", %{config: config} do
-    assert {:ok, %{session_params: %{state: state}}} =
+  test "authorize_url/2 with `state: binary`", %{config: config} do
+    assert {:ok, %{session_params: session_params}} =
              config
-             |> Keyword.put(:client_id, @client_id)
-             |> Keyword.put(:authorization_params, state: "state_test_value")
+             |> Keyword.put(:state, "custom_state")
              |> OAuth2.authorize_url()
 
-    assert state == "state_test_value"
+    assert session_params.state == "custom_state"
+  end
+
+  test "authorize_url/2 with `state: false`", %{config: config} do
+    assert {:ok, %{session_params: session_params}} =
+             config
+             |> Keyword.put(:state, false)
+             |> OAuth2.authorize_url()
+
+    assert session_params == %{}
   end
 
   describe "callback/2" do
@@ -140,11 +153,24 @@ defmodule Assent.Strategy.OAuth2Test do
       assert error.key == "state"
     end
 
-    test "with state param without state in session_params", %{
+    test "with missing state in session_params", %{
       config: config,
       callback_params: params
     } do
       config = Keyword.put(config, :session_params, %{})
+
+      assert_raise KeyError, fn ->
+        OAuth2.callback(config, params)
+      end
+    end
+
+    test "with `state: false`", %{config: config, callback_params: params} do
+      config =
+        config
+        |> Keyword.put(:session_params, %{})
+        |> Keyword.put(:state, false)
+
+      params = Map.delete(params, "state")
 
       expect_oauth2_access_token_request([])
       expect_oauth2_user_request(%{})
@@ -152,9 +178,15 @@ defmodule Assent.Strategy.OAuth2Test do
       assert {:ok, _any} = OAuth2.callback(config, params)
     end
 
-    test "without state in params and session params", %{config: config, callback_params: params} do
-      config = Keyword.put(config, :session_params, %{})
-      params = Map.delete(params, "state")
+    test "with `state: binary`", %{config: config, callback_params: params} do
+      session_params = Map.put(config[:session_params], :state, "custom_state")
+
+      config =
+        config
+        |> Keyword.put(:state, "custom_state")
+        |> Keyword.put(:session_params, session_params)
+
+      params = Map.put(params, "state", "custom_state")
 
       expect_oauth2_access_token_request([])
       expect_oauth2_user_request(%{})
@@ -588,5 +620,17 @@ defmodule Assent.Strategy.OAuth2Test do
 
     assert {:ok, response} = OAuth2.request(config, token, :post, "/info", a: 1)
     assert response.body == %{"success" => true}
+  end
+
+  ## Deprecated
+
+  test "authorize_url/2 with state in authorization_params", %{config: config} do
+    assert {:ok, %{session_params: %{state: state}}} =
+             config
+             |> Keyword.put(:client_id, @client_id)
+             |> Keyword.put(:authorization_params, state: "state_test_value")
+             |> OAuth2.authorize_url()
+
+    assert state == "state_test_value"
   end
 end
