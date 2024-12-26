@@ -7,6 +7,7 @@
 * `Assent.Strategy.OAuth2` `:state` override in `:authorization_parms` has been deprecated
 * `Assent.Strategy.OIDC` now supports `none` authentication method
 * `Assent.Strategy.Bitbucket` added
+* `Assent.Strategy.Twitch` added
 
 ## v0.2.10 (2024-04-11)
 
