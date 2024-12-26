@@ -6,6 +6,7 @@
 * Added `:state` config option to OAuth 2.0 strategy
 * Deprecated ability to override `:state` by setting it in `:authorization_params`
 * Support `none` authentication method for OIDC strategy
+* `Assent.Strategy.Bitbucket` added
 
 ## v0.2.10 (2024-04-11)
 
