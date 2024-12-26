@@ -3,9 +3,9 @@
 ## v0.2.11 (TBA)
 
 * Default to using `JSON` instead of `Jason` for JSON parsing on Elixir 1.18
-* Added `:state` config option to OAuth 2.0 strategy
-* Deprecated ability to override `:state` by setting it in `:authorization_params`
-* Support `none` authentication method for OIDC strategy
+* `Assent.Strategy.OAuth2` now supports `:state` config option
+* `Assent.Strategy.OAuth2` `:state` override in `:authorization_parms` has been deprecated
+* `Assent.Strategy.OIDC` now supports `none` authentication method
 * `Assent.Strategy.Bitbucket` added
 
 ## v0.2.10 (2024-04-11)
