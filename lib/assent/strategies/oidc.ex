@@ -419,10 +419,7 @@ defmodule Assent.Strategy.OIDC do
   defp validate_audience(%{claims: %{"aud" => [client_id]}}, client_id, _config), do: :ok
 
   defp validate_audience(%{claims: %{"aud" => auds}}, client_id, config) do
-    trusted_audiences =
-      (Config.get(config, :trusted_audiences, []) ++ [client_id])
-      |> maybe_add_resource_id(config)
-
+    trusted_audiences = Config.get(config, :trusted_audiences, []) ++ [client_id]
     missing_client_id? = client_id not in auds
     untrusted_auds = Enum.filter(auds, &(&1 not in trusted_audiences))
 
@@ -435,24 +432,6 @@ defmodule Assent.Strategy.OIDC do
 
       {false, untrusted_auds} ->
         {:error, "Untrusted audience(s) #{inspect(untrusted_auds)} in ID Token"}
-    end
-  end
-
-  defp maybe_add_resource_id(trusted_audiences, config) do
-    with {:ok, resource_id} <- Config.fetch(config, :resource_id) do
-      cond do
-        is_binary(resource_id) ->
-          trusted_audiences ++ [resource_id]
-
-        is_list(resource_id) ->
-          trusted_audiences ++ resource_id
-
-        true ->
-          trusted_audiences
-      end
-    else
-      _ ->
-        trusted_audiences
     end
   end
 
