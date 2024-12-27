@@ -9,6 +9,7 @@
 * `Assent.Strategy.Bitbucket` added
 * `Assent.Strategy.Twitch` added
 * `Assent.Strategy.OAuth2` now supports PKCE
+* `Assent.Strategy.OAuth2.Base.authorize_url/2` incomplete typespec fixed
 
 ## v0.2.10 (2024-04-11)
 

@@ -57,6 +57,14 @@ defmodule Assent.Strategy.OAuth do
     UnexpectedResponseError
   }
 
+  @type session_params :: %{
+          oauth_token_secret: binary()
+        }
+
+  @type on_authorize_url ::
+          {:ok, %{session_params: session_params(), url: binary()}} | {:error, term()}
+  @type on_callback :: {:ok, %{user: map(), token: map()}} | {:error, term()}
+
   @doc """
   Generate authorization URL for request phase.
 
@@ -71,9 +79,7 @@ defmodule Assent.Strategy.OAuth do
     - `:authorization_params` - The authorization parameters, defaults to `[]`
   """
   @impl true
-  @spec authorize_url(Config.t()) ::
-          {:ok, %{url: binary(), session_params: %{oauth_token_secret: binary()}}}
-          | {:error, term()}
+  @spec authorize_url(Config.t()) :: on_authorize_url()
   def authorize_url(config) do
     case Config.fetch(config, :redirect_uri) do
       {:ok, redirect_uri} -> authorize_url(config, redirect_uri)
@@ -342,8 +348,7 @@ defmodule Assent.Strategy.OAuth do
       `authorize_url/1`, optional
   """
   @impl true
-  @spec callback(Config.t(), map(), atom()) ::
-          {:ok, %{user: map(), token: map()}} | {:error, term()}
+  @spec callback(Config.t(), map(), atom()) :: on_callback()
   def callback(config, params, strategy \\ __MODULE__) do
     with {:ok, oauth_token} <- fetch_oauth_token(params),
          {:ok, oauth_verifier} <- fetch_oauth_verifier(params),

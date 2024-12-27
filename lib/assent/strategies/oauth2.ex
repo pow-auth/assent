@@ -96,6 +96,10 @@ defmodule Assent.Strategy.OAuth2 do
           optional(:code_challenge_method) => binary()
         }
 
+  @type on_authorize_url ::
+          {:ok, %{session_params: session_params(), url: binary()}} | {:error, term()}
+  @type on_callback :: {:ok, %{user: map(), token: map()}} | {:error, term()}
+
   @doc """
   Generate authorization URL for request phase.
 
@@ -108,8 +112,7 @@ defmodule Assent.Strategy.OAuth2 do
     - `:authorization_params` - The authorization parameters, defaults to `[]`
   """
   @impl true
-  @spec authorize_url(Config.t()) ::
-          {:ok, %{session_params: session_params(), url: binary()}} | {:error, term()}
+  @spec authorize_url(Config.t()) :: on_authorize_url()
   def authorize_url(config) do
     config = deprecated_state_handling(config)
 
@@ -209,8 +212,7 @@ defmodule Assent.Strategy.OAuth2 do
       `authorize_url/1`, optional
   """
   @impl true
-  @spec callback(Config.t(), map(), atom()) ::
-          {:ok, %{user: map(), token: map()}} | {:error, term()}
+  @spec callback(Config.t(), map(), atom()) :: on_callback()
   def callback(config, params, strategy \\ __MODULE__) do
     with {:ok, session_params} <- Config.fetch(config, :session_params),
          :ok <- check_error_params(params),

@@ -87,6 +87,17 @@ defmodule Assent.Strategy.OIDC do
     UnexpectedResponseError
   }
 
+  @type session_params :: %{
+          optional(:state) => binary(),
+          optional(:code_verifier) => binary(),
+          optional(:code_challenge) => binary(),
+          optional(:code_challenge_method) => binary(),
+          optional(:nonce) => binary()
+        }
+
+  @type on_authorize_url :: OAuth2.on_authorize_url()
+  @type on_callback :: OAuth2.on_callback()
+
   @doc """
   Generates an authorization URL for request phase.
 
@@ -103,13 +114,7 @@ defmodule Assent.Strategy.OIDC do
   See `Assent.Strategy.OAuth2.authorize_url/1` for more.
   """
   @impl true
-  @spec authorize_url(Config.t()) ::
-          {:ok,
-           %{
-             session_params: %{state: binary()} | %{state: binary(), nonce: binary()},
-             url: binary()
-           }}
-          | {:error, term()}
+  @spec authorize_url(Config.t()) :: on_authorize_url()
   def authorize_url(config) do
     with {:ok, openid_config} <- openid_configuration(config),
          {:ok, authorize_url} <-
@@ -225,8 +230,7 @@ defmodule Assent.Strategy.OIDC do
   See `Assent.Strategy.OAuth2.callback/3` for more.
   """
   @impl true
-  @spec callback(Config.t(), map(), atom()) ::
-          {:ok, %{user: map(), token: map()}} | {:error, term()}
+  @spec callback(Config.t(), map(), atom()) :: on_callback()
   def callback(config, params, strategy \\ __MODULE__) do
     with {:ok, openid_config} <- openid_configuration(config),
          {:ok, method} <- fetch_client_authentication_method(openid_config, config),
@@ -332,12 +336,23 @@ defmodule Assent.Strategy.OIDC do
   end
 
   defp peek_header(encoded, config) do
-    with [header, _, _] <- String.split(encoded, "."),
-         {:ok, json} <- Base.url_decode64(header, padding: false) do
+    with {:ok, header} <- split_header(encoded),
+         {:ok, json} <- decode_base64_url(header) do
       Config.json_library(config).decode(json)
-    else
-      {:error, error} -> {:error, error}
-      _any -> {:error, "The ID Token is not a valid JWT"}
+    end
+  end
+
+  defp split_header(encoded) do
+    case String.split(encoded, ".") do
+      [header, _, _] -> {:ok, header}
+      _ -> {:error, "The ID Token is not a valid JWT"}
+    end
+  end
+
+  defp decode_base64_url(encoded) do
+    case Base.url_decode64(encoded, padding: false) do
+      {:ok, decoded} -> {:ok, decoded}
+      :error -> {:error, "Invalid Base64URL"}
     end
   end
 
