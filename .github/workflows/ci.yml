@@ -18,10 +18,17 @@ jobs:
         with:
           otp-version: 27.0
           elixir-version: 1.18
+      - uses: actions/cache@v4
+        with:
+          path: |
+            _build/test
+            deps
+          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}  
       - run: mix deps.get
       - run: mix compile --warnings-as-errors
       - run: mix credo --strict --ignore design.tagtodo
       - run: mix format --check-formatted
+      - run: mix dialyzer --format github
 
   test:
     strategy:
