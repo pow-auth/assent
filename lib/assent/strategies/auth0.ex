@@ -26,4 +26,15 @@ defmodule Assent.Strategy.Auth0 do
       client_authentication_method: "client_secret_post"
     ]
   end
+
+  @impl true
+  def normalize(_config, user) do
+    {:ok, updated_at, 0} = DateTime.from_iso8601(user["updated_at"])
+
+    {:ok,
+     %{
+       user
+       | "updated_at" => DateTime.to_unix(updated_at)
+     }}
+  end
 end

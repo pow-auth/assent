@@ -26,7 +26,7 @@ defmodule Assent.Strategy.Auth0Test do
     "name" => "John Doe",
     "nickname" => "john.doe",
     "picture" => "https://myawesomeavatar.com/avatar.png",
-    "updated_at" => "2017-03-30T15:13:40.474Z"
+    "updated_at" => 1_490_886_820
   }
 
   test "authorize_url/2", %{config: config} do
