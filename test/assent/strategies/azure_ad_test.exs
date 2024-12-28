@@ -45,11 +45,7 @@ defmodule Assent.Strategy.AzureADTest do
         "issuer",
         "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0"
       )
-      |> Map.put("token_endpoint_auth_methods_supported", [
-        "client_secret_post",
-        "private_key_jwt",
-        "client_secret_basic"
-      ])
+      |> Map.put("token_endpoint_auth_methods_supported", ["client_secret_post"])
 
     session_params = Map.put(config[:session_params], :nonce, "123523")
 
