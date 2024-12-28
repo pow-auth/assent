@@ -370,6 +370,11 @@ defmodule Assent.Strategy.OIDCTest do
                {:error, "The ID Token is not a valid JWT"}
     end
 
+    test "with invalid base64 header in id_token", %{config: config} do
+      assert OIDC.validate_id_token(config, "@invalid.payload.signature") ==
+               {:error, "Invalid Base64URL"}
+    end
+
     test "with no `:client_secret`", %{config: config, id_token: id_token} do
       config = Keyword.delete(config, :client_secret)
 

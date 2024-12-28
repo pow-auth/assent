@@ -18,10 +18,44 @@ jobs:
         with:
           otp-version: 27.0
           elixir-version: 1.18
+      - uses: actions/cache@v4
+        env:
+          cache-name: assent
+        with:
+          path: |
+            _build
+            deps
+          key: ${{ runner.os }}-mix-${{ env.cache-name }}-${{ hashFiles('**/mix.lock') }}  
       - run: mix deps.get
       - run: mix compile --warnings-as-errors
       - run: mix credo --strict --ignore design.tagtodo
       - run: mix format --check-formatted
+      - run: mix dialyzer --format github
+
+  integration-server:
+    runs-on: ubuntu-latest
+    name: Integration server
+    defaults:
+      run:
+        working-directory: integration
+    steps:
+      - uses: actions/checkout@v3
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: 27.0
+          elixir-version: 1.18
+      - uses: actions/cache@v4
+        env:
+          cache-name: integration-server
+        with:
+          path: |
+            integration/_build
+            integration/deps
+          key: ${{ runner.os }}-mix-${{ env.cache-name }}-${{ hashFiles('**/integration/mix.lock') }}  
+      - run: mix deps.get
+      - run: mix compile --warnings-as-errors
+      - run: mix format --check-formatted
+      - run: mix dialyzer --format github
 
   test:
     strategy:
