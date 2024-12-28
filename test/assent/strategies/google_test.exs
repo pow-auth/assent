@@ -19,7 +19,7 @@ defmodule Assent.Strategy.GoogleTest do
   }
   @user %{
     "email" => "jsmith@example.com",
-    "email_verified" => "true",
+    "email_verified" => true,
     "hd" => "example.com",
     "sub" => "10769150350006150715113082367"
   }

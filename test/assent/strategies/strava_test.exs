@@ -53,7 +53,7 @@ defmodule Assent.Strategy.StravaTest do
   }
 
   @user %{
-    "sub" => 1_234_567_890_987_654_321,
+    "sub" => "1234567890987654321",
     "given_name" => "Marianne",
     "family_name" => "Teutenberg",
     "preferred_username" => "marianne_t",

@@ -63,18 +63,114 @@ defmodule Assent.StrategyTest do
              "http://example.com/path?a=1&b[c]=2&b[d][e]=3&f[]=4&f[]=5"
   end
 
-  test "normalize_userinfo/2" do
-    user = %{"email" => "foo@example.com", "name" => nil, "nickname" => "foo"}
-    extra = %{"a" => "1"}
-    expected = %{"email" => "foo@example.com", "nickname" => "foo", "a" => "1"}
+  describe "normalize_userinfo/2" do
+    @valid_user %{
+      "sub" => "123",
+      "email" => "foo@example.com",
+      "email_verified" => true,
+      "address" => %{
+        "formatted" => "456"
+      },
+      "updated_at" => 1_516_239_022
+    }
 
-    assert Strategy.normalize_userinfo(user, extra) == {:ok, expected}
-  end
+    @invalid_user %{
+      "sub" => true,
+      "address" => %{
+        "formatted" => true
+      }
+    }
 
-  test "prune/1" do
-    map = %{a: :ok, b: nil, c: "", d: %{a: :ok, b: nil}}
-    expected = %{a: :ok, c: "", d: %{a: :ok}}
+    @expected_user %{
+      "sub" => "123",
+      "email" => "foo@example.com",
+      "email_verified" => true,
+      "address" => %{
+        "formatted" => "456"
+      },
+      "updated_at" => 1_516_239_022
+    }
 
-    assert Strategy.prune(map) == expected
+    test "with incorrect claim type" do
+      assert {:error, %Assent.CastClaimsError{} = error} =
+               Strategy.normalize_userinfo(@invalid_user, %{})
+
+      assert Exception.message(error) == """
+             The following claims couldn't be cast:
+
+             - "address" -> "formatted" to :binary
+             - "sub" to :binary
+             """
+    end
+
+    test "with atom value claim" do
+      user = %{"sub" => :invalid}
+
+      assert {:error, %Assent.CastClaimsError{} = error} = Strategy.normalize_userinfo(user, %{})
+      assert error.invalid_types == %{"sub" => :binary}
+    end
+
+    test "with binary type claim with integer value" do
+      user = %{"sub" => 123}
+
+      assert {:ok, %{"sub" => "123"}} = Strategy.normalize_userinfo(user, %{})
+    end
+
+    test "with integer type claim with invalid binary value" do
+      user = %{"updated_at" => "123a1"}
+
+      assert {:error, %Assent.CastClaimsError{} = error} = Strategy.normalize_userinfo(user, %{})
+      assert error.invalid_types == %{"updated_at" => :integer}
+    end
+
+    test "with integer type claim with valid binary value" do
+      user = %{"updated_at" => "123"}
+
+      assert {:ok, %{"updated_at" => 123}} = Strategy.normalize_userinfo(user, %{})
+    end
+
+    test "with boolean type claim with string binary value" do
+      user = %{"email_verified" => "true"}
+
+      assert {:ok, %{"email_verified" => true}} = Strategy.normalize_userinfo(user, %{})
+
+      user = %{"email_verified" => "false"}
+
+      assert {:ok, %{"email_verified" => false}} = Strategy.normalize_userinfo(user, %{})
+    end
+
+    test "casts" do
+      assert Strategy.normalize_userinfo(@valid_user) == {:ok, @expected_user}
+    end
+
+    test "with unknown claims" do
+      user =
+        @valid_user
+        |> Map.put("foo", "bar")
+        |> Map.put("address", Map.put(@valid_user["address"], "foo", "bar"))
+
+      assert Strategy.normalize_userinfo(user) == {:ok, @expected_user}
+    end
+
+    test "with extra" do
+      extra =
+        %{
+          "a" => 1,
+          "b" => nil,
+          "sub" => "other-sub",
+          "address" => %{
+            "formatted" => "other-foramtted",
+            "a" => nil,
+            "b" => 2
+          }
+        }
+
+      expected_user =
+        @expected_user
+        |> Map.put("a", 1)
+        |> Map.put("address", Map.put(@expected_user["address"], "b", 2))
+
+      assert Strategy.normalize_userinfo(@valid_user, extra) == {:ok, expected_user}
+    end
   end
 end

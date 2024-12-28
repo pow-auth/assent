@@ -28,7 +28,7 @@ defmodule Assent.Strategy.Auth0Test do
     },
     "updated_at" => "1556845729"
   }
-  @user @user_response
+  @user %{@user_response | "updated_at" => 1_556_845_729}
 
   describe "authorize_url/2" do
     test "requires domain or base_url configuration", %{config: config} do

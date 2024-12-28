@@ -4,13 +4,24 @@
 
 **This release consists of breaking changes.**
 
+Userinfo is now cast to the correct type per https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.5.1. When upgrading you must ensure that you do not depend on a specific type in the returned userinfo for any of the strategies listed below.
+
 ### Breaking changes
 
+* `Assent.Strategy.Auth0.callback/2` now encodes `updated_at` as an `integer()` instead of `binary()`
+* `Assent.Strategy.Basecamp.callback/2` now encodes `sub` as a `binary()` instead of an `integer()`
+* `Assent.Strategy.Github.callback/2` now encodes `sub` as a `binary()` instead of an `integer()`
+* `Assent.Strategy.Gitlab.callback/2` now encodes `sub` as a `binary()` instead of an `integer()`
 * `Assent.Strategy.Google` now return `hd` instead of `google_hd`
+* `Assent.Strategy.Strava.callback/2` now encodes `sub` as a `binary()` instead of an `integer()`
+* `Assent.Strategy.Telegram.callback/2` now encodes `sub` as a `binary()` instead of an `integer()`
+* `Assent.Strategy.Twitter.callback/2` now encodes `sub` as a `binary()` instead of an `integer()`
+* `Assent.Strategy.VK.callback/2` now encodes `sub` as a `binary()` instead of an `integer()`
 * `:site` configuration option removed, use `:base_url` instead
 * `Assent.Strategy.OAuth2.authorize_url/2` no longer allows `:state` in `:authorization_params`
 * `Assent.Strategy.decode_response/2`removed, use `Assent.HTTPAdapter.decode_response/2` instead
 * `Assent.Strategy.request/5` removed, use `Assent.Strategy.http_request/5` instead
+* `Assent.Strategy.prune/1` removed
 * `Assent.MissingParamError` no longer accepts `:expected_key`, use `:key` instead
 * `Assent.HTTPAdapter.Mint` removed
 * `Assent.Config` removed
@@ -18,6 +29,7 @@
 ### Changes
 
 * `Assent.Strategy.Google` now uses OIDC instead of OAuth 2.0 base strategy
+* `Assent.Strategy.normalize_userinfo/2` now casts the user claims per OpenID specification
 
 ## v0.2
 

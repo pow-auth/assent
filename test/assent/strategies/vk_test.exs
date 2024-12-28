@@ -19,7 +19,7 @@ defmodule Assent.Strategy.VKTest do
   @user %{
     "given_name" => "Lindsay",
     "family_name" => "Stirling",
-    "sub" => 210_700_286,
+    "sub" => "210700286",
     "email" => "lindsay.stirling@example.com"
   }
 

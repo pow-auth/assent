@@ -132,6 +132,35 @@ defmodule Assent do
     end
   end
 
+  defmodule CastClaimsError do
+    defexception [:claims, :invalid_types]
+
+    @type t :: %__MODULE__{
+            claims: map(),
+            invalid_types: map()
+          }
+
+    def message(exception) do
+      """
+      The following claims couldn't be cast:
+
+      #{exception.invalid_types |> to_lines() |> Enum.join("\n")}
+      """
+    end
+
+    defp to_lines(claim_types, prepend \\ "") do
+      claim_types
+      |> Enum.sort_by(&elem(&1, 0))
+      |> Enum.reduce([], fn
+        {key, %{} = claim_types}, acc ->
+          acc ++ to_lines(claim_types, prepend <> "#{inspect(key)} -> ")
+
+        {key, type}, acc ->
+          acc ++ ["- #{prepend}#{inspect(key)} to #{inspect(type)}"]
+      end)
+    end
+  end
+
   @doc """
   Fetches the key value from the configuration.
 
