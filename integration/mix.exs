@@ -26,7 +26,8 @@ defmodule IntegrationServer.MixProject do
       {:assent, path: "../"},
       {:plug, ">= 0.0.0"},
       {:bandit, ">= 0.0.0"},
-      {:dialyxir, "~> 1.4", runtime: false}
+      {:dialyxir, "~> 1.4", runtime: false},
+      {:req, ">= 0.0.0"}
     ]
   end
 end
