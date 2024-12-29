@@ -8,6 +8,7 @@
 * `Assent.Strategy.OIDC` now supports `none` authentication method
 * `Assent.Strategy.Bitbucket` added
 * `Assent.Strategy.Twitch` added
+* `Assent.Strategy.Telegram` added
 * `Assent.Strategy.Facebook.fetch_user/2` fixed bug with user not being decoded
 * `Assent.Strategy.OAuth2` now supports PKCE
 * `Assent.Strategy.OAuth2.Base.authorize_url/2` incomplete typespec fixed

@@ -31,6 +31,7 @@ Multi-provider authentication framework.
   * Strava - `Assent.Strategy.Strava`
   * Slack - `Assent.Strategy.Slack`
   * Stripe Connect - `Assent.Strategy.Stripe`
+  * Telegram - `Assent.Strategy.Telegram`
   * Twitch - `Assent.Strategy.Twitch`
   * Twitter - `Assent.Strategy.Twitter`
   * VK - `Assent.Strategy.VK`
