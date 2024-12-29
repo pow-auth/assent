@@ -4,6 +4,8 @@
 [![hexdocs.pm](https://img.shields.io/badge/api-docs-green.svg?style=flat)](https://hexdocs.pm/assent)
 [![hex.pm](https://img.shields.io/hexpm/v/assent.svg?style=flat)](https://hex.pm/packages/assent)
 
+<!-- MDOC !-->
+
 Multi-provider authentication framework.
 
 ## Features
@@ -36,6 +38,8 @@ Multi-provider authentication framework.
   * Twitter - `Assent.Strategy.Twitter`
   * VK - `Assent.Strategy.VK`
   * Zitadel - `Assent.Strategy.Zitadel`
+
+<!-- MDOC !-->
 
 ## Installation
 
