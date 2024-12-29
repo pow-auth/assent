@@ -118,7 +118,7 @@ defmodule Assent.Strategy.TelegramTest do
       assert {:error, %Assent.MissingParamError{} = error} =
                Telegram.callback(config, callback_params)
 
-      assert error.expected_key == "hash"
+      assert error.key == "hash"
     end
 
     @tag authorization_channel: :web_mini_app
@@ -131,7 +131,7 @@ defmodule Assent.Strategy.TelegramTest do
       assert {:error, %Assent.MissingParamError{} = error} =
                Telegram.callback(config, callback_params)
 
-      assert error.expected_key == "init_data"
+      assert error.key == "init_data"
     end
 
     test "with missing auth_date param", %{config: config, callback_params: callback_params} do
@@ -140,7 +140,7 @@ defmodule Assent.Strategy.TelegramTest do
       assert {:error, %Assent.MissingParamError{} = error} =
                Telegram.callback(config, callback_params)
 
-      assert error.expected_key == "auth_date"
+      assert error.key == "auth_date"
     end
 
     test "with expired auth_date param", %{config: config, callback_params: callback_params} do

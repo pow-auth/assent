@@ -367,7 +367,7 @@ defmodule Assent.Strategy.OAuthTest do
       params = Map.delete(params, "oauth_token")
 
       assert {:error, %MissingParamError{} = error} = OAuth.callback(config, params)
-      assert error.expected_key == "oauth_token"
+      assert error.key == "oauth_token"
       assert error.params == %{"oauth_verifier" => "hfdp7dh39dks9884"}
     end
 
@@ -375,7 +375,7 @@ defmodule Assent.Strategy.OAuthTest do
       params = Map.delete(params, "oauth_verifier")
 
       assert {:error, %MissingParamError{} = error} = OAuth.callback(config, params)
-      assert error.expected_key == "oauth_verifier"
+      assert error.key == "oauth_verifier"
       assert error.params == %{"oauth_token" => "hh5s93j4hdidpola"}
     end
 

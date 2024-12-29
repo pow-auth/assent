@@ -34,18 +34,33 @@ defmodule Assent do
   end
 
   defmodule MissingParamError do
-    defexception [:expected_key, :params]
+    defexception [:key, :params]
 
     @type t :: %__MODULE__{
-            expected_key: binary(),
+            key: binary(),
             params: map()
           }
 
+    # TODO: Deprecated, remove in 0.3
+    def exception(opts) do
+      opts =
+        case Keyword.fetch(opts, :expected_key) do
+          {:ok, key} ->
+            IO.warn("The `expected_key` option is deprecated. Please use `key` instead.")
+            [key: key, params: opts[:params]]
+
+          :error ->
+            opts
+        end
+
+      struct!(__MODULE__, opts)
+    end
+
     def message(exception) do
-      expected_key = inspect(exception.expected_key)
+      key = inspect(exception.key)
       param_keys = exception.params |> Map.keys() |> Enum.sort() |> inspect()
 
-      "Expected #{expected_key} in params, got: #{param_keys}"
+      "Expected #{key} in params, got: #{param_keys}"
     end
   end
 
@@ -150,7 +165,7 @@ defmodule Assent do
   def fetch_param(params, key) when is_map(params) and is_binary(key) do
     case Map.fetch(params, key) do
       {:ok, value} -> {:ok, value}
-      :error -> {:error, MissingParamError.exception(expected_key: key, params: params)}
+      :error -> {:error, MissingParamError.exception(key: key, params: params)}
     end
   end
 

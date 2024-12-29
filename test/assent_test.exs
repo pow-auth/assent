@@ -19,7 +19,7 @@ defmodule AssentTest do
     assert Assent.fetch_param(params, "a") == {:ok, 1}
 
     assert {:error, %Assent.MissingParamError{} = error} = Assent.fetch_param(params, "c")
-    assert error.expected_key == "c"
+    assert error.key == "c"
     assert error.params == params
     assert Exception.message(error) == "Expected \"c\" in params, got: [\"a\", \"b\"]"
   end

@@ -188,7 +188,7 @@ defmodule Assent.Strategy.OAuth2Test do
       params = Map.delete(params, "state")
 
       assert {:error, %MissingParamError{} = error} = OAuth2.callback(config, params)
-      assert error.expected_key == "state"
+      assert error.key == "state"
     end
 
     test "with invalid `state` param", %{config: config, callback_params: params} do
@@ -233,7 +233,7 @@ defmodule Assent.Strategy.OAuth2Test do
       params = Map.delete(params, "code")
 
       assert {:error, %MissingParamError{} = error} = OAuth2.callback(config, params)
-      assert error.expected_key == "code"
+      assert error.key == "code"
     end
 
     test "with `code_verifier: true` with missing `:code_verifier` in session_params", %{
