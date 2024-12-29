@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.2.11 (TBA)
+## v0.2.11 (2024-12-29)
 
 * Default to using `JSON` instead of `Jason` for JSON parsing on Elixir 1.18
 * `Assent.Strategy.OAuth2` now supports `:state` config option
