@@ -351,7 +351,7 @@ defmodule Assent.Strategy.OIDCTest do
     test "with no `:client_id`", %{config: config, id_token: id_token} do
       config = Keyword.delete(config, :client_id)
 
-      assert {:error, %Assent.Config.MissingKeyError{} = error} =
+      assert {:error, %Assent.MissingConfigError{} = error} =
                OIDC.validate_id_token(config, id_token)
 
       assert error.key == :client_id
@@ -378,7 +378,7 @@ defmodule Assent.Strategy.OIDCTest do
     test "with no `:client_secret`", %{config: config, id_token: id_token} do
       config = Keyword.delete(config, :client_secret)
 
-      assert {:error, %Assent.Config.MissingKeyError{} = error} =
+      assert {:error, %Assent.MissingConfigError{} = error} =
                OIDC.validate_id_token(config, id_token)
 
       assert error.key == :client_secret
@@ -501,7 +501,7 @@ defmodule Assent.Strategy.OIDCTest do
     test "with missing `:session_params` config", %{config: config, id_token: id_token} do
       config = Keyword.delete(config, :session_params)
 
-      assert {:error, %Assent.Config.MissingKeyError{} = error} =
+      assert {:error, %Assent.MissingConfigError{} = error} =
                OIDC.validate_id_token(config, id_token)
 
       assert error.key == :session_params

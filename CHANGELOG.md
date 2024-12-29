@@ -16,6 +16,11 @@
 * `Assent.Strategy.decode_response/2` deprecated accepting result tuples and now accepts `Assent.HTTPAdapter.HTTPResponse` structs
 * `Assent.Strategy.request/5` deprecated in favor of `Assent.Strategy.http_request/5`
 * `Assent.Strategy.decode_response/2` deprecated in favor of `Assent.HTTPAdapter.decode_response/2`
+* `Assent.Config.get/3` deprecated in favor of `Keyword.get/3`
+* `Assent.Config.put/3` deprecated in favor of `Keyword.put/3`
+* `Assent.Config.merge/2` deprecated in favor of `Keyword.merge/2`
+* `Assent.Config.t()` type deprecated in favor of `Keyword.t()` type
+* `Assent.Config.fetch/2` deprecated in favor of `Assent.fetch_config/2`
 
 ## v0.2.10 (2024-04-11)
 

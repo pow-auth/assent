@@ -32,9 +32,9 @@ defmodule Assent.JWTAdapter.JOSE do
   defp jws(alg, opts) do
     jws = %{"alg" => alg}
 
-    case Keyword.get(opts, :private_key_id) do
-      nil -> jws
-      kid -> Map.put(jws, "kid", kid)
+    case Keyword.fetch(opts, :private_key_id) do
+      :error -> jws
+      {:ok, kid} -> Map.put(jws, "kid", kid)
     end
   end
 

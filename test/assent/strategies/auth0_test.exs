@@ -1,7 +1,7 @@
 defmodule Assent.Strategy.Auth0Test do
   use Assent.Test.OAuth2TestCase
 
-  alias Assent.{Config.MissingKeyError, Strategy.Auth0}
+  alias Assent.{MissingConfigError, Strategy.Auth0}
 
   # From https://auth0.com/docs/api/authentication#user-profile
   @user_response %{
@@ -34,7 +34,7 @@ defmodule Assent.Strategy.Auth0Test do
     test "requires domain or base_url configuration", %{config: config} do
       config = Keyword.take(config, [:client_id, :redirect_uri])
 
-      assert {:error, %MissingKeyError{} = error} = Auth0.authorize_url(config)
+      assert {:error, %MissingConfigError{} = error} = Auth0.authorize_url(config)
       assert error.key == :base_url
 
       assert {:ok, %{url: url}} = Auth0.authorize_url(config ++ [base_url: "https://localhost"])

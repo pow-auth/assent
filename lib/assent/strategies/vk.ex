@@ -22,15 +22,15 @@ defmodule Assent.Strategy.VK do
   """
   use Assent.Strategy.OAuth2.Base
 
-  alias Assent.{Config, Strategy.OAuth2}
+  alias Assent.Strategy.OAuth2
 
   @profile_fields ["uid", "first_name", "last_name", "photo_200", "screen_name"]
   @url_params [fields: Enum.join(@profile_fields, ","), v: "5.69", https: "1"]
 
   @impl true
   def default_config(config) do
-    params = Config.get(config, :user_url_params, [])
-    user_url_params = Config.merge(@url_params, params)
+    params = Keyword.get(config, :user_url_params, [])
+    user_url_params = Keyword.merge(@url_params, params)
 
     [
       base_url: "https://api.vk.com",
@@ -59,8 +59,8 @@ defmodule Assent.Strategy.VK do
   def fetch_user(config, token) do
     params =
       config
-      |> Config.get(:user_url_params, [])
-      |> Config.put(:access_token, token["access_token"])
+      |> Keyword.get(:user_url_params, [])
+      |> Keyword.put(:access_token, token["access_token"])
 
     config
     |> OAuth2.fetch_user(token, params)

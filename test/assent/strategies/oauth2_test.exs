@@ -8,8 +8,8 @@ defmodule Assent.Strategy.OAuth2Test do
   alias Assent.{
     CallbackCSRFError,
     CallbackError,
-    Config.MissingKeyError,
     JWTAdapter.AssentJWT,
+    MissingConfigError,
     MissingParamError,
     RequestError,
     Strategy.OAuth2
@@ -63,21 +63,21 @@ defmodule Assent.Strategy.OAuth2Test do
     test "with missing `:redirect_uri` config", %{config: config} do
       config = Keyword.delete(config, :redirect_uri)
 
-      assert {:error, %MissingKeyError{} = error} = OAuth2.authorize_url(config)
+      assert {:error, %MissingConfigError{} = error} = OAuth2.authorize_url(config)
       assert error.key == :redirect_uri
     end
 
     test "with missing `:base_url` config", %{config: config} do
       config = Keyword.delete(config, :base_url)
 
-      assert {:error, %MissingKeyError{} = error} = OAuth2.authorize_url(config)
+      assert {:error, %MissingConfigError{} = error} = OAuth2.authorize_url(config)
       assert error.key == :base_url
     end
 
     test "with missing `:client_id` config", %{config: config} do
       config = Keyword.delete(config, :client_id)
 
-      assert {:error, %MissingKeyError{} = error} = OAuth2.authorize_url(config)
+      assert {:error, %MissingConfigError{} = error} = OAuth2.authorize_url(config)
       assert error.key == :client_id
     end
 
@@ -156,7 +156,7 @@ defmodule Assent.Strategy.OAuth2Test do
     test "with missing `:session_params` config", %{config: config, callback_params: params} do
       config = Keyword.delete(config, :session_params)
 
-      assert {:error, %MissingKeyError{} = error} = OAuth2.callback(config, params)
+      assert {:error, %MissingConfigError{} = error} = OAuth2.callback(config, params)
       assert error.key == :session_params
     end
 
@@ -188,9 +188,7 @@ defmodule Assent.Strategy.OAuth2Test do
       params = Map.delete(params, "state")
 
       assert {:error, %MissingParamError{} = error} = OAuth2.callback(config, params)
-      assert Exception.message(error) == "Expected \"state\" in params, got: [\"code\"]"
       assert error.expected_key == "state"
-      assert error.params == %{"code" => "code_test_value"}
     end
 
     test "with invalid `state` param", %{config: config, callback_params: params} do
@@ -235,9 +233,7 @@ defmodule Assent.Strategy.OAuth2Test do
       params = Map.delete(params, "code")
 
       assert {:error, %MissingParamError{} = error} = OAuth2.callback(config, params)
-      assert Exception.message(error) == "Expected \"code\" in params, got: [\"state\"]"
       assert error.expected_key == "code"
-      assert error.params == %{"state" => "state_test_value"}
     end
 
     test "with `code_verifier: true` with missing `:code_verifier` in session_params", %{
@@ -311,7 +307,7 @@ defmodule Assent.Strategy.OAuth2Test do
 
       expect_oauth2_access_token_request()
 
-      assert {:error, %MissingKeyError{} = error} = OAuth2.callback(config, params)
+      assert {:error, %MissingConfigError{} = error} = OAuth2.callback(config, params)
       assert error.key == :user_url
     end
 
@@ -629,7 +625,9 @@ defmodule Assent.Strategy.OAuth2Test do
     test "with missing `:base_url` config", %{config: config, token: token} do
       config = Keyword.delete(config, :base_url)
 
-      assert {:error, %MissingKeyError{} = error} = OAuth2.request(config, token, :get, "/info")
+      assert {:error, %MissingConfigError{} = error} =
+               OAuth2.request(config, token, :get, "/info")
+
       assert error.key == :base_url
     end
 

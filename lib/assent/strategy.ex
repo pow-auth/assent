@@ -26,11 +26,9 @@ defmodule Assent.Strategy do
         end
       end
   """
-  alias Assent.Config
-
-  @callback authorize_url(Config.t()) ::
+  @callback authorize_url(Keyword.t()) ::
               {:ok, %{:url => binary(), optional(atom()) => any()}} | {:error, term()}
-  @callback callback(Config.t(), map()) ::
+  @callback callback(Keyword.t(), map()) ::
               {:ok, %{:user => map(), optional(atom()) => any()}} | {:error, term()}
 
   @doc """
@@ -39,10 +37,10 @@ defmodule Assent.Strategy do
   See `Assent.HTTPAdapter.request/5`.
   """
   def http_request(method, url, body, headers, config) do
-    Assent.HTTPAdapter.request(method, url, body, headers, http_adapter_opts(config))
-  end
+    opts = Keyword.take(config, [:http_adapter, :json_library])
 
-  defp http_adapter_opts(config), do: Keyword.take(config, [:http_adapter, :json_library])
+    Assent.HTTPAdapter.request(method, url, body, headers, opts)
+  end
 
   @doc """
   Decode a JSON string.
@@ -50,17 +48,18 @@ defmodule Assent.Strategy do
   ## Options
 
   - `:json_library` - The JSON library to use, see
-    `Assent.Config.json_library/1`
+    `Assent.json_library/1`
   """
-  @spec decode_json(binary(), Config.t()) :: {:ok, term()} | {:error, term()}
-  def decode_json(response, config), do: Config.json_library(config).decode(response)
+  @spec decode_json(binary(), Keyword.t()) :: {:ok, term()} | {:error, term()}
+  def decode_json(response, config), do: Assent.json_library(config).decode(response)
 
   @doc """
   Verifies a JSON Web Token.
 
   See `Assent.JWTAdapter.verify/3` for options.
   """
-  @spec verify_jwt(binary(), binary() | map() | nil, Config.t()) :: {:ok, map()} | {:error, any()}
+  @spec verify_jwt(binary(), binary() | map() | nil, Keyword.t()) ::
+          {:ok, map()} | {:error, any()}
   def verify_jwt(token, secret, config),
     do: Assent.JWTAdapter.verify(token, secret, jwt_adapter_opts(config))
 
@@ -72,7 +71,7 @@ defmodule Assent.Strategy do
 
   See `Assent.JWTAdapter.sign/3` for options.
   """
-  @spec sign_jwt(map(), binary(), binary(), Config.t()) :: {:ok, binary()} | {:error, term()}
+  @spec sign_jwt(map(), binary(), binary(), Keyword.t()) :: {:ok, binary()} | {:error, term()}
   def sign_jwt(claims, alg, secret, config),
     do: Assent.JWTAdapter.sign(claims, alg, secret, jwt_adapter_opts(config))
 

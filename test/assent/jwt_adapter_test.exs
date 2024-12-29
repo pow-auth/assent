@@ -46,7 +46,7 @@ defmodule Assent.JWTAdapterTest do
   end
 
   test "load_private_key/1" do
-    assert {:error, %Assent.Config.MissingKeyError{} = error} = JWTAdapter.load_private_key([])
+    assert {:error, %Assent.MissingConfigError{} = error} = JWTAdapter.load_private_key([])
     assert error.key == :private_key
 
     assert JWTAdapter.load_private_key(private_key: "private_key") == {:ok, "private_key"}

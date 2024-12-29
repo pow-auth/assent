@@ -26,7 +26,7 @@ defmodule Assent.HTTPAdapter do
         end
       end
   """
-  alias Assent.{Config, InvalidResponseError, ServerUnreachableError}
+  alias Assent.{InvalidResponseError, ServerUnreachableError}
 
   defmodule HTTPResponse do
     @moduledoc """
@@ -100,12 +100,12 @@ defmodule Assent.HTTPAdapter do
   - `:http_adapter` - The HTTP adapter to use, defaults to
     `#{inspect(elem(@default_http_client, 0))}`.
   - `:json_library` - The JSON library to use, see
-    `Assent.Config.json_library/1`.
+    `Assent.json_library/1`.
   """
   @spec request(atom(), binary(), binary() | nil, list(), Keyword.t()) ::
           {:ok, HTTPResponse.t()} | {:error, HTTPResponse.t()} | {:error, term()}
   def request(method, url, body, headers, opts) do
-    {http_adapter, http_adapter_opts} = get_http_adapter(opts)
+    {http_adapter, http_adapter_opts} = get_adapter(opts)
 
     method
     |> http_adapter.request(url, body, headers, http_adapter_opts)
@@ -133,7 +133,7 @@ defmodule Assent.HTTPAdapter do
     end
   end
 
-  defp get_http_adapter(opts) do
+  defp get_adapter(opts) do
     default_http_adapter = Application.get_env(:assent, :http_adapter, @default_http_client)
 
     case Keyword.get(opts, :http_adapter, default_http_adapter) do
@@ -148,7 +148,7 @@ defmodule Assent.HTTPAdapter do
   ## Options
 
   - `:json_library` - The JSON library to use, see
-    `Assent.Config.json_library/1`
+    `Assent.json_library/1`
   """
   @spec decode_response(HTTPResponse.t(), Keyword.t()) ::
           {:ok, HTTPResponse.t()} | {:error, InvalidResponseError.t()}
@@ -162,10 +162,10 @@ defmodule Assent.HTTPAdapter do
   defp decode(headers, body, opts) when is_binary(body) do
     case List.keyfind(headers, "content-type", 0) do
       {"content-type", "application/json" <> _rest} ->
-        Config.json_library(opts).decode(body)
+        Assent.json_library(opts).decode(body)
 
       {"content-type", "text/javascript" <> _rest} ->
-        Config.json_library(opts).decode(body)
+        Assent.json_library(opts).decode(body)
 
       {"content-type", "application/x-www-form-urlencoded" <> _reset} ->
         {:ok, URI.decode_query(body)}

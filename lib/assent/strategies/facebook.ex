@@ -62,12 +62,12 @@ defmodule Assent.Strategy.Facebook do
 
       {:ok, %{user: user, token: token}} =
         config
-        |> Assent.Config.put(:redirect_uri, "")
+        |> Keyword.put(:redirect_uri, "")
         |> Assent.Strategy.Facebook.callback(params)
   """
   use Assent.Strategy.OAuth2.Base
 
-  alias Assent.{Config, Strategy.OAuth2}
+  alias Assent.Strategy.OAuth2
 
   @api_version "4.0"
 
@@ -86,7 +86,7 @@ defmodule Assent.Strategy.Facebook do
 
   @impl true
   def normalize(config, user) do
-    with {:ok, base_url} <- Config.fetch(config, :base_url) do
+    with {:ok, base_url} <- Assent.fetch_config(config, :base_url) do
       {:ok,
        %{
          "sub" => user["id"],
@@ -107,8 +107,8 @@ defmodule Assent.Strategy.Facebook do
 
   @impl true
   def fetch_user(config, access_token) do
-    with {:ok, fields} <- Config.fetch(config, :user_url_request_fields),
-         {:ok, client_secret} <- Config.fetch(config, :client_secret) do
+    with {:ok, fields} <- Assent.fetch_config(config, :user_url_request_fields),
+         {:ok, client_secret} <- Assent.fetch_config(config, :client_secret) do
       params = [
         appsecret_proof: appsecret_proof(access_token, client_secret),
         fields: fields,

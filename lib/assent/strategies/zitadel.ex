@@ -18,13 +18,13 @@ defmodule Assent.Strategy.Zitadel do
   """
   use Assent.Strategy.OIDC.Base
 
-  alias Assent.{Config, Strategy.OIDC}
+  alias Assent.Strategy.OIDC
 
   @impl true
   def default_config(config) do
     trusted_audiences =
       config
-      |> Config.get(:resource_id, nil)
+      |> Keyword.get(:resource_id)
       |> List.wrap()
 
     [

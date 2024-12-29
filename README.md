@@ -137,7 +137,7 @@ defmodule ProviderAuth do
 
     @config
     # Session params should be added to the config so the strategy can use them
-    |> Config.put(:session_params, session_params)
+    |> Keyword.put(:session_params, session_params)
     |> Github.callback(params)
     |> case do
       {:ok, %{user: user, token: token}} ->
@@ -166,8 +166,6 @@ config :my_app, :strategies,
 
 ```elixir
 defmodule MultiProviderAuth do
-  alias Assent.Config
-
   @spec request(atom()) :: {:ok, map()} | {:error, term()}
   def request(provider) do
     config = config!(provider)
@@ -180,7 +178,7 @@ defmodule MultiProviderAuth do
     config = config!(provider)
 
     config
-    |> Assent.Config.put(:session_params, session_params)
+    |> Keyword.put(:session_params, session_params)
     |> config[:strategy].callback(params)
   end
 
@@ -189,7 +187,7 @@ defmodule MultiProviderAuth do
       Application.get_env(:my_app, :strategies)[provider] ||
         raise "No provider configuration for #{provider}"
     
-    Config.put(config, :redirect_uri, "http://localhost:4000/oauth/#{provider}/callback")
+    Keyword.put(config, :redirect_uri, "http://localhost:4000/oauth/#{provider}/callback")
   end
 end
 ```

@@ -8,7 +8,7 @@ defmodule Assent.JWTAdapter.AssentJWT do
 
   See `Assent.JWTAdapter` for more.
   """
-  alias Assent.{Config, JWTAdapter}
+  alias Assent.JWTAdapter
 
   @behaviour Assent.JWTAdapter
 
@@ -26,9 +26,9 @@ defmodule Assent.JWTAdapter.AssentJWT do
 
   defp encode_header(alg, opts) do
     header =
-      case Keyword.has_key?(opts, :private_key_id) do
-        false -> %{"typ" => "JWT", "alg" => alg}
-        true -> %{"typ" => "JWT", "alg" => alg, "kid" => Keyword.get(opts, :private_key_id)}
+      case Keyword.fetch(opts, :private_key_id) do
+        :error -> %{"typ" => "JWT", "alg" => alg}
+        {:ok, private_key_id} -> %{"typ" => "JWT", "alg" => alg, "kid" => private_key_id}
       end
 
     case encode_json_base64(header, opts) do
@@ -41,7 +41,7 @@ defmodule Assent.JWTAdapter.AssentJWT do
   end
 
   defp encode_json_base64(map, opts) do
-    with {:ok, json_library} <- Config.fetch(opts, :json_library),
+    with {:ok, json_library} <- Assent.fetch_config(opts, :json_library),
          {:ok, json} <- json_encode(json_library, map) do
       {:ok, Base.url_encode64(json, padding: false)}
     end
@@ -173,7 +173,7 @@ defmodule Assent.JWTAdapter.AssentJWT do
   end
 
   defp decode_header(header, opts) do
-    with {:ok, json_library} <- Config.fetch(opts, :json_library),
+    with {:ok, json_library} <- Assent.fetch_config(opts, :json_library),
          {:ok, header} <- decode_base64_url(header),
          {:ok, header} <- decode_json(header, json_library),
          {:ok, alg} <- fetch_alg(header) do
@@ -202,7 +202,7 @@ defmodule Assent.JWTAdapter.AssentJWT do
   defp fetch_alg(_header), do: {:error, "No \"alg\" found in header"}
 
   defp decode_claims(claims, opts) do
-    with {:ok, json_library} <- Config.fetch(opts, :json_library),
+    with {:ok, json_library} <- Assent.fetch_config(opts, :json_library),
          {:ok, claims} <- decode_base64_url(claims),
          {:ok, claims} <- decode_json(claims, json_library) do
       {:ok, claims}

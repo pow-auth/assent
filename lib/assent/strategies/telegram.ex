@@ -86,18 +86,18 @@ defmodule Assent.Strategy.Telegram do
 
   @behaviour Assent.Strategy
 
-  alias Assent.{CallbackError, Config, MissingParamError, Strategy}
+  alias Assent.{CallbackError, Strategy}
 
   @auth_ttl_seconds 60
   @web_mini_app :web_mini_app
   @login_widget :login_widget
 
   @impl Assent.Strategy
-  @spec authorize_url(Config.t()) :: {:ok, %{url: binary()}} | {:error, term()}
+  @spec authorize_url(Keyword.t()) :: {:ok, %{url: binary()}} | {:error, term()}
   def authorize_url(config) do
-    with {:ok, bot_token} <- Config.fetch(config, :bot_token),
-         {:ok, origin} <- Config.fetch(config, :origin),
-         {:ok, return_to} <- Config.fetch(config, :return_to) do
+    with {:ok, bot_token} <- Assent.fetch_config(config, :bot_token),
+         {:ok, origin} <- Assent.fetch_config(config, :origin),
+         {:ok, return_to} <- Assent.fetch_config(config, :return_to) do
       [bot_id | _rest] = String.split(bot_token, ":")
 
       query =
@@ -114,7 +114,7 @@ defmodule Assent.Strategy.Telegram do
   end
 
   @impl Assent.Strategy
-  @spec callback(Config.t(), map()) :: {:ok, %{user: map()} | {:error, term()}}
+  @spec callback(Keyword.t(), map()) :: {:ok, %{user: map()} | {:error, term()}}
   def callback(config, params) do
     with {:ok, authorization_channel} <- fetch_authorization_channel(config),
          {:ok, {hash, params}} <- split_hash_params(config, params, authorization_channel),
@@ -127,7 +127,7 @@ defmodule Assent.Strategy.Telegram do
   end
 
   defp fetch_authorization_channel(config) do
-    case Config.get(config, :authorization_channel, @login_widget) do
+    case Keyword.get(config, :authorization_channel, @login_widget) do
       @login_widget ->
         {:ok, @login_widget}
 
@@ -143,48 +143,45 @@ defmodule Assent.Strategy.Telegram do
   end
 
   defp split_hash_params(_config, params, @login_widget) do
-    case Map.split(params, ["hash"]) do
-      {%{"hash" => hash}, params} -> {:ok, {hash, params}}
-      {_, _} -> {:error, MissingParamError.exception(expected_key: "hash", params: params)}
+    with {:ok, hash} <- Assent.fetch_param(params, "hash") do
+      {:ok, {hash, Map.delete(params, "hash")}}
     end
   end
 
-  defp split_hash_params(config, %{"init_data" => init_data}, @web_mini_app) do
-    split_hash_params(config, URI.decode_query(init_data), @login_widget)
+  defp split_hash_params(config, params, @web_mini_app) do
+    with {:ok, init_data} <- Assent.fetch_param(params, "init_data") do
+      split_hash_params(config, URI.decode_query(init_data), @login_widget)
+    end
   end
 
-  defp split_hash_params(_config, params, @web_mini_app),
-    do: {:error, MissingParamError.exception(expected_key: "init_data", params: params)}
-
   defp generate_token_signature(config, @login_widget) do
-    case Config.fetch(config, :bot_token) do
+    case Assent.fetch_config(config, :bot_token) do
       {:ok, bot_token} -> {:ok, :crypto.hash(:sha256, bot_token)}
       {:error, error} -> {:error, error}
     end
   end
 
   defp generate_token_signature(config, @web_mini_app) do
-    case Config.fetch(config, :bot_token) do
+    case Assent.fetch_config(config, :bot_token) do
       {:ok, bot_token} -> {:ok, :crypto.mac(:hmac, :sha256, "WebAppData", bot_token)}
       {:error, error} -> {:error, error}
     end
   end
 
-  defp verify_ttl(_config, %{"auth_date" => auth_date}) do
-    auth_timestamp = (is_binary(auth_date) && String.to_integer(auth_date)) || auth_date
+  defp verify_ttl(_config, params) do
+    with {:ok, auth_date} <- Assent.fetch_param(params, "auth_date") do
+      auth_timestamp = (is_binary(auth_date) && String.to_integer(auth_date)) || auth_date
 
-    DateTime.utc_now()
-    |> DateTime.to_unix(:second)
-    |> Kernel.-(auth_timestamp)
-    |> Kernel.<=(@auth_ttl_seconds)
-    |> case do
-      true -> :ok
-      false -> {:error, CallbackError.exception(message: "Authorization request has expired")}
+      DateTime.utc_now()
+      |> DateTime.to_unix(:second)
+      |> Kernel.-(auth_timestamp)
+      |> Kernel.<=(@auth_ttl_seconds)
+      |> case do
+        true -> :ok
+        false -> {:error, CallbackError.exception(message: "Authorization request has expired")}
+      end
     end
   end
-
-  defp verify_ttl(_config, params),
-    do: {:error, MissingParamError.exception(expected_key: "auth_date", params: params)}
 
   defp verify_hash(secret, hash, params) do
     data =

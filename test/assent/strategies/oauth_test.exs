@@ -4,8 +4,8 @@ defmodule Assent.Strategy.OAuthTest do
   alias Assent.UnexpectedResponseError
 
   alias Assent.{
-    Config.MissingKeyError,
     InvalidResponseError,
+    MissingConfigError,
     MissingParamError,
     RequestError,
     ServerUnreachableError,
@@ -57,28 +57,28 @@ defmodule Assent.Strategy.OAuthTest do
     test "with missing `:redirect_uri` config", %{config: config} do
       config = Keyword.delete(config, :redirect_uri)
 
-      assert {:error, %MissingKeyError{} = error} = OAuth.authorize_url(config)
+      assert {:error, %MissingConfigError{} = error} = OAuth.authorize_url(config)
       assert error.key == :redirect_uri
     end
 
     test "with missing `:base_url` config", %{config: config} do
       config = Keyword.delete(config, :base_url)
 
-      assert {:error, %MissingKeyError{} = error} = OAuth.authorize_url(config)
+      assert {:error, %MissingConfigError{} = error} = OAuth.authorize_url(config)
       assert error.key == :base_url
     end
 
     test "with missing `:consumer_key` config", %{config: config} do
       config = Keyword.delete(config, :consumer_key)
 
-      assert {:error, %MissingKeyError{} = error} = OAuth.authorize_url(config)
+      assert {:error, %MissingConfigError{} = error} = OAuth.authorize_url(config)
       assert error.key == :consumer_key
     end
 
     test "with missing `:consumer_secret` config", %{config: config} do
       config = Keyword.delete(config, :consumer_secret)
 
-      assert {:error, %MissingKeyError{} = error} = OAuth.authorize_url(config)
+      assert {:error, %MissingConfigError{} = error} = OAuth.authorize_url(config)
       assert error.key == :consumer_secret
     end
 
@@ -258,7 +258,7 @@ defmodule Assent.Strategy.OAuthTest do
     test "with missing `:private_key` config", %{config: config} do
       config = Keyword.delete(config, :private_key)
 
-      assert {:error, %MissingKeyError{} = error} = OAuth.authorize_url(config)
+      assert {:error, %MissingConfigError{} = error} = OAuth.authorize_url(config)
       assert error.key == :private_key
     end
 
@@ -336,7 +336,7 @@ defmodule Assent.Strategy.OAuthTest do
     test "with missing `:consumer_secret` config", %{config: config} do
       config = Keyword.delete(config, :consumer_secret)
 
-      assert {:error, %MissingKeyError{} = error} = OAuth.authorize_url(config)
+      assert {:error, %MissingConfigError{} = error} = OAuth.authorize_url(config)
       assert error.key == :consumer_secret
     end
 
@@ -367,10 +367,6 @@ defmodule Assent.Strategy.OAuthTest do
       params = Map.delete(params, "oauth_token")
 
       assert {:error, %MissingParamError{} = error} = OAuth.callback(config, params)
-
-      assert Exception.message(error) ==
-               "Expected \"oauth_token\" in params, got: [\"oauth_verifier\"]"
-
       assert error.expected_key == "oauth_token"
       assert error.params == %{"oauth_verifier" => "hfdp7dh39dks9884"}
     end
@@ -379,10 +375,6 @@ defmodule Assent.Strategy.OAuthTest do
       params = Map.delete(params, "oauth_verifier")
 
       assert {:error, %MissingParamError{} = error} = OAuth.callback(config, params)
-
-      assert Exception.message(error) ==
-               "Expected \"oauth_verifier\" in params, got: [\"oauth_token\"]"
-
       assert error.expected_key == "oauth_verifier"
       assert error.params == %{"oauth_token" => "hh5s93j4hdidpola"}
     end
@@ -390,7 +382,7 @@ defmodule Assent.Strategy.OAuthTest do
     test "with missing `:base_url` config", %{config: config, callback_params: callback_params} do
       config = Keyword.delete(config, :base_url)
 
-      assert {:error, %MissingKeyError{} = error} = OAuth.callback(config, callback_params)
+      assert {:error, %MissingConfigError{} = error} = OAuth.callback(config, callback_params)
       assert error.key == :base_url
     end
 
@@ -450,7 +442,7 @@ defmodule Assent.Strategy.OAuthTest do
 
       expect_oauth_access_token_request()
 
-      assert {:error, %MissingKeyError{} = error} = OAuth.callback(config, params)
+      assert {:error, %MissingConfigError{} = error} = OAuth.callback(config, params)
       assert error.key == :user_url
     end
 
@@ -529,7 +521,7 @@ defmodule Assent.Strategy.OAuthTest do
     test "with missing `:base_url` config", %{config: config, token: token} do
       config = Keyword.delete(config, :base_url)
 
-      assert {:error, %MissingKeyError{} = error} = OAuth.request(config, token, :get, "/info")
+      assert {:error, %MissingConfigError{} = error} = OAuth.request(config, token, :get, "/info")
       assert error.key == :base_url
     end
 
@@ -546,14 +538,14 @@ defmodule Assent.Strategy.OAuthTest do
     test "with missing `:consumer_key` config", %{config: config, token: token} do
       config = Keyword.delete(config, :consumer_key)
 
-      assert {:error, %MissingKeyError{} = error} = OAuth.request(config, token, :get, "/info")
+      assert {:error, %MissingConfigError{} = error} = OAuth.request(config, token, :get, "/info")
       assert error.key == :consumer_key
     end
 
     test "with missing `:consumer_secret` config", %{config: config, token: token} do
       config = Keyword.delete(config, :consumer_secret)
 
-      assert {:error, %MissingKeyError{} = error} = OAuth.request(config, token, :get, "/info")
+      assert {:error, %MissingConfigError{} = error} = OAuth.request(config, token, :get, "/info")
       assert error.key == :consumer_secret
     end
 

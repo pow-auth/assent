@@ -48,13 +48,13 @@ defmodule Assent.Strategy.OIDC do
 
       {:ok, {url: url, session_params: session_params}} =
         config
-        |> Assent.Config.put(:redirect_uri, "http://localhost:4000/auth/callback")
+        |> Keyword.put(:redirect_uri, "http://localhost:4000/auth/callback")
         |> Assent.Strategy.OIDC.authorize_url()
 
       {:ok, %{user: user, token: token}} =
         config
-        |> Assent.Config.put(:redirect_uri, "http://localhost:4000/auth/callback")
-        |> Assent.Config.put(:session_params, session_params)
+        |> Keyword.put(:redirect_uri, "http://localhost:4000/auth/callback")
+        |> Keyword.put(:session_params, session_params)
         |> Assent.Strategy.OIDC.callback(params)
 
   ## Nonce
@@ -114,22 +114,22 @@ defmodule Assent.Strategy.OIDC do
   See `Assent.Strategy.OAuth2.authorize_url/1` for more.
   """
   @impl true
-  @spec authorize_url(Config.t()) :: on_authorize_url()
+  @spec authorize_url(Keyword.t()) :: on_authorize_url()
   def authorize_url(config) do
     with {:ok, openid_config} <- fetch_openid_configuration(config),
          {:ok, authorize_url} <-
            fetch_from_openid_config(openid_config, "authorization_endpoint"),
          {:ok, params} <- fetch_authorization_params(config) do
       config
-      |> Config.put(:authorization_params, params)
-      |> Config.put(:authorize_url, authorize_url)
+      |> Keyword.put(:authorization_params, params)
+      |> Keyword.put(:authorize_url, authorize_url)
       |> OAuth2.authorize_url()
       |> add_nonce_to_session_params(config)
     end
   end
 
   defp fetch_openid_configuration(config) do
-    case Config.get(config, :openid_configuration, nil) do
+    case Keyword.get(config, :openid_configuration, nil) do
       nil -> fetch_openid_configuration_from_uri(config)
       openid_config -> {:ok, openid_config}
     end
@@ -138,7 +138,7 @@ defmodule Assent.Strategy.OIDC do
   defp fetch_openid_configuration_from_uri(config) do
     with {:ok, base_url} <- Config.__base_url__(config) do
       configuration_url =
-        Config.get(config, :openid_configuration_uri, "/.well-known/openid-configuration")
+        Keyword.get(config, :openid_configuration_uri, "/.well-known/openid-configuration")
 
       url = Helpers.to_url(base_url, configuration_url)
 
@@ -168,7 +168,7 @@ defmodule Assent.Strategy.OIDC do
   defp fetch_authorization_params(config) do
     new_params =
       config
-      |> Config.get(:authorization_params, [])
+      |> Keyword.get(:authorization_params, [])
       |> add_default_scope_param(config)
       |> add_nonce_param(config)
 
@@ -176,26 +176,27 @@ defmodule Assent.Strategy.OIDC do
   end
 
   defp add_default_scope_param(params, config) do
-    scope = Config.get(params, :scope, "")
-    default = Config.get(config, :openid_default_scope, "openid")
-    new_scope = String.trim(default <> " " <> scope)
+    default = Keyword.get(config, :openid_default_scope, "openid")
 
-    Config.put(params, :scope, new_scope)
+    case Keyword.fetch(params, :scope) do
+      :error -> Keyword.put(params, :scope, default)
+      {:ok, scope} -> Keyword.put(params, :scope, String.trim("#{default} #{scope}"))
+    end
   end
 
   defp add_nonce_param(params, config) do
-    case Config.get(config, :nonce, nil) do
-      nil -> params
-      nonce -> Config.put(params, :nonce, nonce)
+    case Keyword.fetch(config, :nonce) do
+      :error -> params
+      {:ok, nonce} -> Keyword.put(params, :nonce, nonce)
     end
   end
 
   defp add_nonce_to_session_params({:ok, resp}, config) do
-    case Config.get(config, :nonce, nil) do
-      nil ->
+    case Keyword.fetch(config, :nonce) do
+      :error ->
         {:ok, resp}
 
-      nonce ->
+      {:ok, nonce} ->
         session_params =
           resp
           |> Map.get(:session_params, %{})
@@ -224,21 +225,21 @@ defmodule Assent.Strategy.OIDC do
   See `Assent.Strategy.OAuth2.callback/3` for more.
   """
   @impl true
-  @spec callback(Config.t(), map(), atom()) :: on_callback()
+  @spec callback(Keyword.t(), map(), atom()) :: on_callback()
   def callback(config, params, strategy \\ __MODULE__) do
     with {:ok, openid_config} <- fetch_openid_configuration(config),
          {:ok, method} <- fetch_client_authentication_method(openid_config, config),
          {:ok, token_url} <- fetch_from_openid_config(openid_config, "token_endpoint") do
       config
-      |> Config.put(:openid_configuration, openid_config)
-      |> Config.put(:auth_method, method)
-      |> Config.put(:token_url, token_url)
+      |> Keyword.put(:openid_configuration, openid_config)
+      |> Keyword.put(:auth_method, method)
+      |> Keyword.put(:token_url, token_url)
       |> OAuth2.callback(params, strategy)
     end
   end
 
   defp fetch_client_authentication_method(openid_config, config) do
-    method = Config.get(config, :client_authentication_method, "client_secret_basic")
+    method = Keyword.get(config, :client_authentication_method, "client_secret_basic")
     methods = Map.get(openid_config, "token_endpoint_auth_methods_supported")
     supported_method? = (is_nil(methods) && true) || method in methods
 
@@ -272,7 +273,7 @@ defmodule Assent.Strategy.OIDC do
   The ID Token is validated, and the claims is returned as the user params.
   Use `fetch_userinfo/2` to fetch the claims from the `userinfo` endpoint.
   """
-  @spec fetch_user(Config.t(), map()) :: {:ok, map()} | {:error, term()}
+  @spec fetch_user(Keyword.t(), map()) :: {:ok, map()} | {:error, term()}
   def fetch_user(config, token) do
     with {:ok, id_token} <- fetch_id_token(token),
          {:ok, jwt} <- validate_id_token(config, id_token) do
@@ -300,12 +301,12 @@ defmodule Assent.Strategy.OIDC do
   The ID Token will be validated per
   [OpenID Connect Core 1.0 rules](https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation).
   """
-  @spec validate_id_token(Config.t(), binary()) :: {:ok, map()} | {:error, term()}
+  @spec validate_id_token(Keyword.t(), binary()) :: {:ok, map()} | {:error, term()}
   def validate_id_token(config, id_token) do
-    expected_alg = Config.get(config, :id_token_signed_response_alg, "RS256")
+    expected_alg = Keyword.get(config, :id_token_signed_response_alg, "RS256")
 
     with {:ok, openid_config} <- fetch_openid_configuration(config),
-         {:ok, client_id} <- Config.fetch(config, :client_id),
+         {:ok, client_id} <- Assent.fetch_config(config, :client_id),
          {:ok, issuer} <- fetch_from_openid_config(openid_config, "issuer"),
          {:ok, jwt} <- verify_jwt(id_token, openid_config, config),
          :ok <- validate_required_fields(jwt),
@@ -331,7 +332,7 @@ defmodule Assent.Strategy.OIDC do
   defp peek_header(encoded, config) do
     with {:ok, header} <- split_header(encoded),
          {:ok, json} <- decode_base64_url(header) do
-      Config.json_library(config).decode(json)
+      Assent.json_library(config).decode(json)
     end
   end
 
@@ -352,7 +353,7 @@ defmodule Assent.Strategy.OIDC do
   defp fetch_secret(%{"alg" => "none"}, _openid_config, _config), do: {:ok, ""}
 
   defp fetch_secret(%{"alg" => "HS" <> _rest}, _openid_config, config) do
-    Config.fetch(config, :client_secret)
+    Assent.fetch_config(config, :client_secret)
   end
 
   defp fetch_secret(header, openid_config, config) do
@@ -419,7 +420,7 @@ defmodule Assent.Strategy.OIDC do
   defp validate_audience(%{claims: %{"aud" => [client_id]}}, client_id, _config), do: :ok
 
   defp validate_audience(%{claims: %{"aud" => auds}}, client_id, config) do
-    trusted_audiences = Config.get(config, :trusted_audiences, []) ++ [client_id]
+    trusted_audiences = Keyword.get(config, :trusted_audiences, []) ++ [client_id]
     missing_client_id? = client_id not in auds
     untrusted_auds = Enum.filter(auds, &(&1 not in trusted_audiences))
 
@@ -461,9 +462,9 @@ defmodule Assent.Strategy.OIDC do
   end
 
   defp validate_issued_at(%{claims: %{"iat" => iat}}, config) do
-    case Config.get(config, :id_token_ttl_seconds, nil) do
-      nil -> :ok
-      ttl -> validate_ttl_reached(iat, ttl)
+    case Keyword.fetch(config, :id_token_ttl_seconds) do
+      :error -> :ok
+      {:ok, ttl} -> validate_ttl_reached(iat, ttl)
     end
   end
 
@@ -477,7 +478,7 @@ defmodule Assent.Strategy.OIDC do
   end
 
   defp validate_nonce(jwt, config) do
-    with {:ok, session_params} <- Config.fetch(config, :session_params) do
+    with {:ok, session_params} <- Assent.fetch_config(config, :session_params) do
       validate_for_nonce(session_params, jwt)
     end
   end
@@ -506,7 +507,7 @@ defmodule Assent.Strategy.OIDC do
   The returned claims will be validated against the `id_token` verifying that
   `sub` is equal.
   """
-  @spec fetch_userinfo(Config.t(), map()) :: {:ok, map()} | {:error, term()}
+  @spec fetch_userinfo(Keyword.t(), map()) :: {:ok, map()} | {:error, term()}
   def fetch_userinfo(config, token) do
     with {:ok, openid_config} <- fetch_openid_configuration(config),
          {:ok, userinfo_url} <- fetch_from_openid_config(openid_config, "userinfo_endpoint"),

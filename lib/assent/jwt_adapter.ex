@@ -30,9 +30,6 @@ defmodule Assent.JWTAdapter do
         end
       end
   """
-
-  alias Assent.Config
-
   @callback sign(map(), binary(), binary(), Keyword.t()) :: {:ok, binary()} | {:error, term()}
   @callback verify(binary(), binary() | map() | nil, Keyword.t()) ::
               {:ok, map()} | {:error, term()}
@@ -45,7 +42,7 @@ defmodule Assent.JWTAdapter do
   ## Options
 
   - `:json_library` - The JSON library to use, optional, see
-    `Assent.Config.json_library/1`.
+    `Assent.json_library/1`.
   - `:jwt_adapter` - The JWT adapter module to use, optional, defaults to
     `#{inspect(@default_jwt_adapter)}`
   """
@@ -61,7 +58,7 @@ defmodule Assent.JWTAdapter do
   ## Options
 
   - `:json_library` - The JSON library to use, optional, see
-    `Assent.Config.json_library/1`.
+    `Assent.json_library/1`.
   - `:jwt_adapter` - The JWT adapter module to use, optional, defaults to
     `#{inspect(@default_jwt_adapter)}`
   """
@@ -72,7 +69,7 @@ defmodule Assent.JWTAdapter do
   end
 
   defp get_adapter(opts) do
-    default_opts = Keyword.put(opts, :json_library, Config.json_library(opts))
+    default_opts = Keyword.put(opts, :json_library, Assent.json_library(opts))
     default_jwt_adapter = Application.get_env(:assent, :jwt_adapter, @default_jwt_adapter)
 
     case Keyword.get(opts, :jwt_adapter, default_jwt_adapter) do
@@ -91,9 +88,9 @@ defmodule Assent.JWTAdapter do
   """
   @spec load_private_key(Keyword.t()) :: {:ok, binary()} | {:error, term()}
   def load_private_key(config) do
-    case Config.fetch(config, :private_key_path) do
+    case Assent.fetch_config(config, :private_key_path) do
       {:ok, path} -> read(path)
-      {:error, _any} -> Config.fetch(config, :private_key)
+      {:error, _any} -> Assent.fetch_config(config, :private_key)
     end
   end
 
