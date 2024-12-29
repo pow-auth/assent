@@ -710,16 +710,4 @@ defmodule Assent.Strategy.OAuth2Test do
     assert {:ok, response} = OAuth2.request(config, token, :post, "/info", a: 1)
     assert response.body == %{"success" => true}
   end
-
-  ## Deprecated
-
-  test "authorize_url/2 with state in authorization_params", %{config: config} do
-    assert {:ok, %{session_params: %{state: state}}} =
-             config
-             |> Keyword.put(:client_id, @client_id)
-             |> Keyword.put(:authorization_params, state: "state_test_value")
-             |> OAuth2.authorize_url()
-
-    assert state == "state_test_value"
-  end
 end

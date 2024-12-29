@@ -40,7 +40,6 @@ defmodule Assent.MixProject do
       {:certifi, ">= 0.0.0", optional: true},
       {:ssl_verify_fun, ">= 0.0.0", optional: true},
       {:finch, "~> 0.15", optional: true},
-      {:mint, "~> 1.0", optional: true},
       {:req, "~> 0.4", optional: true},
       # Docs and tests
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},

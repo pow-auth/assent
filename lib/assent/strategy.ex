@@ -170,30 +170,4 @@ defmodule Assent.Strategy do
   end
 
   def __normalize__({:error, error}, _config, _strategy), do: {:error, error}
-
-  # TODO: Remove in 0.3
-  @deprecated "Use http_request/4 instead"
-  def request(method, url, body, headers, config),
-    do: http_request(method, url, body, headers, config)
-
-  # TODO: Remove in 0.3
-  def decode_response({res, %Assent.HTTPAdapter.HTTPResponse{} = response}, config) do
-    IO.warn("Passing {:ok | :error, response} to decode_response/2 is deprecated")
-
-    case decode_response(response, config) do
-      {:ok, body} -> {res, %{response | body: body}}
-      {:error, error} -> {:error, error}
-    end
-  end
-
-  # TODO: Remove in 0.3
-  def decode_response({:error, error}, _config) do
-    IO.warn("Passing {:error, error} to decode_response/2 is deprecated")
-
-    {:error, error}
-  end
-
-  # TODO: Remove in 0.3
-  @deprecated "Use Assent.HTTPAdapter.decode_response/2 instead"
-  def decode_response(response, config), do: Assent.HTTPAdapter.decode_response(response, config)
 end
