@@ -271,6 +271,27 @@ defmodule Assent.Strategy.OAuth2 do
     end
   end
 
+  @doc """
+  Grants an access token.
+  """
+  @spec grant_access_token(Config.t(), binary(), Keyword.t()) :: {:ok, map()} | {:error, term()}
+  def grant_access_token(config, grant_type, params) do
+    auth_method = Config.get(config, :auth_method, nil)
+    token_url = Config.get(config, :token_url, "/oauth/token")
+
+    with {:ok, base_url} <- Config.__base_url__(config),
+         {:ok, auth_headers, auth_body} <- authentication_params(auth_method, config) do
+      headers = [{"content-type", "application/x-www-form-urlencoded"}] ++ auth_headers
+      params = Keyword.merge(params, Keyword.put(auth_body, :grant_type, grant_type))
+      url = Helpers.to_url(base_url, token_url)
+      body = URI.encode_query(params)
+
+      :post
+      |> Helpers.request(url, body, headers, config)
+      |> process_access_token_response()
+    end
+  end
+
   defp authentication_params(nil, config) do
     with {:ok, client_id} <- Config.fetch(config, :client_id) do
       headers = []
@@ -352,27 +373,6 @@ defmodule Assent.Strategy.OAuth2 do
     end
   end
 
-  @doc """
-  Grants an access token.
-  """
-  @spec grant_access_token(Config.t(), binary(), Keyword.t()) :: {:ok, map()} | {:error, term()}
-  def grant_access_token(config, grant_type, params) do
-    auth_method = Config.get(config, :auth_method, nil)
-    token_url = Config.get(config, :token_url, "/oauth/token")
-
-    with {:ok, base_url} <- Config.__base_url__(config),
-         {:ok, auth_headers, auth_body} <- authentication_params(auth_method, config) do
-      headers = [{"content-type", "application/x-www-form-urlencoded"}] ++ auth_headers
-      params = Keyword.merge(params, Keyword.put(auth_body, :grant_type, grant_type))
-      url = Helpers.to_url(base_url, token_url)
-      body = URI.encode_query(params)
-
-      :post
-      |> Helpers.request(url, body, headers, config)
-      |> process_access_token_response()
-    end
-  end
-
   defp process_access_token_response(
          {:ok, %HTTPResponse{status: status, body: %{"access_token" => _} = token}}
        )
@@ -420,13 +420,37 @@ defmodule Assent.Strategy.OAuth2 do
           {:ok, map()} | {:error, term()}
   def request(config, token, method, url, params \\ [], headers \\ []) do
     with {:ok, base_url} <- Config.__base_url__(config),
-         {:ok, auth_headers} <- authorization_headers(config, token) do
+         {:ok, auth_headers} <- authorization_headers(token) do
       req_headers = request_headers(method, auth_headers ++ headers)
       req_body = request_body(method, params)
       params = url_params(method, params)
       url = Helpers.to_url(base_url, url, params)
 
       Helpers.request(method, url, req_body, req_headers, config)
+    end
+  end
+
+  defp authorization_headers(token) do
+    token
+    |> Map.get("token_type", "Bearer")
+    |> String.downcase()
+    |> authorization_headers(token)
+  end
+
+  defp authorization_headers("bearer", token) do
+    with {:ok, access_token} <- fetch_from_token(token, "access_token") do
+      {:ok, [{"authorization", "Bearer #{access_token}"}]}
+    end
+  end
+
+  defp authorization_headers(type, _token) do
+    {:error, "Authorization with token type `#{type}` not supported"}
+  end
+
+  defp fetch_from_token(token, key) do
+    case Map.fetch(token, key) do
+      {:ok, value} -> {:ok, value}
+      :error -> {:error, "No `#{key}` in token map"}
     end
   end
 
@@ -450,42 +474,16 @@ defmodule Assent.Strategy.OAuth2 do
           {:ok, map()} | {:error, term()}
   def fetch_user(config, token, params \\ [], headers \\ []) do
     with {:ok, user_url} <- Config.fetch(config, :user_url) do
-      config
-      |> request(token, :get, user_url, params, headers)
-      |> process_user_response()
+      case request(config, token, :get, user_url, params, headers) do
+        {:ok, %HTTPResponse{status: 200, body: user}} ->
+          {:ok, user}
+
+        {:error, %HTTPResponse{status: 401} = response} ->
+          {:error, RequestError.exception(message: "Unauthorized token", response: response)}
+
+        other ->
+          process_response(other)
+      end
     end
   end
-
-  defp authorization_headers(config, token) do
-    type =
-      token
-      |> Map.get("token_type", "Bearer")
-      |> String.downcase()
-
-    authorization_headers(config, token, type)
-  end
-
-  defp authorization_headers(_config, token, "bearer") do
-    with {:ok, access_token} <- fetch_from_token(token, "access_token") do
-      {:ok, [{"authorization", "Bearer #{access_token}"}]}
-    end
-  end
-
-  defp authorization_headers(_config, _token, type) do
-    {:error, "Authorization with token type `#{type}` not supported"}
-  end
-
-  defp fetch_from_token(token, key) do
-    case Map.fetch(token, key) do
-      {:ok, value} -> {:ok, value}
-      :error -> {:error, "No `#{key}` in token map"}
-    end
-  end
-
-  defp process_user_response({:ok, %HTTPResponse{status: 200, body: user}}), do: {:ok, user}
-
-  defp process_user_response({:error, %HTTPResponse{status: 401} = response}),
-    do: {:error, RequestError.exception(message: "Unauthorized token", response: response)}
-
-  defp process_user_response(any), do: process_response(any)
 end

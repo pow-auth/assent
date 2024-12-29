@@ -116,10 +116,10 @@ defmodule Assent.Strategy.OIDC do
   @impl true
   @spec authorize_url(Config.t()) :: on_authorize_url()
   def authorize_url(config) do
-    with {:ok, openid_config} <- openid_configuration(config),
+    with {:ok, openid_config} <- fetch_openid_configuration(config),
          {:ok, authorize_url} <-
            fetch_from_openid_config(openid_config, "authorization_endpoint"),
-         {:ok, params} <- authorization_params(config) do
+         {:ok, params} <- fetch_authorization_params(config) do
       config
       |> Config.put(:authorization_params, params)
       |> Config.put(:authorize_url, authorize_url)
@@ -128,41 +128,35 @@ defmodule Assent.Strategy.OIDC do
     end
   end
 
-  defp openid_configuration(config) do
+  defp fetch_openid_configuration(config) do
     case Config.get(config, :openid_configuration, nil) do
-      nil -> fetch_openid_configuration(config)
+      nil -> fetch_openid_configuration_from_uri(config)
       openid_config -> {:ok, openid_config}
     end
   end
 
-  defp fetch_openid_configuration(config) do
+  defp fetch_openid_configuration_from_uri(config) do
     with {:ok, base_url} <- Config.__base_url__(config) do
       configuration_url =
         Config.get(config, :openid_configuration_uri, "/.well-known/openid-configuration")
 
       url = Helpers.to_url(base_url, configuration_url)
 
-      :get
-      |> Helpers.request(url, nil, [], config)
-      |> process_openid_configuration_response()
+      case Helpers.request(:get, url, nil, [], config) do
+        {:ok, %HTTPResponse{status: 200, body: configuration}} ->
+          {:ok, configuration}
+
+        {:ok, %HTTPResponse{} = response} ->
+          {:error, UnexpectedResponseError.exception(response: response)}
+
+        {:error, %HTTPResponse{} = response} ->
+          {:error, InvalidResponseError.exception(response: response)}
+
+        {:error, error} ->
+          {:error, error}
+      end
     end
   end
-
-  defp process_openid_configuration_response(
-         {:ok, %HTTPResponse{status: 200, body: configuration}}
-       ) do
-    {:ok, configuration}
-  end
-
-  defp process_openid_configuration_response(any), do: process_response(any)
-
-  defp process_response({:ok, %HTTPResponse{} = response}),
-    do: {:error, UnexpectedResponseError.exception(response: response)}
-
-  defp process_response({:error, %HTTPResponse{} = response}),
-    do: {:error, InvalidResponseError.exception(response: response)}
-
-  defp process_response({:error, error}), do: {:error, error}
 
   defp fetch_from_openid_config(config, key) do
     case Map.fetch(config, key) do
@@ -171,7 +165,7 @@ defmodule Assent.Strategy.OIDC do
     end
   end
 
-  defp authorization_params(config) do
+  defp fetch_authorization_params(config) do
     new_params =
       config
       |> Config.get(:authorization_params, [])
@@ -232,7 +226,7 @@ defmodule Assent.Strategy.OIDC do
   @impl true
   @spec callback(Config.t(), map(), atom()) :: on_callback()
   def callback(config, params, strategy \\ __MODULE__) do
-    with {:ok, openid_config} <- openid_configuration(config),
+    with {:ok, openid_config} <- fetch_openid_configuration(config),
          {:ok, method} <- fetch_client_authentication_method(openid_config, config),
          {:ok, token_url} <- fetch_from_openid_config(openid_config, "token_endpoint") do
       config
@@ -246,22 +240,21 @@ defmodule Assent.Strategy.OIDC do
   defp fetch_client_authentication_method(openid_config, config) do
     method = Config.get(config, :client_authentication_method, "client_secret_basic")
     methods = Map.get(openid_config, "token_endpoint_auth_methods_supported")
-
-    supported_method? = if is_nil(methods), do: true, else: method in methods
+    supported_method? = (is_nil(methods) && true) || method in methods
 
     case supported_method? do
-      true -> to_client_auth_method(method)
+      true -> parse_client_auth_method(method)
       false -> {:error, "Unsupported client authentication method: #{method}"}
     end
   end
 
-  defp to_client_auth_method("none"), do: {:ok, nil}
-  defp to_client_auth_method("client_secret_basic"), do: {:ok, :client_secret_basic}
-  defp to_client_auth_method("client_secret_post"), do: {:ok, :client_secret_post}
-  defp to_client_auth_method("client_secret_jwt"), do: {:ok, :client_secret_jwt}
-  defp to_client_auth_method("private_key_jwt"), do: {:ok, :private_key_jwt}
+  defp parse_client_auth_method("none"), do: {:ok, nil}
+  defp parse_client_auth_method("client_secret_basic"), do: {:ok, :client_secret_basic}
+  defp parse_client_auth_method("client_secret_post"), do: {:ok, :client_secret_post}
+  defp parse_client_auth_method("client_secret_jwt"), do: {:ok, :client_secret_jwt}
+  defp parse_client_auth_method("private_key_jwt"), do: {:ok, :private_key_jwt}
 
-  defp to_client_auth_method(method),
+  defp parse_client_auth_method(method),
     do: {:error, "Invalid client authentication method: #{method}"}
 
   # https://openid.net/specs/draft-jones-json-web-token-07.html#ReservedClaimName
@@ -311,7 +304,7 @@ defmodule Assent.Strategy.OIDC do
   def validate_id_token(config, id_token) do
     expected_alg = Config.get(config, :id_token_signed_response_alg, "RS256")
 
-    with {:ok, openid_config} <- openid_configuration(config),
+    with {:ok, openid_config} <- fetch_openid_configuration(config),
          {:ok, client_id} <- Config.fetch(config, :client_id),
          {:ok, issuer} <- fetch_from_openid_config(openid_config, "issuer"),
          {:ok, jwt} <- verify_jwt(id_token, openid_config, config),
@@ -370,16 +363,23 @@ defmodule Assent.Strategy.OIDC do
   end
 
   defp fetch_public_keys(uri, config) do
-    :get
-    |> Helpers.request(uri, nil, [], config)
-    |> process_public_keys_response()
+    case Helpers.request(:get, uri, nil, [], config) do
+      {:ok, %HTTPResponse{status: 200, body: %{"keys" => keys}}} ->
+        {:ok, keys}
+
+      {:ok, %HTTPResponse{status: 200}} ->
+        {:ok, []}
+
+      {:ok, %HTTPResponse{} = response} ->
+        {:error, UnexpectedResponseError.exception(response: response)}
+
+      {:error, %HTTPResponse{} = response} ->
+        {:error, InvalidResponseError.exception(response: response)}
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
-
-  defp process_public_keys_response({:ok, %HTTPResponse{status: 200, body: %{"keys" => keys}}}),
-    do: {:ok, keys}
-
-  defp process_public_keys_response({:ok, %HTTPResponse{status: 200}}), do: {:ok, []}
-  defp process_public_keys_response(any), do: process_response(any)
 
   defp find_key(%{"kid" => kid}, [%{"kid" => kid} = key | _keys]), do: {:ok, key}
 
@@ -508,7 +508,7 @@ defmodule Assent.Strategy.OIDC do
   """
   @spec fetch_userinfo(Config.t(), map()) :: {:ok, map()} | {:error, term()}
   def fetch_userinfo(config, token) do
-    with {:ok, openid_config} <- openid_configuration(config),
+    with {:ok, openid_config} <- fetch_openid_configuration(config),
          {:ok, userinfo_url} <- fetch_from_openid_config(openid_config, "userinfo_endpoint"),
          {:ok, claims} <-
            fetch_from_userinfo_endpoint(config, openid_config, token, userinfo_url),
@@ -518,31 +518,30 @@ defmodule Assent.Strategy.OIDC do
   end
 
   defp fetch_from_userinfo_endpoint(config, openid_config, token, userinfo_url) do
-    config
-    |> OAuth2.request(token, :get, userinfo_url)
-    |> process_userinfo_response(openid_config, config)
+    case OAuth2.request(config, token, :get, userinfo_url) do
+      {:ok, %HTTPResponse{status: 200, body: body, headers: headers}} ->
+        maybe_validate_jwt_header(config, openid_config, headers, body)
+
+      {:error, %HTTPResponse{status: 401} = response} ->
+        {:error, RequestError.exception(message: "Unauthorized token", response: response)}
+
+      {:ok, %HTTPResponse{} = response} ->
+        {:error, UnexpectedResponseError.exception(response: response)}
+
+      {:error, %HTTPResponse{} = response} ->
+        {:error, InvalidResponseError.exception(response: response)}
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
-  defp process_userinfo_response(
-         {:ok, %HTTPResponse{status: 200, body: body, headers: headers}},
-         openid_config,
-         config
-       ) do
+  defp maybe_validate_jwt_header(config, openid_config, headers, body) do
     case List.keyfind(headers, "content-type", 0) do
       {"content-type", "application/jwt" <> _rest} -> process_jwt(body, openid_config, config)
       _any -> {:ok, body}
     end
   end
-
-  defp process_userinfo_response(
-         {:error, %HTTPResponse{status: 401} = response},
-         _openid_config,
-         _config
-       ) do
-    {:error, RequestError.exception(message: "Unauthorized token", response: response)}
-  end
-
-  defp process_userinfo_response(any, _openid_config, _config), do: process_response(any)
 
   defp process_jwt(body, openid_config, config) do
     with {:ok, jwt} <- verify_jwt(body, openid_config, config),

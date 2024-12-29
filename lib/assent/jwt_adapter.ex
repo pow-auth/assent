@@ -42,7 +42,7 @@ defmodule Assent.JWTAdapter do
   """
   @spec sign(map(), binary(), binary(), Keyword.t()) :: {:ok, binary()} | {:error, term()}
   def sign(claims, alg, secret, opts \\ []) do
-    {adapter, opts} = fetch_adapter(opts)
+    {adapter, opts} = get_adapter(opts)
     adapter.sign(claims, alg, secret, opts)
   end
 
@@ -51,11 +51,11 @@ defmodule Assent.JWTAdapter do
   """
   @spec verify(binary(), binary() | map() | nil, Keyword.t()) :: {:ok, map()} | {:error, any()}
   def verify(token, secret, opts \\ []) do
-    {adapter, opts} = fetch_adapter(opts)
+    {adapter, opts} = get_adapter(opts)
     adapter.verify(token, secret, opts)
   end
 
-  defp fetch_adapter(opts) do
+  defp get_adapter(opts) do
     default_opts = Keyword.put(opts, :json_library, Config.json_library(opts))
     default_jwt_adapter = Application.get_env(:assent, :jwt_adapter, Assent.JWTAdapter.AssentJWT)
 

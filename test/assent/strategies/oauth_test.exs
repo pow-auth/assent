@@ -7,6 +7,7 @@ defmodule Assent.Strategy.OAuthTest do
     Config.MissingKeyError,
     InvalidResponseError,
     MissingParamError,
+    RequestError,
     ServerUnreachableError,
     Strategy.OAuth
   }
@@ -81,7 +82,7 @@ defmodule Assent.Strategy.OAuthTest do
       assert error.key == :consumer_secret
     end
 
-    test "with unreachable request token url", %{config: config} do
+    test "with `:request_token_url` being unreachable", %{config: config} do
       request_token_url = TestServer.url("/request_token")
       TestServer.stop()
 
@@ -92,7 +93,7 @@ defmodule Assent.Strategy.OAuthTest do
       assert {:failed_connect, _} = error.reason
     end
 
-    test "with unexpected successful response", %{config: config} do
+    test "with `:request_token_url` returning unexpected success", %{config: config} do
       expect_oauth_request_token_request(
         params: %{"error_code" => 215, "error_message" => "Bad Authentication data."}
       )
@@ -109,7 +110,7 @@ defmodule Assent.Strategy.OAuthTest do
              }
     end
 
-    test "with error response", %{config: config} do
+    test "with `:request_token_url` returning HTTP error", %{config: config} do
       expect_oauth_request_token_request(
         status_code: 500,
         params: %{"error_code" => 215, "error_message" => "Bad Authentication data."}
@@ -127,22 +128,7 @@ defmodule Assent.Strategy.OAuthTest do
              }
     end
 
-    test "with json error response", %{config: config} do
-      expect_oauth_request_token_request(
-        status_code: 500,
-        content_type: "application/json",
-        params: %{"errors" => [%{"code" => 215, "message" => "Bad Authentication data."}]}
-      )
-
-      assert {:error, %InvalidResponseError{} = error} = OAuth.authorize_url(config)
-      assert error.response.status == 500
-
-      assert error.response.body == %{
-               "errors" => [%{"code" => 215, "message" => "Bad Authentication data."}]
-             }
-    end
-
-    test "with missing `oauth_token` in access token response", %{config: config} do
+    test "with `:request_token_url` returning missing `oauth_token`", %{config: config} do
       expect_oauth_request_token_request(params: %{oauth_token_secret: "hdhd0244k9j7ao03"})
 
       assert {:error, %UnexpectedResponseError{} = error} = OAuth.authorize_url(config)
@@ -150,7 +136,7 @@ defmodule Assent.Strategy.OAuthTest do
       assert error.response.body == %{"oauth_token_secret" => "hdhd0244k9j7ao03"}
     end
 
-    test "with missing `oauth_token_secret` in access token response", %{config: config} do
+    test "with `:request_token_url` returning missing `oauth_token_secret`", %{config: config} do
       expect_oauth_request_token_request(params: %{oauth_token: "hh5s93j4hdidpola"})
 
       assert {:error, %UnexpectedResponseError{} = error} = OAuth.authorize_url(config)
@@ -190,7 +176,7 @@ defmodule Assent.Strategy.OAuthTest do
       assert url == TestServer.url("/authorize?oauth_token=hh5s93j4hdidpola")
     end
 
-    test "parses URI query params in `:request_token_url` for the signature", %{config: config} do
+    test "with `:request_token_url` URI query params", %{config: config} do
       config = Keyword.put(config, :request_token_url, "/request_token?a=1&c=3&b=2")
       request_token_url = TestServer.url("/request_token")
 
@@ -213,7 +199,7 @@ defmodule Assent.Strategy.OAuthTest do
       assert {:ok, _res} = OAuth.authorize_url(config)
     end
 
-    test "parses URI query response with authorization params", %{config: config} do
+    test "with `:authorization_params`", %{config: config} do
       authorization_params = [scope: "reading writing", another_param: "param"]
       config = Keyword.put(config, :authorization_params, authorization_params)
       expect_oauth_request_token_request()
@@ -227,7 +213,7 @@ defmodule Assent.Strategy.OAuthTest do
                )
     end
 
-    test "parses URI query response", %{config: config} do
+    test "with `:request_token_url` returning URI query encoded response", %{config: config} do
       expect_oauth_request_token_request(
         content_type: "text/html",
         params:
@@ -377,7 +363,7 @@ defmodule Assent.Strategy.OAuthTest do
       {:ok, config: config}
     end
 
-    test "with missing oauth_token param", %{config: config, callback_params: params} do
+    test "with missing `oauth_token` param", %{config: config, callback_params: params} do
       params = Map.delete(params, "oauth_token")
 
       assert {:error, %MissingParamError{} = error} = OAuth.callback(config, params)
@@ -389,7 +375,7 @@ defmodule Assent.Strategy.OAuthTest do
       assert error.params == %{"oauth_verifier" => "hfdp7dh39dks9884"}
     end
 
-    test "with missing oauth_verifier param", %{config: config, callback_params: params} do
+    test "with missing `oauth_verifier` param", %{config: config, callback_params: params} do
       params = Map.delete(params, "oauth_verifier")
 
       assert {:error, %MissingParamError{} = error} = OAuth.callback(config, params)
@@ -408,7 +394,10 @@ defmodule Assent.Strategy.OAuthTest do
       assert error.key == :base_url
     end
 
-    test "with unreachable token url", %{config: config, callback_params: callback_params} do
+    test "with `:access_token_url` being unreachable", %{
+      config: config,
+      callback_params: callback_params
+    } do
       access_token_url = TestServer.url("/access_token")
       TestServer.stop()
 
@@ -419,7 +408,10 @@ defmodule Assent.Strategy.OAuthTest do
       assert {:failed_connect, _} = error.reason
     end
 
-    test "with token url error response", %{config: config, callback_params: callback_params} do
+    test "with `:access_token_url` returning error", %{
+      config: config,
+      callback_params: callback_params
+    } do
       expect_oauth_access_token_request(status_code: 500, params: %{error: "Unknown error"})
 
       assert {:error, %InvalidResponseError{} = error} = OAuth.callback(config, callback_params)
@@ -427,7 +419,7 @@ defmodule Assent.Strategy.OAuthTest do
       assert error.response.body == %{"error" => "Unknown error"}
     end
 
-    test "with missing `oauth_token` in access token response", %{
+    test "with `:access_token_url` returning missing `oauth_token`", %{
       config: config,
       callback_params: callback_params
     } do
@@ -440,7 +432,7 @@ defmodule Assent.Strategy.OAuthTest do
       assert error.response.body == %{"oauth_token_secret" => "token_secret"}
     end
 
-    test "with missing `oauth_token_secret` in access token response", %{
+    test "with `:access_token_url` returning missing `oauth_token_secret`", %{
       config: config,
       callback_params: callback_params
     } do
@@ -453,16 +445,34 @@ defmodule Assent.Strategy.OAuthTest do
       assert error.response.body == %{"oauth_token" => "token"}
     end
 
-    test "bubbles up user request error response", %{
+    test "with missing `:user_url`", %{config: config, callback_params: params} do
+      config = Keyword.delete(config, :user_url)
+
+      expect_oauth_access_token_request()
+
+      assert {:error, %MissingKeyError{} = error} = OAuth.callback(config, params)
+      assert error.key == :user_url
+    end
+
+    test "with `:user_url` being unreachable", %{config: config, callback_params: params} do
+      config = Keyword.put(config, :user_url, "http://localhost:8888/api/user")
+
+      expect_oauth_access_token_request()
+
+      assert {:error, %ServerUnreachableError{}} = OAuth.callback(config, params)
+    end
+
+    test "with `:user_url` returning HTTP unauthorized", %{
       config: config,
-      callback_params: callback_params
+      callback_params: params
     } do
       expect_oauth_access_token_request()
-      expect_oauth_user_request(%{error: "Unknown error"}, status_code: 500)
+      expect_oauth_user_request(%{"error" => "Unauthorized"}, status_code: 401)
 
-      assert {:error, %InvalidResponseError{} = error} = OAuth.callback(config, callback_params)
-      assert Exception.message(error) =~ "Response status: 500"
-      assert error.response.body == %{"error" => "Unknown error"}
+      assert {:error, %RequestError{} = error} = OAuth.callback(config, params)
+      assert error.message == "Unauthorized token"
+      assert error.response.status == 401
+      assert error.response.body == %{"error" => "Unauthorized"}
     end
 
     test "normalizes data", %{config: config, callback_params: callback_params} do
