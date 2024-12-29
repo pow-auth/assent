@@ -142,7 +142,7 @@ defmodule Assent.Strategy.OIDC do
 
       url = Helpers.to_url(base_url, configuration_url)
 
-      case Helpers.request(:get, url, nil, [], config) do
+      case Helpers.http_request(:get, url, nil, [], config) do
         {:ok, %HTTPResponse{status: 200, body: configuration}} ->
           {:ok, configuration}
 
@@ -363,7 +363,7 @@ defmodule Assent.Strategy.OIDC do
   end
 
   defp fetch_public_keys(uri, config) do
-    case Helpers.request(:get, uri, nil, [], config) do
+    case Helpers.http_request(:get, uri, nil, [], config) do
       {:ok, %HTTPResponse{status: 200, body: %{"keys" => keys}}} ->
         {:ok, keys}
 

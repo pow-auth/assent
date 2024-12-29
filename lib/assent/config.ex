@@ -39,7 +39,7 @@ defmodule Assent.Config do
 
   If not found in provided config, this will attempt to load the JSON library
   from global application environment for `:assent`. Defaults to
-  `#{@default_json_library}`.
+  `#{inspect(@default_json_library)}`.
   """
   @spec json_library(t()) :: module()
   def json_library(config) do

@@ -26,7 +26,7 @@ defmodule Assent.Strategy do
         end
       end
   """
-  alias Assent.{Config, HTTPAdapter.HTTPResponse, InvalidResponseError, ServerUnreachableError}
+  alias Assent.Config
 
   @callback authorize_url(Config.t()) ::
               {:ok, %{:url => binary(), optional(atom()) => any()}} | {:error, term()}
@@ -35,112 +35,30 @@ defmodule Assent.Strategy do
 
   @doc """
   Makes a HTTP request.
+
+  See `Assent.HTTPAdapter.request/5`.
   """
-  @spec request(atom(), binary(), binary() | nil, list(), Config.t()) ::
-          {:ok, HTTPResponse.t()} | {:error, HTTPResponse.t()} | {:error, term()}
-  def request(method, url, body, headers, config) do
-    {http_adapter, opts} = get_http_adapter(config)
-
-    method
-    |> http_adapter.request(url, body, headers, opts)
-    |> case do
-      {:ok, response} ->
-        decode_response(response, config)
-
-      {:error, error} ->
-        {:error,
-         ServerUnreachableError.exception(
-           reason: error,
-           http_adapter: http_adapter,
-           request_url: url
-         )}
-    end
-    |> case do
-      {:ok, %{status: status} = resp} when status in 200..399 ->
-        {:ok, %{resp | http_adapter: http_adapter, request_url: url}}
-
-      {:ok, %{status: status} = resp} when status in 400..599 ->
-        {:error, %{resp | http_adapter: http_adapter, request_url: url}}
-
-      {:error, error} ->
-        {:error, error}
-    end
+  def http_request(method, url, body, headers, config) do
+    Assent.HTTPAdapter.request(method, url, body, headers, http_adapter_opts(config))
   end
 
-  @default_http_client Enum.find_value(
-                         [
-                           {Req, Assent.HTTPAdapter.Req},
-                           {:httpc, Assent.HTTPAdapter.Httpc}
-                         ],
-                         fn {dep, module} ->
-                           Code.ensure_loaded?(dep) && {module, []}
-                         end
-                       )
-
-  defp get_http_adapter(config) do
-    default_http_adapter = Application.get_env(:assent, :http_adapter, @default_http_client)
-
-    case Config.get(config, :http_adapter, default_http_adapter) do
-      {http_adapter, opts} -> {http_adapter, opts}
-      http_adapter when is_atom(http_adapter) -> {http_adapter, nil}
-    end
-  end
+  defp http_adapter_opts(config), do: Keyword.take(config, [:http_adapter, :json_library])
 
   @doc """
-  Decodes request response body.
+  Decode a JSON string.
+
+  ## Options
+
+  - `:json_library` - The JSON library to use, see
+    `Assent.Config.json_library/1`
   """
-  @spec decode_response(HTTPResponse.t(), Config.t()) ::
-          {:ok, HTTPResponse.t()} | {:error, InvalidResponseError.t()}
-  def decode_response(%HTTPResponse{} = response, config) do
-    case decode(response.headers, response.body, config) do
-      {:ok, body} -> {:ok, %{response | body: body}}
-      {:error, _error} -> {:error, InvalidResponseError.exception(response: response)}
-    end
-  end
-
-  # TODO: Remove in 0.3 release
-  def decode_response({res, %HTTPResponse{} = response}, config) do
-    IO.warn("Passing {:ok | :error, response} to decode_response/2 is deprecated")
-
-    case decode(response.headers, response.body, config) do
-      {:ok, body} -> {res, %{response | body: body}}
-      {:error, error} -> {:error, error}
-    end
-  end
-
-  # TODO: Remove in 0.3 release
-  def decode_response({:error, error}, _config) do
-    IO.warn("Passing {:error, error} to decode_response/2 is deprecated")
-
-    {:error, error}
-  end
-
-  defp decode(headers, body, config) when is_binary(body) do
-    case List.keyfind(headers, "content-type", 0) do
-      {"content-type", "application/json" <> _rest} ->
-        decode_json(body, config)
-
-      {"content-type", "text/javascript" <> _rest} ->
-        decode_json(body, config)
-
-      {"content-type", "application/x-www-form-urlencoded" <> _reset} ->
-        {:ok, URI.decode_query(body)}
-
-      _any ->
-        {:ok, body}
-    end
-  end
-
-  defp decode(_headers, body, _config), do: {:ok, body}
-
-  @doc """
-  Decode a JSON response to a map
-  """
-  @spec decode_json(binary(), Config.t()) :: {:ok, map()} | {:error, term()}
+  @spec decode_json(binary(), Config.t()) :: {:ok, term()} | {:error, term()}
   def decode_json(response, config), do: Config.json_library(config).decode(response)
 
   @doc """
-  Verifies a JWT
+  Verifies a JSON Web Token.
+
+  See `Assent.JWTAdapter.verify/3` for options.
   """
   @spec verify_jwt(binary(), binary() | map() | nil, Config.t()) :: {:ok, map()} | {:error, any()}
   def verify_jwt(token, secret, config),
@@ -150,22 +68,31 @@ defmodule Assent.Strategy do
     do: Keyword.take(config, [:json_library, :jwt_adapter, :private_key_id])
 
   @doc """
-  Signs a JWT
+  Signs a JSON Web Token.
+
+  See `Assent.JWTAdapter.sign/3` for options.
   """
   @spec sign_jwt(map(), binary(), binary(), Config.t()) :: {:ok, binary()} | {:error, term()}
   def sign_jwt(claims, alg, secret, config),
     do: Assent.JWTAdapter.sign(claims, alg, secret, jwt_adapter_opts(config))
 
   @doc """
-  Generates a URL
+  Generates a URL.
   """
   @spec to_url(binary(), binary(), Keyword.t()) :: binary()
   def to_url(base_url, uri, params \\ [])
   def to_url(base_url, uri, []), do: endpoint(base_url, uri)
 
-  def to_url(base_url, uri, params) do
-    endpoint(base_url, uri) <> "?" <> encode_query(params)
+  def to_url(base_url, uri, params), do: "#{endpoint(base_url, uri)}?#{encode_query(params)}"
+
+  defp endpoint(base_url, "/" <> uri) do
+    case :binary.last(base_url) do
+      ?/ -> "#{base_url}#{uri}"
+      _ -> "#{base_url}/#{uri}"
+    end
   end
+
+  defp endpoint(_base_url, uri), do: uri
 
   defp encode_query(enumerable) do
     enumerable
@@ -181,9 +108,7 @@ defmodule Assent.Strategy do
   end
 
   defp encode_pair({key, value}, encoded_key) do
-    key = encoded_key <> "[" <> encode_value(key) <> "]"
-
-    encode_pair(value, key)
+    encode_pair(value, "#{encoded_key}[#{encode_value(key)}]")
   end
 
   defp encode_pair([{_key, _value} | _rest] = values, encoded_key) do
@@ -191,28 +116,17 @@ defmodule Assent.Strategy do
   end
 
   defp encode_pair(values, encoded_key) when is_list(values) do
-    key = encoded_key <> "[]"
-
-    Enum.map(values, &encode_pair(&1, key))
+    Enum.map(values, &encode_pair(&1, "#{encoded_key}[]"))
   end
 
   defp encode_pair(value, encoded_key) do
-    encoded_key <> "=" <> encode_value(value)
+    "#{encoded_key}=#{encode_value(value)}"
   end
 
   defp encode_value(value), do: URI.encode_www_form(Kernel.to_string(value))
 
-  defp endpoint(base_url, "/" <> uri = all) do
-    case :binary.last(base_url) do
-      ?/ -> base_url <> uri
-      _ -> base_url <> all
-    end
-  end
-
-  defp endpoint(_base_url, uri), do: uri
-
   @doc """
-  Normalize API user request response into standard claims
+  Normalize API user request response into standard claims.
 
   Based on https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.5.1
   """
@@ -233,7 +147,7 @@ defmodule Assent.Strategy do
   @doc """
   Recursively prunes map for nil values.
   """
-  @spec prune(map) :: map
+  @spec prune(map()) :: map()
   def prune(map) do
     map
     |> Enum.map(fn {k, v} -> if is_map(v), do: {k, prune(v)}, else: {k, v} end)
@@ -257,4 +171,30 @@ defmodule Assent.Strategy do
   end
 
   def __normalize__({:error, error}, _config, _strategy), do: {:error, error}
+
+  # TODO: Remove in 0.3
+  @deprecated "Use http_request/4 instead"
+  def request(method, url, body, headers, config),
+    do: http_request(method, url, body, headers, config)
+
+  # TODO: Remove in 0.3
+  def decode_response({res, %Assent.HTTPAdapter.HTTPResponse{} = response}, config) do
+    IO.warn("Passing {:ok | :error, response} to decode_response/2 is deprecated")
+
+    case decode_response(response, config) do
+      {:ok, body} -> {res, %{response | body: body}}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  # TODO: Remove in 0.3
+  def decode_response({:error, error}, _config) do
+    IO.warn("Passing {:error, error} to decode_response/2 is deprecated")
+
+    {:error, error}
+  end
+
+  # TODO: Remove in 0.3
+  @deprecated "Use Assent.HTTPAdapter.decode_response/2 instead"
+  def decode_response(response, config), do: Assent.HTTPAdapter.decode_response(response, config)
 end

@@ -14,6 +14,8 @@
 * `Assent.Strategy.OAuth2` now supports PKCE
 * `Assent.Strategy.OAuth2.Base.authorize_url/2` incomplete typespec fixed
 * `Assent.Strategy.decode_response/2` deprecated accepting result tuples and now accepts `Assent.HTTPAdapter.HTTPResponse` structs
+* `Assent.Strategy.request/5` deprecated in favor of `Assent.Strategy.http_request/5`
+* `Assent.Strategy.decode_response/2` deprecated in favor of `Assent.HTTPAdapter.decode_response/2`
 
 ## v0.2.10 (2024-04-11)
 

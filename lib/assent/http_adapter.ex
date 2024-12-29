@@ -26,6 +26,7 @@ defmodule Assent.HTTPAdapter do
         end
       end
   """
+  alias Assent.{Config, InvalidResponseError, ServerUnreachableError}
 
   defmodule HTTPResponse do
     @moduledoc """
@@ -69,7 +70,7 @@ defmodule Assent.HTTPAdapter do
               {:ok, map()} | {:error, any()}
 
   @doc """
-  Sets a user agent header
+  Sets a user agent header.
 
   The header value will be `Assent-VERSION` with VERSION being the `:vsn` of
   `:assent` app.
@@ -80,4 +81,99 @@ defmodule Assent.HTTPAdapter do
 
     {"User-Agent", "Assent-#{version}"}
   end
+
+  @default_http_client Enum.find_value(
+                         [
+                           {Req, Assent.HTTPAdapter.Req},
+                           {:httpc, Assent.HTTPAdapter.Httpc}
+                         ],
+                         fn {dep, module} ->
+                           Code.ensure_loaded?(dep) && {module, []}
+                         end
+                       )
+
+  @doc """
+  Makes a HTTP request.
+
+  ## Options
+
+  - `:http_adapter` - The HTTP adapter to use, defaults to
+    `#{inspect(elem(@default_http_client, 0))}`.
+  - `:json_library` - The JSON library to use, see
+    `Assent.Config.json_library/1`.
+  """
+  @spec request(atom(), binary(), binary() | nil, list(), Keyword.t()) ::
+          {:ok, HTTPResponse.t()} | {:error, HTTPResponse.t()} | {:error, term()}
+  def request(method, url, body, headers, opts) do
+    {http_adapter, http_adapter_opts} = get_http_adapter(opts)
+
+    method
+    |> http_adapter.request(url, body, headers, http_adapter_opts)
+    |> case do
+      {:ok, response} ->
+        decode_response(response, opts)
+
+      {:error, error} ->
+        {:error,
+         ServerUnreachableError.exception(
+           reason: error,
+           http_adapter: http_adapter,
+           request_url: url
+         )}
+    end
+    |> case do
+      {:ok, %{status: status} = resp} when status in 200..399 ->
+        {:ok, %{resp | http_adapter: http_adapter, request_url: url}}
+
+      {:ok, %{status: status} = resp} when status in 400..599 ->
+        {:error, %{resp | http_adapter: http_adapter, request_url: url}}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp get_http_adapter(opts) do
+    default_http_adapter = Application.get_env(:assent, :http_adapter, @default_http_client)
+
+    case Keyword.get(opts, :http_adapter, default_http_adapter) do
+      {http_adapter, opts} -> {http_adapter, opts}
+      http_adapter when is_atom(http_adapter) -> {http_adapter, nil}
+    end
+  end
+
+  @doc """
+  Decodes request response body.
+
+  ## Options
+
+  - `:json_library` - The JSON library to use, see
+    `Assent.Config.json_library/1`
+  """
+  @spec decode_response(HTTPResponse.t(), Keyword.t()) ::
+          {:ok, HTTPResponse.t()} | {:error, InvalidResponseError.t()}
+  def decode_response(%HTTPResponse{} = response, opts) do
+    case decode(response.headers, response.body, opts) do
+      {:ok, body} -> {:ok, %{response | body: body}}
+      {:error, _error} -> {:error, InvalidResponseError.exception(response: response)}
+    end
+  end
+
+  defp decode(headers, body, opts) when is_binary(body) do
+    case List.keyfind(headers, "content-type", 0) do
+      {"content-type", "application/json" <> _rest} ->
+        Config.json_library(opts).decode(body)
+
+      {"content-type", "text/javascript" <> _rest} ->
+        Config.json_library(opts).decode(body)
+
+      {"content-type", "application/x-www-form-urlencoded" <> _reset} ->
+        {:ok, URI.decode_query(body)}
+
+      _any ->
+        {:ok, body}
+    end
+  end
+
+  defp decode(_headers, body, _opts), do: {:ok, body}
 end

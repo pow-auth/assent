@@ -103,7 +103,7 @@ defmodule Assent.Strategy.OAuth2 do
   @doc """
   Generate authorization URL for request phase.
 
-  ## Configuration
+  ## Options
 
     - `:redirect_uri` - The URI that the server redirects the user to after
       authentication, required
@@ -203,7 +203,7 @@ defmodule Assent.Strategy.OAuth2 do
   user data. Returns a map with access token in `:token` and user data in
   `:user`.
 
-  ## Configuration
+  ## Options
 
     - `:token_url` - The path or URL to fetch the token from, optional,
       defaults to `/oauth/token`
@@ -287,7 +287,7 @@ defmodule Assent.Strategy.OAuth2 do
       body = URI.encode_query(params)
 
       :post
-      |> Helpers.request(url, body, headers, config)
+      |> Helpers.http_request(url, body, headers, config)
       |> process_access_token_response()
     end
   end
@@ -426,7 +426,7 @@ defmodule Assent.Strategy.OAuth2 do
       params = url_params(method, params)
       url = Helpers.to_url(base_url, url, params)
 
-      Helpers.request(method, url, req_body, req_headers, config)
+      Helpers.http_request(method, url, req_body, req_headers, config)
     end
   end
 

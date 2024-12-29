@@ -68,7 +68,7 @@ defmodule Assent.Strategy.OAuth do
   @doc """
   Generate authorization URL for request phase.
 
-  ## Configuration
+  ## Options
 
     - `:redirect_uri` - The URI that the server redirects the user to after
       authentication, required
@@ -140,7 +140,7 @@ defmodule Assent.Strategy.OAuth do
       query_params = url_params(method, params)
       url = Helpers.to_url(base_url, url, query_params)
 
-      Helpers.request(method, url, req_body, req_headers, config)
+      Helpers.http_request(method, url, req_body, req_headers, config)
     end
   end
 
@@ -327,7 +327,7 @@ defmodule Assent.Strategy.OAuth do
   @doc """
   Callback phase for generating access token and fetch user data.
 
-  ## Configuration
+  ## Options
 
     - `:access_token_url` - The path or URL to fetch the access token from,
       optional, defaults to `/oauth/access_token`
