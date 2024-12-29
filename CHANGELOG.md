@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.2.12 (TBA)
+## v0.2.12 (2024-12-29)
 
 * `Assent` now has a module doc
 
