@@ -405,8 +405,8 @@ defmodule Assent.Strategy.OAuth do
         {:ok, %HTTPResponse{status: 200, body: user}} ->
           {:ok, user}
 
-        {:error, %HTTPResponse{status: 401}} ->
-          {:error, RequestError.exception(message: "Unauthorized token")}
+        {:error, %HTTPResponse{status: 401} = response} ->
+          {:error, RequestError.exception(message: "Unauthorized token", response: response)}
 
         other ->
           process_response(other)
