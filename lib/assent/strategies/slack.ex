@@ -36,8 +36,6 @@ defmodule Assent.Strategy.Slack do
   """
   use Assent.Strategy.OIDC.Base
 
-  alias Assent.Config
-
   @impl true
   def default_config(config) do
     [
@@ -50,9 +48,9 @@ defmodule Assent.Strategy.Slack do
   defp authorization_params(config) do
     default = [scope: "openid email profile"]
 
-    case Config.fetch(config, :team_id) do
-      {:ok, team_id} -> Config.put(default, :team, team_id)
-      _error -> default
+    case Keyword.fetch(config, :team_id) do
+      {:ok, team_id} -> Keyword.put(default, :team, team_id)
+      :error -> default
     end
   end
 end

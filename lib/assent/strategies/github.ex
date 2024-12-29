@@ -20,7 +20,7 @@ defmodule Assent.Strategy.Github do
   """
   use Assent.Strategy.OAuth2.Base
 
-  alias Assent.{Config, Strategy.OAuth2}
+  alias Assent.Strategy.OAuth2
 
   @impl true
   def default_config(_config) do
@@ -51,7 +51,7 @@ defmodule Assent.Strategy.Github do
 
   @impl true
   def fetch_user(config, access_token) do
-    with {:ok, user_emails_url} <- Config.fetch(config, :user_emails_url),
+    with {:ok, user_emails_url} <- Assent.fetch_config(config, :user_emails_url),
          {:ok, user} <- OAuth2.fetch_user(config, access_token) do
       fetch_email(config, access_token, user, user_emails_url)
     end

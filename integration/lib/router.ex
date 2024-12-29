@@ -75,7 +75,7 @@ defmodule IntegrationServer.Router do
 
       unquote(path)
       |> config!()
-      |> Assent.Config.put(:session_params, get_session(conn, :session_params))
+      |> Keyword.put(:session_params, get_session(conn, :session_params))
       |> unquote(module).callback(conn.params)
       |> case do
         {:ok, %{user: user, token: token}} ->

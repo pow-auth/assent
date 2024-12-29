@@ -36,11 +36,9 @@ defmodule Assent.Strategy.AzureAD do
   """
   use Assent.Strategy.OIDC.Base
 
-  alias Assent.Config
-
   @impl true
   def default_config(config) do
-    tenant_id = Config.get(config, :tenant_id, "common")
+    tenant_id = Keyword.get(config, :tenant_id, "common")
 
     [
       base_url: "https://login.microsoftonline.com/#{tenant_id}/v2.0",

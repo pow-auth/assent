@@ -30,15 +30,21 @@ defmodule Assent.JWTAdapter do
         end
       end
   """
-
-  alias Assent.Config
-
   @callback sign(map(), binary(), binary(), Keyword.t()) :: {:ok, binary()} | {:error, term()}
   @callback verify(binary(), binary() | map() | nil, Keyword.t()) ::
               {:ok, map()} | {:error, term()}
 
+  @default_jwt_adapter Assent.JWTAdapter.AssentJWT
+
   @doc """
-  Generates a signed JSON Web Token signature
+  Generates a signed JSON Web Token signature.
+
+  ## Options
+
+  - `:json_library` - The JSON library to use, optional, see
+    `Assent.json_library/1`.
+  - `:jwt_adapter` - The JWT adapter module to use, optional, defaults to
+    `#{inspect(@default_jwt_adapter)}`
   """
   @spec sign(map(), binary(), binary(), Keyword.t()) :: {:ok, binary()} | {:error, term()}
   def sign(claims, alg, secret, opts \\ []) do
@@ -47,7 +53,14 @@ defmodule Assent.JWTAdapter do
   end
 
   @doc """
-  Verifies the JSON Web Token signature
+  Verifies the JSON Web Token signature.
+
+  ## Options
+
+  - `:json_library` - The JSON library to use, optional, see
+    `Assent.json_library/1`.
+  - `:jwt_adapter` - The JWT adapter module to use, optional, defaults to
+    `#{inspect(@default_jwt_adapter)}`
   """
   @spec verify(binary(), binary() | map() | nil, Keyword.t()) :: {:ok, map()} | {:error, any()}
   def verify(token, secret, opts \\ []) do
@@ -56,8 +69,8 @@ defmodule Assent.JWTAdapter do
   end
 
   defp get_adapter(opts) do
-    default_opts = Keyword.put(opts, :json_library, Config.json_library(opts))
-    default_jwt_adapter = Application.get_env(:assent, :jwt_adapter, Assent.JWTAdapter.AssentJWT)
+    default_opts = Keyword.put(opts, :json_library, Assent.json_library(opts))
+    default_jwt_adapter = Application.get_env(:assent, :jwt_adapter, @default_jwt_adapter)
 
     case Keyword.get(opts, :jwt_adapter, default_jwt_adapter) do
       {adapter, opts} -> {adapter, Keyword.merge(default_opts, opts)}
@@ -66,13 +79,18 @@ defmodule Assent.JWTAdapter do
   end
 
   @doc """
-  Loads a private key from the provided configuration
+  Loads a private key from the provided configuration.
+
+  ## Options
+
+  - `:private_key_path` - The path to the private key file, optional.
+  - `:private_key` - The private key, required if `:private_key_path` is not set.
   """
-  @spec load_private_key(Config.t()) :: {:ok, binary()} | {:error, term()}
+  @spec load_private_key(Keyword.t()) :: {:ok, binary()} | {:error, term()}
   def load_private_key(config) do
-    case Config.fetch(config, :private_key_path) do
+    case Assent.fetch_config(config, :private_key_path) do
       {:ok, path} -> read(path)
-      {:error, _any} -> Config.fetch(config, :private_key)
+      {:error, _any} -> Assent.fetch_config(config, :private_key)
     end
   end
 

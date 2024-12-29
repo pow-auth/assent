@@ -68,21 +68,21 @@ defmodule Assent.Strategy.TelegramTest do
     test "with missing `:bot_token` config", %{config: config} do
       config = Keyword.delete(config, :bot_token)
 
-      assert {:error, %Assent.Config.MissingKeyError{} = error} = Telegram.authorize_url(config)
+      assert {:error, %Assent.MissingConfigError{} = error} = Telegram.authorize_url(config)
       assert error.key == :bot_token
     end
 
     test "with missing `:origin` config", %{config: config} do
       config = Keyword.delete(config, :origin)
 
-      assert {:error, %Assent.Config.MissingKeyError{} = error} = Telegram.authorize_url(config)
+      assert {:error, %Assent.MissingConfigError{} = error} = Telegram.authorize_url(config)
       assert error.key == :origin
     end
 
     test "with missing `:return_to` config", %{config: config} do
       config = Keyword.delete(config, :return_to)
 
-      assert {:error, %Assent.Config.MissingKeyError{} = error} = Telegram.authorize_url(config)
+      assert {:error, %Assent.MissingConfigError{} = error} = Telegram.authorize_url(config)
       assert error.key == :return_to
     end
 
@@ -118,7 +118,7 @@ defmodule Assent.Strategy.TelegramTest do
       assert {:error, %Assent.MissingParamError{} = error} =
                Telegram.callback(config, callback_params)
 
-      assert error.expected_key == "hash"
+      assert error.key == "hash"
     end
 
     @tag authorization_channel: :web_mini_app
@@ -131,7 +131,7 @@ defmodule Assent.Strategy.TelegramTest do
       assert {:error, %Assent.MissingParamError{} = error} =
                Telegram.callback(config, callback_params)
 
-      assert error.expected_key == "init_data"
+      assert error.key == "init_data"
     end
 
     test "with missing auth_date param", %{config: config, callback_params: callback_params} do
@@ -140,7 +140,7 @@ defmodule Assent.Strategy.TelegramTest do
       assert {:error, %Assent.MissingParamError{} = error} =
                Telegram.callback(config, callback_params)
 
-      assert error.expected_key == "auth_date"
+      assert error.key == "auth_date"
     end
 
     test "with expired auth_date param", %{config: config, callback_params: callback_params} do
@@ -158,7 +158,7 @@ defmodule Assent.Strategy.TelegramTest do
     test "with missing bot_token config", %{config: config, callback_params: callback_params} do
       config = Keyword.delete(config, :bot_token)
 
-      assert {:error, %Assent.Config.MissingKeyError{} = error} =
+      assert {:error, %Assent.MissingConfigError{} = error} =
                Telegram.callback(config, callback_params)
 
       assert error.key == :bot_token

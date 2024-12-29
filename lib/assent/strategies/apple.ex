@@ -48,11 +48,11 @@ defmodule Assent.Strategy.Apple do
   """
   use Assent.Strategy.OIDC.Base
 
-  alias Assent.{Config, JWTAdapter, Strategy.OIDC, Strategy.OIDC.Base}
+  alias Assent.{JWTAdapter, Strategy.OIDC, Strategy.OIDC.Base}
 
   @impl true
   def default_config(config) do
-    base_url = Config.get(config, :base_url, "https://appleid.apple.com")
+    base_url = Keyword.get(config, :base_url, "https://appleid.apple.com")
 
     [
       base_url: base_url,
@@ -65,7 +65,7 @@ defmodule Assent.Strategy.Apple do
       },
       authorization_params: [scope: "email", response_mode: "form_post"],
       client_authentication_method: "client_secret_post",
-      openid_default_scope: ""
+      openid_default_scope: nil
     ]
   end
 
@@ -75,8 +75,8 @@ defmodule Assent.Strategy.Apple do
     with {:ok, client_secret} <- gen_client_secret(config),
          {:ok, user_info} <- decode_user_params(config, params) do
       config
-      |> Config.put(:client_secret, client_secret)
-      |> Config.put(:user, user_info)
+      |> Keyword.put(:client_secret, client_secret)
+      |> Keyword.put(:user, user_info)
       |> Base.callback(params, __MODULE__)
     end
   end
@@ -91,9 +91,9 @@ defmodule Assent.Strategy.Apple do
       |> default_config()
       |> Keyword.merge(config)
 
-    with {:ok, base_url} <- Config.fetch(config, :base_url),
-         {:ok, client_id} <- Config.fetch(config, :client_id),
-         {:ok, team_id} <- Config.fetch(config, :team_id),
+    with {:ok, base_url} <- Assent.fetch_config(config, :base_url),
+         {:ok, client_id} <- Assent.fetch_config(config, :client_id),
+         {:ok, team_id} <- Assent.fetch_config(config, :team_id),
          :ok <- ensure_private_key_id(config),
          {:ok, private_key} <- JWTAdapter.load_private_key(config) do
       claims = %{
@@ -109,7 +109,7 @@ defmodule Assent.Strategy.Apple do
   end
 
   defp ensure_private_key_id(config) do
-    with {:ok, _private_key_id} <- Config.fetch(config, :private_key_id) do
+    with {:ok, _private_key_id} <- Assent.fetch_config(config, :private_key_id) do
       :ok
     end
   end
@@ -120,7 +120,7 @@ defmodule Assent.Strategy.Apple do
   @impl true
   def fetch_user(config, token) do
     with {:ok, user} <- OIDC.fetch_user(config, token),
-         {:ok, user_info} <- Config.fetch(config, :user) do
+         {:ok, user_info} <- Assent.fetch_config(config, :user) do
       {:ok, Map.merge(user, user_info)}
     end
   end

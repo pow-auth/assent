@@ -64,13 +64,13 @@ defmodule Assent.Strategy.OAuth2 do
 
       {:ok, %{url: url, session_params: session_params}} =
         config
-        |> Assent.Config.put(:redirect_uri, "http://localhost:4000/auth/callback")
+        |> Keyword.put(:redirect_uri, "http://localhost:4000/auth/callback")
         |> Assent.Strategy.OAuth2.authorize_url()
 
       {:ok, %{user: user, token: token}} =
         config
-        |> Assent.Config.put(:redirect_uri, "http://localhost:4000/auth/callback")
-        |> Assent.Config.put(:session_params, session_params)
+        |> Keyword.put(:redirect_uri, "http://localhost:4000/auth/callback")
+        |> Keyword.put(:session_params, session_params)
         |> Assent.Strategy.OAuth2.callback(params)
   """
   @behaviour Assent.Strategy
@@ -84,7 +84,6 @@ defmodule Assent.Strategy.OAuth2 do
     HTTPAdapter.HTTPResponse,
     InvalidResponseError,
     JWTAdapter,
-    MissingParamError,
     RequestError,
     UnexpectedResponseError
   }
@@ -103,7 +102,7 @@ defmodule Assent.Strategy.OAuth2 do
   @doc """
   Generate authorization URL for request phase.
 
-  ## Configuration
+  ## Options
 
     - `:redirect_uri` - The URI that the server redirects the user to after
       authentication, required
@@ -112,17 +111,17 @@ defmodule Assent.Strategy.OAuth2 do
     - `:authorization_params` - The authorization parameters, defaults to `[]`
   """
   @impl true
-  @spec authorize_url(Config.t()) :: on_authorize_url()
+  @spec authorize_url(Keyword.t()) :: on_authorize_url()
   def authorize_url(config) do
     config = deprecated_state_handling(config)
 
-    with {:ok, redirect_uri} <- Config.fetch(config, :redirect_uri),
+    with {:ok, redirect_uri} <- Assent.fetch_config(config, :redirect_uri),
          {:ok, base_url} <- Config.__base_url__(config),
-         {:ok, client_id} <- Config.fetch(config, :client_id) do
+         {:ok, client_id} <- Assent.fetch_config(config, :client_id) do
       session_params = session_params(config)
       url_params = authorization_params(config, client_id, redirect_uri, session_params)
 
-      authorize_url = Config.get(config, :authorize_url, "/oauth/authorize")
+      authorize_url = Keyword.get(config, :authorize_url, "/oauth/authorize")
       url = Helpers.to_url(base_url, authorize_url, url_params)
 
       {:ok, %{url: url, session_params: Enum.into(session_params, %{})}}
@@ -132,7 +131,7 @@ defmodule Assent.Strategy.OAuth2 do
   # TODO: Remove in >= 0.3
   defp deprecated_state_handling(config) do
     config
-    |> Config.get(:authorization_params, [])
+    |> Keyword.get(:authorization_params, [])
     |> Keyword.get(:state)
     |> case do
       nil ->
@@ -152,7 +151,7 @@ defmodule Assent.Strategy.OAuth2 do
   end
 
   defp state_params(config) do
-    case Config.get(config, :state, true) do
+    case Keyword.get(config, :state, true) do
       state when is_binary(state) -> [state: state]
       true -> [state: gen_url_encoded_base64(32)]
       false -> []
@@ -168,7 +167,7 @@ defmodule Assent.Strategy.OAuth2 do
   end
 
   defp code_verifier_params(config) do
-    case Config.get(config, :code_verifier, false) do
+    case Keyword.get(config, :code_verifier, false) do
       true ->
         code_verifier = gen_url_encoded_base64(128)
 
@@ -184,7 +183,7 @@ defmodule Assent.Strategy.OAuth2 do
   end
 
   defp authorization_params(config, client_id, redirect_uri, session_params) do
-    params = Config.get(config, :authorization_params, [])
+    params = Keyword.get(config, :authorization_params, [])
 
     [
       response_type: "code",
@@ -203,7 +202,7 @@ defmodule Assent.Strategy.OAuth2 do
   user data. Returns a map with access token in `:token` and user data in
   `:user`.
 
-  ## Configuration
+  ## Options
 
     - `:token_url` - The path or URL to fetch the token from, optional,
       defaults to `/oauth/token`
@@ -212,9 +211,9 @@ defmodule Assent.Strategy.OAuth2 do
       `authorize_url/1`, optional
   """
   @impl true
-  @spec callback(Config.t(), map(), atom()) :: on_callback()
+  @spec callback(Keyword.t(), map(), atom()) :: on_callback()
   def callback(config, params, strategy \\ __MODULE__) do
-    with {:ok, session_params} <- Config.fetch(config, :session_params),
+    with {:ok, session_params} <- Assent.fetch_config(config, :session_params),
          :ok <- check_error_params(params),
          :ok <- verify_state(config, session_params, params),
          {:ok, grant_params} <- fetch_grant_access_token_params(config, params, session_params),
@@ -234,38 +233,31 @@ defmodule Assent.Strategy.OAuth2 do
   defp check_error_params(_params), do: :ok
 
   defp verify_state(config, session_params, params) do
-    case Config.get(config, :state, true) do
+    case Keyword.get(config, :state, true) do
       false -> :ok
       _true -> verify_state(session_params.state, params)
     end
   end
 
-  defp verify_state(stored_state, %{"state" => provided_state}) do
-    case Assent.constant_time_compare(stored_state, provided_state) do
-      true -> :ok
-      false -> {:error, CallbackCSRFError.exception(key: "state")}
+  defp verify_state(stored_state, params) do
+    with {:ok, provided_state} <- Assent.fetch_param(params, "state") do
+      case Assent.constant_time_compare(stored_state, provided_state) do
+        true -> :ok
+        false -> {:error, CallbackCSRFError.exception(key: "state")}
+      end
     end
   end
 
-  defp verify_state(_stored_state, params) do
-    {:error, MissingParamError.exception(expected_key: "state", params: params)}
-  end
-
   defp fetch_grant_access_token_params(config, params, session_params) do
-    with {:ok, code} <- fetch_code_param(params),
-         {:ok, redirect_uri} <- Config.fetch(config, :redirect_uri),
+    with {:ok, code} <- Assent.fetch_param(params, "code"),
+         {:ok, redirect_uri} <- Assent.fetch_config(config, :redirect_uri),
          {:ok, code_verifier_params} <- fetch_code_verifer_params(config, session_params) do
       {:ok, [code: code, redirect_uri: redirect_uri] ++ code_verifier_params}
     end
   end
 
-  defp fetch_code_param(%{"code" => code}), do: {:ok, code}
-
-  defp fetch_code_param(params),
-    do: {:error, MissingParamError.exception(expected_key: "code", params: params)}
-
   defp fetch_code_verifer_params(config, session_params) do
-    case Config.get(config, :code_verifier, false) do
+    case Keyword.get(config, :code_verifier, false) do
       true -> {:ok, [code_verifier: Map.fetch!(session_params, :code_verifier)]}
       false -> {:ok, []}
     end
@@ -274,10 +266,10 @@ defmodule Assent.Strategy.OAuth2 do
   @doc """
   Grants an access token.
   """
-  @spec grant_access_token(Config.t(), binary(), Keyword.t()) :: {:ok, map()} | {:error, term()}
+  @spec grant_access_token(Keyword.t(), binary(), Keyword.t()) :: {:ok, map()} | {:error, term()}
   def grant_access_token(config, grant_type, params) do
-    auth_method = Config.get(config, :auth_method, nil)
-    token_url = Config.get(config, :token_url, "/oauth/token")
+    auth_method = Keyword.get(config, :auth_method)
+    token_url = Keyword.get(config, :token_url, "/oauth/token")
 
     with {:ok, base_url} <- Config.__base_url__(config),
          {:ok, auth_headers, auth_body} <- authentication_params(auth_method, config) do
@@ -287,13 +279,13 @@ defmodule Assent.Strategy.OAuth2 do
       body = URI.encode_query(params)
 
       :post
-      |> Helpers.request(url, body, headers, config)
+      |> Helpers.http_request(url, body, headers, config)
       |> process_access_token_response()
     end
   end
 
   defp authentication_params(nil, config) do
-    with {:ok, client_id} <- Config.fetch(config, :client_id) do
+    with {:ok, client_id} <- Assent.fetch_config(config, :client_id) do
       headers = []
       body = [client_id: client_id]
 
@@ -302,8 +294,8 @@ defmodule Assent.Strategy.OAuth2 do
   end
 
   defp authentication_params(:client_secret_basic, config) do
-    with {:ok, client_id} <- Config.fetch(config, :client_id),
-         {:ok, client_secret} <- Config.fetch(config, :client_secret) do
+    with {:ok, client_id} <- Assent.fetch_config(config, :client_id),
+         {:ok, client_secret} <- Assent.fetch_config(config, :client_secret) do
       auth = Base.encode64("#{client_id}:#{client_secret}")
       headers = [{"authorization", "Basic #{auth}"}]
       body = []
@@ -313,8 +305,8 @@ defmodule Assent.Strategy.OAuth2 do
   end
 
   defp authentication_params(:client_secret_post, config) do
-    with {:ok, client_id} <- Config.fetch(config, :client_id),
-         {:ok, client_secret} <- Config.fetch(config, :client_secret) do
+    with {:ok, client_id} <- Assent.fetch_config(config, :client_id),
+         {:ok, client_secret} <- Assent.fetch_config(config, :client_secret) do
       headers = []
       body = [client_id: client_id, client_secret: client_secret]
 
@@ -323,18 +315,18 @@ defmodule Assent.Strategy.OAuth2 do
   end
 
   defp authentication_params(:client_secret_jwt, config) do
-    alg = Config.get(config, :jwt_algorithm, "HS256")
+    alg = Keyword.get(config, :jwt_algorithm, "HS256")
 
-    with {:ok, client_secret} <- Config.fetch(config, :client_secret) do
+    with {:ok, client_secret} <- Assent.fetch_config(config, :client_secret) do
       jwt_authentication_params(alg, client_secret, config)
     end
   end
 
   defp authentication_params(:private_key_jwt, config) do
-    alg = Config.get(config, :jwt_algorithm, "RS256")
+    alg = Keyword.get(config, :jwt_algorithm, "RS256")
 
     with {:ok, pem} <- JWTAdapter.load_private_key(config),
-         {:ok, _private_key_id} <- Config.fetch(config, :private_key_id) do
+         {:ok, _private_key_id} <- Assent.fetch_config(config, :private_key_id) do
       jwt_authentication_params(alg, pem, config)
     end
   end
@@ -361,7 +353,7 @@ defmodule Assent.Strategy.OAuth2 do
     timestamp = :os.system_time(:second)
 
     with {:ok, base_url} <- Config.__base_url__(config),
-         {:ok, client_id} <- Config.fetch(config, :client_id) do
+         {:ok, client_id} <- Assent.fetch_config(config, :client_id) do
       {:ok,
        %{
          "iss" => client_id,
@@ -402,7 +394,7 @@ defmodule Assent.Strategy.OAuth2 do
   @doc """
   Refreshes the access token.
   """
-  @spec refresh_access_token(Config.t(), map(), Keyword.t()) :: {:ok, map()} | {:error, term()}
+  @spec refresh_access_token(Keyword.t(), map(), Keyword.t()) :: {:ok, map()} | {:error, term()}
   def refresh_access_token(config, token, params \\ []) do
     with {:ok, refresh_token} <- fetch_from_token(token, "refresh_token") do
       grant_access_token(
@@ -416,7 +408,7 @@ defmodule Assent.Strategy.OAuth2 do
   @doc """
   Performs a HTTP request to the API using the access token.
   """
-  @spec request(Config.t(), map(), atom(), binary(), map() | Keyword.t(), [{binary(), binary()}]) ::
+  @spec request(Keyword.t(), map(), atom(), binary(), map() | Keyword.t(), [{binary(), binary()}]) ::
           {:ok, map()} | {:error, term()}
   def request(config, token, method, url, params \\ [], headers \\ []) do
     with {:ok, base_url} <- Config.__base_url__(config),
@@ -426,7 +418,7 @@ defmodule Assent.Strategy.OAuth2 do
       params = url_params(method, params)
       url = Helpers.to_url(base_url, url, params)
 
-      Helpers.request(method, url, req_body, req_headers, config)
+      Helpers.http_request(method, url, req_body, req_headers, config)
     end
   end
 
@@ -470,10 +462,10 @@ defmodule Assent.Strategy.OAuth2 do
 
   Uses `request/6` to fetch the user data.
   """
-  @spec fetch_user(Config.t(), map(), map() | Keyword.t(), [{binary(), binary()}]) ::
+  @spec fetch_user(Keyword.t(), map(), map() | Keyword.t(), [{binary(), binary()}]) ::
           {:ok, map()} | {:error, term()}
   def fetch_user(config, token, params \\ [], headers \\ []) do
-    with {:ok, user_url} <- Config.fetch(config, :user_url) do
+    with {:ok, user_url} <- Assent.fetch_config(config, :user_url) do
       case request(config, token, :get, user_url, params, headers) do
         {:ok, %HTTPResponse{status: 200, body: user}} when is_map(user) ->
           {:ok, user}

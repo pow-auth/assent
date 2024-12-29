@@ -15,8 +15,6 @@ defmodule Assent.Strategy.Auth0 do
   """
   use Assent.Strategy.OAuth2.Base
 
-  alias Assent.Config
-
   @impl true
   def default_config(config) do
     append_domain_config(config,
@@ -29,8 +27,8 @@ defmodule Assent.Strategy.Auth0 do
   end
 
   defp append_domain_config(config, default) do
-    case Config.fetch(config, :domain) do
-      {:ok, domain} -> Config.put(default, :base_url, prepend_scheme(domain))
+    case Assent.fetch_config(config, :domain) do
+      {:ok, domain} -> Keyword.put(default, :base_url, prepend_scheme(domain))
       _error -> default
     end
   end

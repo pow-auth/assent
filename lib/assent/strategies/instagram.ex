@@ -17,7 +17,7 @@ defmodule Assent.Strategy.Instagram do
   """
   use Assent.Strategy.OAuth2.Base
 
-  alias Assent.{Config, Strategy.OAuth2}
+  alias Assent.Strategy.OAuth2
 
   @impl true
   def default_config(_config) do
@@ -34,7 +34,7 @@ defmodule Assent.Strategy.Instagram do
 
   @impl true
   def fetch_user(config, access_token) do
-    with {:ok, fields} <- Config.fetch(config, :user_url_request_fields) do
+    with {:ok, fields} <- Assent.fetch_config(config, :user_url_request_fields) do
       params = [
         fields: fields,
         access_token: access_token["access_token"]

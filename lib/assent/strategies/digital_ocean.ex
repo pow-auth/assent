@@ -14,7 +14,6 @@ defmodule Assent.Strategy.DigitalOcean do
   """
 
   use Assent.Strategy.OAuth2.Base
-  alias Assent.Config
 
   @impl true
   def default_config(config) do
@@ -24,7 +23,7 @@ defmodule Assent.Strategy.DigitalOcean do
       token_url: "https://cloud.digitalocean.com/v1/oauth/token",
       user_url: "/v2/account",
       authorization_params: [
-        prompt: Config.get(config, :prompt, "select_account"),
+        prompt: Keyword.get(config, :prompt, "select_account"),
         scope: "read write",
         response_type: "code"
       ],

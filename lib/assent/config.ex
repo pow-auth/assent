@@ -1,9 +1,8 @@
+# TODO: Deprecated, remove in 0.3
 defmodule Assent.Config do
-  @moduledoc """
-  Methods to handle configurations.
-  """
+  @moduledoc false
 
-  defmodule MissingKeyError do
+  defmodule MissingConfigError do
     @type t :: %__MODULE__{}
 
     defexception [:key]
@@ -15,51 +14,29 @@ defmodule Assent.Config do
 
   @type t :: Keyword.t()
 
-  @doc """
-  Fetches the key value from the configuration.
-  """
-  @spec fetch(t(), atom()) :: {:ok, any()} | {:error, MissingKeyError.t()}
-  def fetch(config, key) do
-    case Keyword.fetch(config, key) do
-      {:ok, value} -> {:ok, value}
-      :error -> {:error, MissingKeyError.exception(key: key)}
-    end
-  end
+  @doc false
+  @deprecated "Use Assent.fetch_config/2 instead"
+  def fetch(config, key), do: Assent.fetch_config(config, key)
 
+  @deprecated "Use Keyword.get/3 instead"
   defdelegate get(config, key, default), to: Keyword
 
+  @deprecated "Use Keyword.put/3 instead"
   defdelegate put(config, key, value), to: Keyword
 
+  @deprecated "Use Keyword.merge/2 instead"
   defdelegate merge(config_a, config_b), to: Keyword
 
-  @default_json_library (Code.ensure_loaded?(JSON) && JSON) || Jason
+  @deprecated "Use Assent.json_library/1 instead"
+  def json_library(config), do: Assent.json_library(config)
 
-  @doc """
-  Fetches the JSON library in config.
-
-  If not found in provided config, this will attempt to load the JSON library
-  from global application environment for `:assent`. Defaults to
-  `#{@default_json_library}`.
-  """
-  @spec json_library(t()) :: module()
-  def json_library(config) do
-    case get(config, :json_library, nil) do
-      nil ->
-        Application.get_env(:assent, :json_library, @default_json_library)
-
-      json_library ->
-        json_library
-    end
-  end
-
-  # TODO: Remove in next major version
   def __base_url__(config) do
-    case fetch(config, :base_url) do
+    case Assent.fetch_config(config, :base_url) do
       {:ok, base_url} ->
         {:ok, base_url}
 
       {:error, error} ->
-        case fetch(config, :site) do
+        case Assent.fetch_config(config, :site) do
           {:ok, base_url} ->
             IO.warn("The `:site` configuration key is deprecated, use `:base_url` instead")
             {:ok, base_url}
