@@ -31,6 +31,8 @@ defmodule Assent.Strategy.FacebookTest do
       end)
 
       expect_oauth2_user_request(@user_response, [uri: "/me"], fn conn ->
+        assert Plug.Conn.get_req_header(conn, "accept") == ["application/json"]
+
         conn = Plug.Conn.fetch_query_params(conn)
 
         assert conn.params["access_token"] == "access_token"

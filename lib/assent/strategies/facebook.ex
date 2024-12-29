@@ -115,7 +115,7 @@ defmodule Assent.Strategy.Facebook do
         access_token: access_token["access_token"]
       ]
 
-      OAuth2.fetch_user(config, access_token, params)
+      OAuth2.fetch_user(config, access_token, params, [{"accept", "application/json"}])
     end
   end
 
