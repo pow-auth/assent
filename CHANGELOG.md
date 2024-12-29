@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.2.12 (TBA)
+
+* `Assent` now has a module doc
+
 ## v0.2.11 (2024-12-29)
 
 * Default to using `JSON` instead of `Jason` for JSON parsing on Elixir 1.18

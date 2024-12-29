@@ -1,5 +1,9 @@
 defmodule Assent do
-  @moduledoc false
+  @external_resource "README.md"
+  @moduledoc "README.md"
+             |> File.read!()
+             |> String.split("<!-- MDOC !-->")
+             |> Enum.fetch!(1)
 
   defmodule MissingConfigError do
     defexception [:key, :config]
