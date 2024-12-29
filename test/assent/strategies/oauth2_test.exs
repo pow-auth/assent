@@ -320,6 +320,18 @@ defmodule Assent.Strategy.OAuth2Test do
       assert error.response.body == %{"error" => "Unauthorized"}
     end
 
+    test "with `:user_url` not returning decoded map in body", %{
+      config: config,
+      callback_params: params
+    } do
+      expect_oauth2_access_token_request()
+      expect_oauth2_user_request("%")
+
+      assert {:error, %UnexpectedResponseError{} = error} = OAuth2.callback(config, params)
+      assert Exception.message(error) =~ "An unexpected response was received."
+      assert error.response.body == "%"
+    end
+
     @user_api_params %{name: "Dan Schultzer", email: "foo@example.com", uid: "1"}
 
     test "with no auth method", %{config: config, callback_params: params} do
