@@ -80,7 +80,6 @@ defmodule Assent.Strategy.OAuth2 do
   alias Assent.{
     CallbackCSRFError,
     CallbackError,
-    Config,
     HTTPAdapter.HTTPResponse,
     InvalidResponseError,
     JWTAdapter,
@@ -113,10 +112,8 @@ defmodule Assent.Strategy.OAuth2 do
   @impl true
   @spec authorize_url(Keyword.t()) :: on_authorize_url()
   def authorize_url(config) do
-    config = deprecated_state_handling(config)
-
     with {:ok, redirect_uri} <- Assent.fetch_config(config, :redirect_uri),
-         {:ok, base_url} <- Config.__base_url__(config),
+         {:ok, base_url} <- Assent.fetch_config(config, :base_url),
          {:ok, client_id} <- Assent.fetch_config(config, :client_id) do
       session_params = session_params(config)
       url_params = authorization_params(config, client_id, redirect_uri, session_params)
@@ -125,24 +122,6 @@ defmodule Assent.Strategy.OAuth2 do
       url = Helpers.to_url(base_url, authorize_url, url_params)
 
       {:ok, %{url: url, session_params: Enum.into(session_params, %{})}}
-    end
-  end
-
-  # TODO: Remove in >= 0.3
-  defp deprecated_state_handling(config) do
-    config
-    |> Keyword.get(:authorization_params, [])
-    |> Keyword.get(:state)
-    |> case do
-      nil ->
-        config
-
-      state ->
-        IO.warn(
-          "Passing `:state` key in `:authorization_params` is deprecated, set it in the config instead."
-        )
-
-        Keyword.put(config, :state, state)
     end
   end
 
@@ -271,7 +250,7 @@ defmodule Assent.Strategy.OAuth2 do
     auth_method = Keyword.get(config, :auth_method)
     token_url = Keyword.get(config, :token_url, "/oauth/token")
 
-    with {:ok, base_url} <- Config.__base_url__(config),
+    with {:ok, base_url} <- Assent.fetch_config(config, :base_url),
          {:ok, auth_headers, auth_body} <- authentication_params(auth_method, config) do
       headers = [{"content-type", "application/x-www-form-urlencoded"}] ++ auth_headers
       params = Keyword.merge(params, Keyword.put(auth_body, :grant_type, grant_type))
@@ -352,7 +331,7 @@ defmodule Assent.Strategy.OAuth2 do
   defp jwt_claims(config) do
     timestamp = :os.system_time(:second)
 
-    with {:ok, base_url} <- Config.__base_url__(config),
+    with {:ok, base_url} <- Assent.fetch_config(config, :base_url),
          {:ok, client_id} <- Assent.fetch_config(config, :client_id) do
       {:ok,
        %{
@@ -411,7 +390,7 @@ defmodule Assent.Strategy.OAuth2 do
   @spec request(Keyword.t(), map(), atom(), binary(), map() | Keyword.t(), [{binary(), binary()}]) ::
           {:ok, map()} | {:error, term()}
   def request(config, token, method, url, params \\ [], headers \\ []) do
-    with {:ok, base_url} <- Config.__base_url__(config),
+    with {:ok, base_url} <- Assent.fetch_config(config, :base_url),
          {:ok, auth_headers} <- authorization_headers(token) do
       req_headers = request_headers(method, auth_headers ++ headers)
       req_body = request_body(method, params)

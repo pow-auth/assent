@@ -45,21 +45,6 @@ defmodule Assent do
             params: map()
           }
 
-    # TODO: Deprecated, remove in 0.3
-    def exception(opts) do
-      opts =
-        case Keyword.fetch(opts, :expected_key) do
-          {:ok, key} ->
-            IO.warn("The `expected_key` option is deprecated. Please use `key` instead.")
-            [key: key, params: opts[:params]]
-
-          :error ->
-            opts
-        end
-
-      struct!(__MODULE__, opts)
-    end
-
     def message(exception) do
       key = inspect(exception.key)
       param_keys = exception.params |> Map.keys() |> Enum.sort() |> inspect()

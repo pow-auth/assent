@@ -79,7 +79,6 @@ defmodule Assent.Strategy.OIDC do
   alias Assent.Strategy, as: Helpers
 
   alias Assent.{
-    Config,
     HTTPAdapter.HTTPResponse,
     InvalidResponseError,
     RequestError,
@@ -136,7 +135,7 @@ defmodule Assent.Strategy.OIDC do
   end
 
   defp fetch_openid_configuration_from_uri(config) do
-    with {:ok, base_url} <- Config.__base_url__(config) do
+    with {:ok, base_url} <- Assent.fetch_config(config, :base_url) do
       configuration_url =
         Keyword.get(config, :openid_configuration_uri, "/.well-known/openid-configuration")
 

@@ -48,7 +48,6 @@ defmodule Assent.Strategy.OAuth do
   alias Assent.Strategy, as: Helpers
 
   alias Assent.{
-    Config,
     HTTPAdapter.HTTPResponse,
     InvalidResponseError,
     JWTAdapter,
@@ -88,7 +87,7 @@ defmodule Assent.Strategy.OAuth do
   end
 
   defp fetch_request_token(config, oauth_params) do
-    with {:ok, base_url} <- Config.__base_url__(config) do
+    with {:ok, base_url} <- Assent.fetch_config(config, :base_url) do
       request_token_url = Keyword.get(config, :request_token_url, "/request_token")
       url = process_url(base_url, request_token_url)
 
@@ -298,7 +297,7 @@ defmodule Assent.Strategy.OAuth do
   defp process_response({:error, error}), do: {:error, error}
 
   defp gen_authorize_url(config, token) do
-    with {:ok, base_url} <- Config.__base_url__(config),
+    with {:ok, base_url} <- Assent.fetch_config(config, :base_url),
          {:ok, oauth_token} <- fetch_from_token(token, "oauth_token"),
          {:ok, oauth_token_secret} <- fetch_from_token(token, "oauth_token_secret") do
       authorization_url = Keyword.get(config, :authorize_url, "/authorize")
@@ -346,7 +345,7 @@ defmodule Assent.Strategy.OAuth do
   end
 
   defp fetch_access_token(config, oauth_token, oauth_verifier) do
-    with {:ok, base_url} <- Config.__base_url__(config) do
+    with {:ok, base_url} <- Assent.fetch_config(config, :base_url) do
       access_token_url = Keyword.get(config, :access_token_url, "/access_token")
       url = process_url(base_url, access_token_url)
       oauth_token_secret = Kernel.get_in(config, [:session_params, :oauth_token_secret])
@@ -371,7 +370,7 @@ defmodule Assent.Strategy.OAuth do
   @spec request(Keyword.t(), map(), atom(), binary(), map() | Keyword.t(), [{binary(), binary()}]) ::
           {:ok, map()} | {:error, term()}
   def request(config, token, method, url, params \\ [], headers \\ []) do
-    with {:ok, base_url} <- Config.__base_url__(config),
+    with {:ok, base_url} <- Assent.fetch_config(config, :base_url),
          {:ok, oauth_token} <- fetch_from_token(token, "oauth_token"),
          {:ok, oauth_token_secret} <- fetch_from_token(token, "oauth_token_secret") do
       url = process_url(base_url, url)
