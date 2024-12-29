@@ -26,7 +26,7 @@ defmodule Assent.Strategy do
         end
       end
   """
-  alias Assent.{Config, HTTPAdapter.HTTPResponse, ServerUnreachableError}
+  alias Assent.{Config, HTTPAdapter.HTTPResponse, InvalidResponseError, ServerUnreachableError}
 
   @callback authorize_url(Config.t()) ::
               {:ok, %{:url => binary(), optional(atom()) => any()}} | {:error, term()}
@@ -45,7 +45,7 @@ defmodule Assent.Strategy do
     |> http_adapter.request(url, body, headers, opts)
     |> case do
       {:ok, response} ->
-        decode_response({:ok, response}, config)
+        decode_response(response, config)
 
       {:error, error} ->
         {:error,
@@ -87,23 +87,35 @@ defmodule Assent.Strategy do
   end
 
   @doc """
-  Decodes a request response.
+  Decodes request response body.
   """
-  @spec decode_response(
-          {:ok, HTTPResponse.t()} | {:error, HTTPResponse.t()} | {:error, term()},
-          Config.t()
-        ) :: {:ok, HTTPResponse.t()} | {:error, HTTPResponse.t()} | {:error, term()}
-  def decode_response({ok_or_error, %{body: body, headers: headers} = resp}, config)
-      when is_binary(body) do
-    case decode_body(headers, body, config) do
-      {:ok, body} -> {ok_or_error, %{resp | body: body}}
+  @spec decode_response(HTTPResponse.t(), Config.t()) ::
+          {:ok, HTTPResponse.t()} | {:error, InvalidResponseError.t()}
+  def decode_response(%HTTPResponse{} = response, config) do
+    case decode(response.headers, response.body, config) do
+      {:ok, body} -> {:ok, %{response | body: body}}
+      {:error, _error} -> {:error, InvalidResponseError.exception(response: response)}
+    end
+  end
+
+  # TODO: Remove in 0.3 release
+  def decode_response({res, %HTTPResponse{} = response}, config) do
+    IO.warn("Passing {:ok | :error, response} to decode_response/2 is deprecated")
+
+    case decode(response.headers, response.body, config) do
+      {:ok, body} -> {res, %{response | body: body}}
       {:error, error} -> {:error, error}
     end
   end
 
-  def decode_response(any, _config), do: any
+  # TODO: Remove in 0.3 release
+  def decode_response({:error, error}, _config) do
+    IO.warn("Passing {:error, error} to decode_response/2 is deprecated")
 
-  defp decode_body(headers, body, config) do
+    {:error, error}
+  end
+
+  defp decode(headers, body, config) when is_binary(body) do
     case List.keyfind(headers, "content-type", 0) do
       {"content-type", "application/json" <> _rest} ->
         decode_json(body, config)
@@ -118,6 +130,8 @@ defmodule Assent.Strategy do
         {:ok, body}
     end
   end
+
+  defp decode(_headers, body, _config), do: {:ok, body}
 
   @doc """
   Decode a JSON response to a map

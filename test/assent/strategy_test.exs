@@ -2,42 +2,62 @@ defmodule Assent.StrategyTest do
   use Assent.TestCase
   doctest Assent.Strategy
 
-  alias Assent.{HTTPAdapter.HTTPResponse, Strategy}
+  alias Assent.{HTTPAdapter.HTTPResponse, InvalidResponseError, Strategy}
+
+  @body %{"a" => "1", "b" => "2"}
+  @headers [{"content-type", "application/json"}]
+  @json_encoded_body @json_library.encode!(@body)
+  @uri_encoded_body URI.encode_query(@body)
 
   test "decode_response/2" do
-    expected = %{"a" => "1", "b" => "2"}
+    assert {:ok, response} =
+             Strategy.decode_response(
+               %HTTPResponse{body: @json_encoded_body, headers: @headers},
+               []
+             )
 
-    headers = [{"content-type", "application/json"}]
-    body = @json_library.encode!(expected)
+    assert response.body == @body
 
-    assert Strategy.decode_response({:ok, %{body: body, headers: headers}}, []) ==
-             {:ok, %{body: expected, headers: headers}}
+    assert {:ok, response} =
+             Strategy.decode_response(
+               %HTTPResponse{
+                 body: @json_encoded_body,
+                 headers: [{"content-type", "application/json; charset=utf-8"}]
+               },
+               []
+             )
 
-    assert Strategy.decode_response({:error, %{body: body, headers: headers}}, []) ==
-             {:error, %{body: expected, headers: headers}}
+    assert response.body == @body
 
-    headers = [{"content-type", "application/json; charset=utf-8"}]
+    assert {:ok, response} =
+             Strategy.decode_response(
+               %HTTPResponse{
+                 body: @json_encoded_body,
+                 headers: [{"content-type", "text/javascript"}]
+               },
+               []
+             )
 
-    assert Strategy.decode_response({:ok, %{body: body, headers: headers}}, []) ==
-             {:ok, %{body: expected, headers: headers}}
+    assert response.body == @body
 
-    headers = [{"content-type", "text/javascript"}]
+    assert {:ok, response} =
+             Strategy.decode_response(
+               %HTTPResponse{
+                 body: @uri_encoded_body,
+                 headers: [{"content-type", "application/x-www-form-urlencoded"}]
+               },
+               []
+             )
 
-    assert Strategy.decode_response({:ok, %{body: body, headers: headers}}, []) ==
-             {:ok, %{body: expected, headers: headers}}
+    assert response.body == @body
 
-    headers = [{"content-type", "application/x-www-form-urlencoded"}]
-    body = URI.encode_query(expected)
+    assert {:ok, response} = Strategy.decode_response(%HTTPResponse{body: @body, headers: []}, [])
+    assert response.body == @body
 
-    assert Strategy.decode_response({:ok, %{body: body, headers: headers}}, []) ==
-             {:ok, %{body: expected, headers: headers}}
+    assert {:error, %InvalidResponseError{} = error} =
+             Strategy.decode_response(%HTTPResponse{body: "%", headers: @headers}, [])
 
-    headers = [{"content-type", "application/x-www-form-urlencoded; charset=utf-8"}]
-
-    assert Strategy.decode_response({:ok, %{body: body, headers: headers}}, []) ==
-             {:ok, %{body: expected, headers: headers}}
-
-    assert Strategy.decode_response({:error, "error reason"}, []) == {:error, "error reason"}
+    assert error.response.body == "%"
   end
 
   defmodule JSONMock do
@@ -172,14 +192,8 @@ defmodule Assent.StrategyTest do
                 request_url: "json-encoded-body-text/javascript-header"
               }}
 
-    assert {:error, error} =
+    assert {:error, %InvalidResponseError{}} =
              Strategy.request(:get, "invalid-json-body", nil, [], http_adapter: HTTPMock)
-
-    if unquote(@json_library == Jason) do
-      assert %Jason.DecodeError{} = error
-    else
-      assert error == {:invalid_byte, 0, 37}
-    end
 
     assert Strategy.request(:get, "json-no-headers", nil, [], http_adapter: HTTPMock) ==
              {:ok,

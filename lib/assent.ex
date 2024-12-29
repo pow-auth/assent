@@ -8,6 +8,10 @@ defmodule Assent do
   defmodule CallbackCSRFError do
     defexception [:key]
 
+    @type t :: %__MODULE__{
+            key: binary()
+          }
+
     def message(exception) do
       "CSRF detected with param key #{inspect(exception.key)}"
     end
@@ -15,6 +19,11 @@ defmodule Assent do
 
   defmodule MissingParamError do
     defexception [:expected_key, :params]
+
+    @type t :: %__MODULE__{
+            expected_key: binary(),
+            params: map()
+          }
 
     def message(exception) do
       expected_key = inspect(exception.expected_key)
@@ -28,6 +37,11 @@ defmodule Assent do
     defexception [:message, :response]
 
     alias Assent.HTTPAdapter.HTTPResponse
+
+    @type t :: %__MODULE__{
+            message: binary(),
+            response: HTTPResponse.t()
+          }
 
     def message(exception) do
       """
@@ -43,6 +57,10 @@ defmodule Assent do
 
     alias Assent.HTTPAdapter.HTTPResponse
 
+    @type t :: %__MODULE__{
+            response: HTTPResponse.t()
+          }
+
     def message(exception) do
       """
       An invalid response was received.
@@ -57,6 +75,10 @@ defmodule Assent do
 
     alias Assent.HTTPAdapter.HTTPResponse
 
+    @type t :: %__MODULE__{
+            response: HTTPResponse.t()
+          }
+
     def message(exception) do
       """
       An unexpected response was received.
@@ -68,6 +90,12 @@ defmodule Assent do
 
   defmodule ServerUnreachableError do
     defexception [:http_adapter, :request_url, :reason]
+
+    @type t :: %__MODULE__{
+            http_adapter: module(),
+            request_url: binary(),
+            reason: term()
+          }
 
     def message(exception) do
       [url | _rest] = String.split(exception.request_url, "?", parts: 2)
