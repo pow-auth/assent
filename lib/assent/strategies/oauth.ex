@@ -402,7 +402,7 @@ defmodule Assent.Strategy.OAuth do
   def fetch_user(config, token) do
     with {:ok, url} <- Config.fetch(config, :user_url) do
       case request(config, token, :get, url) do
-        {:ok, %HTTPResponse{status: 200, body: user}} ->
+        {:ok, %HTTPResponse{status: 200, body: user}} when is_map(user) ->
           {:ok, user}
 
         {:error, %HTTPResponse{status: 401} = response} ->
