@@ -40,7 +40,7 @@ defmodule Assent.HTTPAdapter.HttpcTest do
       assert {:error, {:failed_connect, error}} =
                Httpc.request(:get, bad_host_url, nil, [], httpc_opts)
 
-      assert {:tls_alert, {:handshake_failure, _error}} = fetch_inet_error(error)
+      assert {:tls_alert, {:handshake_failure, _error}} = inet_error(error)
     end
 
     test "handles SSL with bad certificate and no verification" do
@@ -85,7 +85,7 @@ defmodule Assent.HTTPAdapter.HttpcTest do
       TestServer.stop()
 
       assert {:error, {:failed_connect, error}} = Httpc.request(:get, url, nil, [])
-      assert fetch_inet_error(error) == :econnrefused
+      assert inet_error(error) == :econnrefused
     end
 
     test "handles query in URL" do
@@ -129,7 +129,7 @@ defmodule Assent.HTTPAdapter.HttpcTest do
     end
   end
 
-  defp fetch_inet_error([_, {:inet, [:inet], error}]), do: error
+  defp inet_error([_, {:inet, [:inet], error}]), do: error
 
   defp request_with_deps(deps) do
     deps = deps ++ ["{:assent, path: \"../../\"}"]

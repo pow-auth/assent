@@ -81,26 +81,14 @@ defmodule Assent.Strategy.OAuth do
   @impl true
   @spec authorize_url(Config.t()) :: on_authorize_url()
   def authorize_url(config) do
-    case Config.fetch(config, :redirect_uri) do
-      {:ok, redirect_uri} -> authorize_url(config, redirect_uri)
-      {:error, error} -> {:error, error}
+    with {:ok, redirect_uri} <- Config.fetch(config, :redirect_uri),
+         {:ok, token} <- fetch_request_token(config, [{"oauth_callback", redirect_uri}]),
+         {:ok, url, oauth_token_secret} <- gen_authorize_url(config, token) do
+      {:ok, %{url: url, session_params: %{oauth_token_secret: oauth_token_secret}}}
     end
   end
 
-  defp authorize_url(config, redirect_uri) do
-    config
-    |> get_request_token([{"oauth_callback", redirect_uri}])
-    |> build_authorize_url(config)
-    |> case do
-      {:ok, url, oauth_token_secret} ->
-        {:ok, %{url: url, session_params: %{oauth_token_secret: oauth_token_secret}}}
-
-      {:error, error} ->
-        {:error, error}
-    end
-  end
-
-  defp get_request_token(config, oauth_params) do
+  defp fetch_request_token(config, oauth_params) do
     with {:ok, base_url} <- Config.__base_url__(config) do
       request_token_url = Config.get(config, :request_token_url, "/request_token")
       url = process_url(base_url, request_token_url)
@@ -158,12 +146,16 @@ defmodule Assent.Strategy.OAuth do
 
   defp gen_oauth_params(config, signature_method, oauth_params) do
     with {:ok, consumer_key} <- Config.fetch(config, :consumer_key) do
+      nonce = gen_nonce()
+      signature_method = signature_method_value(signature_method)
+      timestamp = to_string(:os.system_time(:second))
+
       params =
         [
           {"oauth_consumer_key", consumer_key},
-          {"oauth_nonce", gen_nonce()},
-          {"oauth_signature_method", to_signature_method_string(signature_method)},
-          {"oauth_timestamp", timestamp()},
+          {"oauth_nonce", nonce},
+          {"oauth_signature_method", signature_method},
+          {"oauth_timestamp", timestamp},
           {"oauth_version", "1.0"}
           | oauth_params
         ]
@@ -171,6 +163,16 @@ defmodule Assent.Strategy.OAuth do
       {:ok, params}
     end
   end
+
+  defp gen_nonce do
+    16
+    |> :crypto.strong_rand_bytes()
+    |> Base.encode64(padding: false)
+  end
+
+  defp signature_method_value(:hmac_sha1), do: "HMAC-SHA1"
+  defp signature_method_value(:rsa_sha1), do: "RSA-SHA1"
+  defp signature_method_value(:plaintext), do: "PLAINTEXT"
 
   defp signed_header(config, signature_method, method, url, oauth_params, params, token_secret) do
     uri = URI.parse(url)
@@ -188,25 +190,13 @@ defmodule Assent.Strategy.OAuth do
     end
   end
 
-  defp gen_nonce do
-    16
-    |> :crypto.strong_rand_bytes()
-    |> Base.encode64(padding: false)
-  end
-
-  defp to_signature_method_string(:hmac_sha1), do: "HMAC-SHA1"
-  defp to_signature_method_string(:rsa_sha1), do: "RSA-SHA1"
-  defp to_signature_method_string(:plaintext), do: "PLAINTEXT"
-
-  defp timestamp, do: to_string(:os.system_time(:second))
-
   defp gen_signature(config, method, uri, request_params, :hmac_sha1, token_secret) do
     with {:ok, shared_secret} <- encoded_shared_secret(config, token_secret) do
-      text = signature_base_string(method, uri, request_params)
+      signature_base = encode_signature_base(method, uri, request_params)
 
       signature =
         :hmac
-        |> :crypto.mac(:sha, shared_secret, text)
+        |> :crypto.mac(:sha, shared_secret, signature_base)
         |> Base.encode64()
 
       {:ok, signature}
@@ -218,7 +208,7 @@ defmodule Assent.Strategy.OAuth do
          {:ok, private_key} <- decode_pem(pem) do
       signature =
         method
-        |> signature_base_string(uri, request_params)
+        |> encode_signature_base(uri, request_params)
         |> :public_key.sign(:sha, private_key)
         |> Base.encode64()
 
@@ -243,7 +233,7 @@ defmodule Assent.Strategy.OAuth do
     |> URI.encode(&URI.char_unreserved?/1)
   end
 
-  defp signature_base_string(method, uri, request_params) do
+  defp encode_signature_base(method, uri, request_params) do
     method =
       method
       |> to_string()
@@ -308,7 +298,7 @@ defmodule Assent.Strategy.OAuth do
 
   defp process_response({:error, error}), do: {:error, error}
 
-  defp build_authorize_url({:ok, token}, config) do
+  defp gen_authorize_url(config, token) do
     with {:ok, base_url} <- Config.__base_url__(config),
          {:ok, oauth_token} <- fetch_from_token(token, "oauth_token"),
          {:ok, oauth_token_secret} <- fetch_from_token(token, "oauth_token_secret") do
@@ -319,8 +309,6 @@ defmodule Assent.Strategy.OAuth do
       {:ok, url, oauth_token_secret}
     end
   end
-
-  defp build_authorize_url({:error, error}, _config), do: {:error, error}
 
   defp fetch_from_token(token, key) do
     case Map.fetch(token, key) do
@@ -350,25 +338,22 @@ defmodule Assent.Strategy.OAuth do
   @impl true
   @spec callback(Config.t(), map(), atom()) :: on_callback()
   def callback(config, params, strategy \\ __MODULE__) do
-    with {:ok, oauth_token} <- fetch_oauth_token(params),
-         {:ok, oauth_verifier} <- fetch_oauth_verifier(params),
-         {:ok, token} <- get_access_token(config, oauth_token, oauth_verifier),
+    with {:ok, oauth_token} <- fetch_param(params, "oauth_token"),
+         {:ok, oauth_verifier} <- fetch_param(params, "oauth_verifier"),
+         {:ok, token} <- fetch_access_token(config, oauth_token, oauth_verifier),
          {:ok, user} <- strategy.fetch_user(config, token) do
       {:ok, %{user: user, token: token}}
     end
   end
 
-  defp fetch_oauth_token(%{"oauth_token" => code}), do: {:ok, code}
+  defp fetch_param(params, key) do
+    case Map.fetch(params, key) do
+      {:ok, value} -> {:ok, value}
+      :error -> {:error, MissingParamError.exception(expected_key: key, params: params)}
+    end
+  end
 
-  defp fetch_oauth_token(params),
-    do: {:error, MissingParamError.exception(expected_key: "oauth_token", params: params)}
-
-  defp fetch_oauth_verifier(%{"oauth_verifier" => code}), do: {:ok, code}
-
-  defp fetch_oauth_verifier(params),
-    do: {:error, MissingParamError.exception(expected_key: "oauth_verifier", params: params)}
-
-  defp get_access_token(config, oauth_token, oauth_verifier) do
+  defp fetch_access_token(config, oauth_token, oauth_verifier) do
     with {:ok, base_url} <- Config.__base_url__(config) do
       access_token_url = Config.get(config, :access_token_url, "/access_token")
       url = process_url(base_url, access_token_url)
@@ -416,16 +401,16 @@ defmodule Assent.Strategy.OAuth do
   @spec fetch_user(Config.t(), map()) :: {:ok, map()} | {:error, term()}
   def fetch_user(config, token) do
     with {:ok, url} <- Config.fetch(config, :user_url) do
-      config
-      |> request(token, :get, url)
-      |> process_user_response()
+      case request(config, token, :get, url) do
+        {:ok, %HTTPResponse{status: 200, body: user}} ->
+          {:ok, user}
+
+        {:error, %HTTPResponse{status: 401}} ->
+          {:error, RequestError.exception(message: "Unauthorized token")}
+
+        other ->
+          process_response(other)
+      end
     end
   end
-
-  defp process_user_response({:ok, %HTTPResponse{status: 200, body: user}}), do: {:ok, user}
-
-  defp process_user_response({:error, %HTTPResponse{status: 401} = response}),
-    do: {:error, RequestError.exception(message: "Unauthorized token", response: response)}
-
-  defp process_user_response(any), do: process_response(any)
 end

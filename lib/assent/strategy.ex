@@ -39,12 +39,32 @@ defmodule Assent.Strategy do
   @spec request(atom(), binary(), binary() | nil, list(), Config.t()) ::
           {:ok, HTTPResponse.t()} | {:error, HTTPResponse.t()} | {:error, term()}
   def request(method, url, body, headers, config) do
-    {http_adapter, opts} = fetch_http_adapter(config)
+    {http_adapter, opts} = get_http_adapter(config)
 
     method
     |> http_adapter.request(url, body, headers, opts)
-    |> parse_status_response(http_adapter, url)
-    |> decode_response(config)
+    |> case do
+      {:ok, response} ->
+        decode_response({:ok, response}, config)
+
+      {:error, error} ->
+        {:error,
+         ServerUnreachableError.exception(
+           reason: error,
+           http_adapter: http_adapter,
+           request_url: url
+         )}
+    end
+    |> case do
+      {:ok, %{status: status} = resp} when status in 200..399 ->
+        {:ok, %{resp | http_adapter: http_adapter, request_url: url}}
+
+      {:ok, %{status: status} = resp} when status in 400..599 ->
+        {:error, %{resp | http_adapter: http_adapter, request_url: url}}
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
   @default_http_client Enum.find_value(
@@ -57,28 +77,13 @@ defmodule Assent.Strategy do
                          end
                        )
 
-  defp fetch_http_adapter(config) do
+  defp get_http_adapter(config) do
     default_http_adapter = Application.get_env(:assent, :http_adapter, @default_http_client)
 
     case Config.get(config, :http_adapter, default_http_adapter) do
       {http_adapter, opts} -> {http_adapter, opts}
       http_adapter when is_atom(http_adapter) -> {http_adapter, nil}
     end
-  end
-
-  defp parse_status_response({:ok, %{status: status} = resp}, http_adapter, url)
-       when status in 200..399 do
-    {:ok, %{resp | http_adapter: http_adapter, request_url: url}}
-  end
-
-  defp parse_status_response({:ok, %{status: status} = resp}, http_adapter, url)
-       when status in 400..599 do
-    {:error, %{resp | http_adapter: http_adapter, request_url: url}}
-  end
-
-  defp parse_status_response({:error, error}, http_adapter, url) do
-    {:error,
-     ServerUnreachableError.exception(reason: error, http_adapter: http_adapter, request_url: url)}
   end
 
   @doc """
