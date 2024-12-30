@@ -26,12 +26,12 @@ defmodule Assent.Strategy.TwitchTest do
   test "authorize_url/2", %{config: config} do
     assert {:ok, %{url: url}} = Twitch.authorize_url(config)
 
-    url = URI.parse(url)
+    uri = URI.parse(url)
 
-    assert url.path == "/oauth/authorize"
+    assert uri.path == "/oauth/authorize"
 
     assert %{"client_id" => "id", "scope" => scope, "claims" => claims} =
-             URI.decode_query(url.query)
+             URI.decode_query(uri.query)
 
     assert scope =~ "user:read:email"
 

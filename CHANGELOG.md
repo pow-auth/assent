@@ -6,6 +6,7 @@
 
 ### Breaking changes
 
+* `Assent.Strategy.Google` now return `hd` instead of `google_hd`
 * `:site` configuration option removed, use `:base_url` instead
 * `Assent.Strategy.OAuth2.authorize_url/2` no longer allows `:state` in `:authorization_params`
 * `Assent.Strategy.decode_response/2`removed, use `Assent.HTTPAdapter.decode_response/2` instead
@@ -13,6 +14,10 @@
 * `Assent.MissingParamError` no longer accepts `:expected_key`, use `:key` instead
 * `Assent.HTTPAdapter.Mint` removed
 * `Assent.Config` removed
+
+### Changes
+
+* `Assent.Strategy.Google` now uses OIDC instead of OAuth 2.0 base strategy
 
 ## v0.2
 
