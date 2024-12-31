@@ -1,6 +1,10 @@
 defmodule Assent.Strategy.Auth0 do
   @moduledoc """
-  Auth0 OAuth 2.0 strategy.
+  Auth0 OpenID Connect strategy.
+
+  ## Configuration
+
+  - `:base_url` - The Auth0 base URL, required
 
   ## Usage
 
@@ -13,33 +17,13 @@ defmodule Assent.Strategy.Auth0 do
 
   See `Assent.Strategy.OAuth2` for more.
   """
-  use Assent.Strategy.OAuth2.Base
+  use Assent.Strategy.OIDC.Base
 
   @impl true
-  def default_config(config) do
-    append_domain_config(config,
-      authorize_url: "/authorize",
-      token_url: "/oauth/token",
-      user_url: "/userinfo",
-      authorization_params: [scope: "openid profile email"],
-      auth_method: :client_secret_post
-    )
+  def default_config(_config) do
+    [
+      authorization_params: [scope: "email profile"],
+      client_authentication_method: "client_secret_post"
+    ]
   end
-
-  defp append_domain_config(config, default) do
-    case Assent.fetch_config(config, :domain) do
-      {:ok, domain} ->
-        IO.warn("`:domain` config is deprecated. Use `:base_url` instead.")
-        Keyword.put(default, :base_url, prepend_scheme(domain))
-
-      _error ->
-        default
-    end
-  end
-
-  defp prepend_scheme("http" <> _ = domain), do: domain
-  defp prepend_scheme(domain), do: "https://" <> domain
-
-  @impl true
-  def normalize(_config, user), do: {:ok, user}
 end
