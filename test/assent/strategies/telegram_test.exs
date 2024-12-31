@@ -11,7 +11,7 @@ defmodule Assent.Strategy.TelegramTest do
     "username" => "duroff"
   }
   @user %{
-    "sub" => 928_474_348,
+    "sub" => "928474348",
     "family_name" => "Duroff",
     "given_name" => "Paul",
     "preferred_username" => "duroff",

@@ -45,7 +45,7 @@ defmodule Assent.Strategy.GitlabTest do
     "name" => "John Smith",
     "picture" => "http://localhost:3000/uploads/user/avatar/1/index.jpg",
     "preferred_username" => "john_smith",
-    "sub" => 1
+    "sub" => "1"
   }
 
   test "authorize_url/2", %{config: config} do

@@ -65,7 +65,7 @@ defmodule Assent.Strategy.GithubTest do
     "picture" => "https://github.com/images/error/octocat_happy.gif",
     "preferred_username" => "octocat",
     "profile" => "https://github.com/octocat",
-    "sub" => 1
+    "sub" => "1"
   }
 
   test "authorize_url/2", %{config: config} do
