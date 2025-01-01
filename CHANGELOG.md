@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.2.13 (TBA)
+
+* `Assent.Strategy.Auth0` deprecated `:domain` config option in favor of `:base_url`
+
 ## v0.2.12 (2024-12-29)
 
 * `Assent` now has a module doc
