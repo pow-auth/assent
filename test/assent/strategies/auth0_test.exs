@@ -1,70 +1,59 @@
 defmodule Assent.Strategy.Auth0Test do
-  use Assent.Test.OAuth2TestCase
+  use Assent.Test.OIDCTestCase
 
-  alias Assent.{MissingConfigError, Strategy.Auth0}
+  alias Assent.Strategy.Auth0
 
-  # From https://auth0.com/docs/api/authentication#user-profile
-  @user_response %{
-    "sub" => "248289761001",
-    "name" => "Jane Josephine Doe",
-    "given_name" => "Jane",
-    "family_name" => "Doe",
-    "middle_name" => "Josephine",
-    "nickname" => "JJ",
-    "preferred_username" => "j.doe",
-    "profile" => "http://exampleco.com/janedoe",
-    "picture" => "http://exampleco.com/janedoe/me.jpg",
-    "website" => "http://exampleco.com",
-    "email" => "janedoe@exampleco.com",
-    "email_verified" => true,
-    "gender" => "female",
-    "birthdate" => "1972-03-31",
-    "zoneinfo" => "America/Los_Angeles",
-    "locale" => "en-US",
-    "phone_number" => "+1 (111) 222-3434",
-    "phone_number_verified" => false,
-    "address" => %{
-      "country" => "us"
-    },
-    "updated_at" => "1556845729"
+  # From https://auth0.com/docs/get-started/apis/scopes/sample-use-cases-scopes-and-claims#authenticate-a-user-and-request-standard-claims
+  @id_token_claims %{
+    "name" => "John Doe",
+    "nickname" => "john.doe",
+    "picture" => "https://myawesomeavatar.com/avatar.png",
+    "updated_at" => "2017-03-30T15:13:40.474Z",
+    "email" => "john.doe@test.com",
+    "email_verified" => false,
+    "iss" => "https://{yourDomain}/",
+    "sub" => "auth0|USER-ID",
+    "aud" => "{yourClientId}",
+    "exp" => :os.system_time(:second) + 60,
+    "iat" => :os.system_time(:second),
+    "nonce" => "crypto-value",
+    "at_hash" => "IoS3ZGppJKUn3Bta_LgE2A"
   }
-  @user @user_response
+  @user %{
+    "email" => "john.doe@test.com",
+    "email_verified" => false,
+    "sub" => "auth0|USER-ID",
+    "name" => "John Doe",
+    "nickname" => "john.doe",
+    "picture" => "https://myawesomeavatar.com/avatar.png",
+    "updated_at" => "2017-03-30T15:13:40.474Z"
+  }
 
   test "authorize_url/2", %{config: config} do
-    config = Keyword.delete(config, :base_url)
-
-    assert {:error, %MissingConfigError{} = error} = Auth0.authorize_url(config)
-    assert error.key == :base_url
-
-    assert {:ok, %{url: url}} =
-             Auth0.authorize_url(config ++ [base_url: "https://demo.auth0.com/authorize"])
-
-    assert url =~ "https://demo.auth0.com/authorize"
+    assert {:ok, %{url: url}} = Auth0.authorize_url(config)
+    assert url =~ "/oauth/authorize?client_id=id"
+    assert url =~ "scope=openid+email+profile"
   end
 
   test "callback/2", %{config: config, callback_params: params} do
-    expect_oauth2_access_token_request([uri: "/oauth/token"], fn _conn, params ->
-      assert params["client_secret"] == config[:client_secret]
-    end)
+    openid_config =
+      config[:openid_configuration]
+      |> Map.put("issuer", "https://{yourDomain}/")
+      |> Map.put("token_endpoint_auth_methods_supported", ["client_secret_post"])
 
-    expect_oauth2_user_request(@user_response, uri: "/userinfo")
+    session_params = Map.put(config[:session_params], :nonce, "crypto-value")
+
+    config =
+      Keyword.merge(config,
+        openid_configuration: openid_config,
+        client_id: "{yourClientId}",
+        session_params: session_params
+      )
+
+    [key | _rest] = expect_oidc_jwks_uri_request()
+    expect_oidc_access_token_request(id_token_opts: [claims: @id_token_claims, kid: key["kid"]])
 
     assert {:ok, %{user: user}} = Auth0.callback(config, params)
     assert user == @user
-  end
-
-  ### Deprecated
-
-  test "authorize_url/2 with `:domain` config", %{config: config} do
-    config = Keyword.take(config, [:client_id, :redirect_uri])
-
-    assert {:error, %MissingConfigError{} = error} = Auth0.authorize_url(config)
-    assert error.key == :base_url
-
-    assert {:ok, %{url: url}} = Auth0.authorize_url(config ++ [domain: "demo.auth0.com"])
-    assert url =~ "https://demo.auth0.com/authorize"
-
-    assert {:ok, %{url: url}} = Auth0.authorize_url(config ++ [domain: "http://demo.auth0.com"])
-    assert url =~ "http://demo.auth0.com/authorize"
   end
 end

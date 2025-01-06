@@ -6,6 +6,7 @@
 
 ### Breaking changes
 
+* `Assent.Strategy.Auth0.authorize_url/2` no longer accepts `:domain` config, use `:base_url` instead
 * `Assent.Strategy.Google` now return `hd` instead of `google_hd`
 * `:site` configuration option removed, use `:base_url` instead
 * `Assent.Strategy.OAuth2.authorize_url/2` no longer allows `:state` in `:authorization_params`
@@ -17,6 +18,7 @@
 
 ### Changes
 
+* `Assent.Strategy.Auth0` now uses OIDC instead of OAuth 2.0 base strategy
 * `Assent.Strategy.Google` now uses OIDC instead of OAuth 2.0 base strategy
 
 ## v0.2
