@@ -42,7 +42,7 @@ defmodule Assent.Strategy.BasecampTest do
     "family_name" => "Fried",
     "given_name" => "Jason",
     "name" => "Jason Fried",
-    "sub" => 9_999_999
+    "sub" => "9999999"
   }
 
   test "authorize_url/2", %{config: config} do

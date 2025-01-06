@@ -26,6 +26,8 @@ defmodule Assent.Strategy do
         end
       end
   """
+  alias Assent.CastClaimsError
+
   @callback authorize_url(Keyword.t()) ::
               {:ok, %{:url => binary(), optional(atom()) => any()}} | {:error, term()}
   @callback callback(Keyword.t(), map()) ::
@@ -124,35 +126,125 @@ defmodule Assent.Strategy do
 
   defp encode_value(value), do: URI.encode_www_form(Kernel.to_string(value))
 
+  @registered_claim_member_types %{
+    "sub" => :binary,
+    "name" => :binary,
+    "given_name" => :binary,
+    "family_name" => :binary,
+    "middle_name" => :binary,
+    "nickname" => :binary,
+    "preferred_username" => :binary,
+    "profile" => :binary,
+    "picture" => :binary,
+    "website" => :binary,
+    "email" => :binary,
+    "email_verified" => :boolean,
+    "gender" => :binary,
+    "birthdate" => :binary,
+    "zoneinfo" => :binary,
+    "locale" => :binary,
+    "phone_number" => :binary,
+    "phone_number_verified" => :boolean,
+    "address" => %{
+      "formatted" => :binary,
+      "street_address" => :binary,
+      "locality" => :binary,
+      "region" => :binary,
+      "postal_code" => :binary,
+      "country" => :binary
+    },
+    "updated_at" => :integer
+  }
+
   @doc """
   Normalize API user request response into standard claims.
 
+  The function will cast values to adhere to the following types:
+
+  ```
+  #{inspect(@registered_claim_member_types, pretty: true)}
+  ```
+
+  Returns an `Assent.CastClaimsError` if any of the above types can't be casted.
+
   Based on https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.5.1
   """
-  @spec normalize_userinfo(map(), map()) :: {:ok, map()}
+  @spec normalize_userinfo(map(), map()) :: {:ok, map()} | {:error, term()}
   def normalize_userinfo(claims, extra \\ %{}) do
-    standard_claims =
-      Map.take(
-        claims,
-        ~w(sub name given_name family_name middle_name nickname
-         preferred_username profile picture website email email_verified
-         gender birthdate zoneinfo locale phone_number phone_number_verified
-         address updated_at)
-      )
+    case cast_claims(@registered_claim_member_types, claims) do
+      {casted_claims, nil} ->
+        {:ok, deep_merge_claims(casted_claims, extra)}
 
-    {:ok, prune(Map.merge(extra, standard_claims))}
+      {_claims, invalid_claims} ->
+        {:error,
+         CastClaimsError.exception(claims: claims, invalid_types: Enum.into(invalid_claims, %{}))}
+    end
   end
 
-  @doc """
-  Recursively prunes map for nil values.
-  """
-  @spec prune(map()) :: map()
-  def prune(map) do
-    map
-    |> Enum.map(fn {k, v} -> if is_map(v), do: {k, prune(v)}, else: {k, v} end)
-    |> Enum.filter(fn {_, v} -> not is_nil(v) end)
-    |> Enum.into(%{})
+  defp cast_claims(claim_types, claims) do
+    {casted_claims, invalid_claims} =
+      Enum.reduce(claim_types, {[], []}, fn {key, type}, acc ->
+        cast_claim(key, type, Map.get(claims, key), acc)
+      end)
+
+    {
+      (casted_claims != [] && Enum.into(casted_claims, %{})) || nil,
+      (invalid_claims != [] && Enum.into(invalid_claims, %{})) || nil
+    }
   end
+
+  defp cast_claim(_key, _type, nil, acc), do: acc
+
+  defp cast_claim(key, %{} = claim_types, %{} = claims, {casted_claims, invalid_claims}) do
+    {casted_sub_claims, invalid_sub_claims} = cast_claims(claim_types, claims)
+
+    {
+      (casted_sub_claims && [{key, casted_sub_claims} | casted_claims]) || casted_claims,
+      (invalid_sub_claims && [{key, invalid_sub_claims} | invalid_claims]) || invalid_claims
+    }
+  end
+
+  defp cast_claim(key, %{}, _value, {casted_claims, invalid_claims}) do
+    {casted_claims, [{key, :map} | invalid_claims]}
+  end
+
+  defp cast_claim(key, type, value, {casted_claims, invalid_claims}) do
+    case cast_value(value, type) do
+      {:ok, value} -> {[{key, value} | casted_claims], invalid_claims}
+      :error -> {casted_claims, [{key, type} | invalid_claims]}
+    end
+  end
+
+  defp cast_value(value, :binary) when is_binary(value), do: {:ok, value}
+  defp cast_value(value, :binary) when is_integer(value), do: {:ok, to_string(value)}
+  defp cast_value(value, :integer) when is_integer(value), do: {:ok, value}
+  defp cast_value(value, :integer) when is_binary(value), do: cast_integer(value)
+  defp cast_value(value, :boolean) when is_boolean(value), do: {:ok, value}
+  defp cast_value("true", :boolean), do: {:ok, true}
+  defp cast_value("false", :boolean), do: {:ok, false}
+  defp cast_value(_value, _type), do: :error
+
+  defp cast_integer(value) do
+    case Integer.parse(value) do
+      {integer, ""} -> {:ok, integer}
+      _ -> :error
+    end
+  end
+
+  defp deep_merge_claims(claims, extra) do
+    Enum.reduce(extra, claims, fn
+      {_key, nil}, claims -> claims
+      {key, value}, claims -> deep_merge_claim(claims, key, value, Map.get(claims, key))
+    end)
+  end
+
+  defp deep_merge_claim(claims, key, sub_extra, nil), do: Map.put(claims, key, sub_extra)
+
+  defp deep_merge_claim(claims, key, %{} = sub_extra, %{} = sub_claims) do
+    Map.put(claims, key, deep_merge_claims(sub_claims, sub_extra))
+  end
+
+  defp deep_merge_claim(claims, _key, _sub_extra, _value), do: claims
 
   @doc false
   def __normalize__({:ok, %{user: user} = results}, config, strategy) do

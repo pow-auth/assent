@@ -124,7 +124,7 @@ defmodule Assent.Strategy.TwitterTest do
     "picture" => "https://pbs.twimg.com/profile_images/880136122604507136/xHrnqf1T_normal.jpg",
     "preferred_username" => "TwitterDev",
     "profile" => "https://twitter.com/TwitterDev",
-    "sub" => 2_244_994_945,
+    "sub" => "2244994945",
     "website" => "https://t.co/FGl7VOULyL"
   }
 
