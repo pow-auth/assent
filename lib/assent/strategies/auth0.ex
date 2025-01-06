@@ -7,7 +7,7 @@ defmodule Assent.Strategy.Auth0 do
       config = [
         client_id: "REPLACE_WITH_CLIENT_ID",
         client_secret: "REPLACE_WITH_CLIENT_SECRET",
-        domain: "REPLACE_WITH_DOMAIN",
+        base_url: "https://my-domain.auth0.com",
         redirect_uri: "http://localhost:4000/auth/callback"
       ]
 
@@ -28,8 +28,12 @@ defmodule Assent.Strategy.Auth0 do
 
   defp append_domain_config(config, default) do
     case Assent.fetch_config(config, :domain) do
-      {:ok, domain} -> Keyword.put(default, :base_url, prepend_scheme(domain))
-      _error -> default
+      {:ok, domain} ->
+        IO.warn("`:domain` config is deprecated. Use `:base_url` instead.")
+        Keyword.put(default, :base_url, prepend_scheme(domain))
+
+      _error ->
+        default
     end
   end
 

@@ -30,22 +30,16 @@ defmodule Assent.Strategy.Auth0Test do
   }
   @user @user_response
 
-  describe "authorize_url/2" do
-    test "requires domain or base_url configuration", %{config: config} do
-      config = Keyword.take(config, [:client_id, :redirect_uri])
+  test "authorize_url/2", %{config: config} do
+    config = Keyword.delete(config, :base_url)
 
-      assert {:error, %MissingConfigError{} = error} = Auth0.authorize_url(config)
-      assert error.key == :base_url
+    assert {:error, %MissingConfigError{} = error} = Auth0.authorize_url(config)
+    assert error.key == :base_url
 
-      assert {:ok, %{url: url}} = Auth0.authorize_url(config ++ [base_url: "https://localhost"])
-      assert url =~ "https://localhost/authorize"
+    assert {:ok, %{url: url}} =
+             Auth0.authorize_url(config ++ [base_url: "https://demo.auth0.com/authorize"])
 
-      assert {:ok, %{url: url}} = Auth0.authorize_url(config ++ [domain: "demo.auth0.com"])
-      assert url =~ "https://demo.auth0.com/authorize"
-
-      assert {:ok, %{url: url}} = Auth0.authorize_url(config ++ [domain: "http://demo.auth0.com"])
-      assert url =~ "http://demo.auth0.com/authorize"
-    end
+    assert url =~ "https://demo.auth0.com/authorize"
   end
 
   test "callback/2", %{config: config, callback_params: params} do
@@ -57,5 +51,20 @@ defmodule Assent.Strategy.Auth0Test do
 
     assert {:ok, %{user: user}} = Auth0.callback(config, params)
     assert user == @user
+  end
+
+  ### Deprecated
+
+  test "authorize_url/2 with `:domain` config", %{config: config} do
+    config = Keyword.take(config, [:client_id, :redirect_uri])
+
+    assert {:error, %MissingConfigError{} = error} = Auth0.authorize_url(config)
+    assert error.key == :base_url
+
+    assert {:ok, %{url: url}} = Auth0.authorize_url(config ++ [domain: "demo.auth0.com"])
+    assert url =~ "https://demo.auth0.com/authorize"
+
+    assert {:ok, %{url: url}} = Auth0.authorize_url(config ++ [domain: "http://demo.auth0.com"])
+    assert url =~ "http://demo.auth0.com/authorize"
   end
 end
