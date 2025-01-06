@@ -1,64 +1,61 @@
 defmodule Assent.Strategy.GitlabTest do
-  use Assent.Test.OAuth2TestCase
+  use Assent.Test.OIDCTestCase
 
   alias Assent.Strategy.Gitlab
 
-  # From https://docs.gitlab.com/ee/api/users.html#list-current-user-for-normal-users
-  @user_response %{
-    "id" => 1,
-    "username" => "john_smith",
-    "email" => "john@example.com",
-    "name" => "John Smith",
-    "state" => "active",
-    "avatar_url" => "http://localhost:3000/uploads/user/avatar/1/index.jpg",
-    "web_url" => "http://localhost:3000/john_smith",
-    "created_at" => "2012-05-23T08:00:58Z",
-    "bio" => nil,
-    "location" => nil,
-    "public_email" => "john@example.com",
-    "skype" => "",
-    "linkedin" => "",
-    "twitter" => "",
-    "website_url" => "",
-    "organization" => "",
-    "last_sign_in_at" => "2012-06-01T11:41:01Z",
-    "confirmed_at" => "2012-05-23T09:05:22Z",
-    "theme_id" => 1,
-    "last_activity_on" => "2012-05-23",
-    "color_scheme_id" => 2,
-    "projects_limit" => 100,
-    "current_sign_in_at" => "2012-06-02T06:36:55Z",
-    "identities" => [
-      %{"provider" => "github", "extern_uid" => "2435223452345"},
-      %{"provider" => "bitbucket", "extern_uid" => "john_smith"},
-      %{"provider" => "google_oauth2", "extern_uid" => "8776128412476123468721346"}
-    ],
-    "can_create_group" => true,
-    "can_create_project" => true,
-    "two_factor_enabled" => true,
-    "external" => false,
-    "private_profile" => false
+  # From running GitLab in local
+  @id_token_claims %{
+    "iss" => "http://localhost",
+    "sub" => "1",
+    "aud" => "4843ae8973e91d7f63baf626a88e221648d8839d0edee5878c9f1535f6930a1a",
+    "exp" => :os.system_time(:second) + 60,
+    "iat" => :os.system_time(:second),
+    "auth_time" => :os.system_time(:second),
+    "sub_legacy" => "71404f201852be9e557f9a3d85724711a2a6a09959beaf1450cc4f548a8182bc",
+    "name" => "Administrator",
+    "nickname" => "root",
+    "preferred_username" => "root",
+    "email" => "gitlab_admin_d391ea@example.com",
+    "email_verified" => true,
+    "profile" => "http://localhost/root",
+    "picture" =>
+      "https://www.gravatar.com/avatar/261647effda628b0ddac771c741d5165af4590157d740ff427ca89bd2a11b82c?s=80&d=identicon",
+    "groups_direct" => []
   }
   @user %{
-    "email" => "john@example.com",
+    "name" => "Administrator",
+    "preferred_username" => "root",
+    "sub" => "1",
+    "email" => "gitlab_admin_d391ea@example.com",
     "email_verified" => true,
-    "name" => "John Smith",
-    "picture" => "http://localhost:3000/uploads/user/avatar/1/index.jpg",
-    "preferred_username" => "john_smith",
-    "sub" => 1
+    "groups_direct" => [],
+    "nickname" => "root",
+    "picture" =>
+      "https://www.gravatar.com/avatar/261647effda628b0ddac771c741d5165af4590157d740ff427ca89bd2a11b82c?s=80&d=identicon",
+    "profile" => "http://localhost/root",
+    "sub_legacy" => "71404f201852be9e557f9a3d85724711a2a6a09959beaf1450cc4f548a8182bc"
   }
 
   test "authorize_url/2", %{config: config} do
     assert {:ok, %{url: url}} = Gitlab.authorize_url(config)
-    assert url =~ "/oauth/authorize?client_id="
+    assert url =~ "/oauth/authorize?client_id=id"
+    assert url =~ "scope=openid+email+profile"
   end
 
   test "callback/2", %{config: config, callback_params: params} do
-    expect_oauth2_access_token_request([uri: "/oauth/token"], fn _conn, params ->
-      assert params["client_secret"] == config[:client_secret]
-    end)
+    openid_config =
+      Map.put(config[:openid_configuration], "token_endpoint_auth_methods_supported", [
+        "client_secret_post"
+      ])
 
-    expect_oauth2_user_request(@user_response, uri: "/api/v4/user")
+    config =
+      Keyword.merge(config,
+        openid_configuration: openid_config,
+        client_id: "4843ae8973e91d7f63baf626a88e221648d8839d0edee5878c9f1535f6930a1a"
+      )
+
+    [key | _rest] = expect_oidc_jwks_uri_request()
+    expect_oidc_access_token_request(id_token_opts: [claims: @id_token_claims, kid: key["kid"]])
 
     assert {:ok, %{user: user}} = Gitlab.callback(config, params)
     assert user == @user

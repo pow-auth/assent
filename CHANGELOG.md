@@ -19,6 +19,7 @@
 ### Changes
 
 * `Assent.Strategy.Auth0` now uses OIDC instead of OAuth 2.0 base strategy
+* `Assent.Strategy.Gitlab` now uses OIDC instead of OAuth 2.0 base strategy
 * `Assent.Strategy.Google` now uses OIDC instead of OAuth 2.0 base strategy
 
 ## v0.2
