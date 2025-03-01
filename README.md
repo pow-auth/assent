@@ -362,7 +362,7 @@ config = [
 Or globally in the config:
 
 ```elixir
-config :assent, jwt_adapter: AssAssent.JWTAdapter.JOSE
+config :assent, jwt_adapter: Assent.JWTAdapter.JOSE
 ```
 
 ## LICENSE
