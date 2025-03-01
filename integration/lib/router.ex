@@ -45,28 +45,7 @@ defmodule IntegrationServer.Router do
       unquote(path)
       |> config!()
       |> unquote(module).authorize_url()
-      |> case do
-        {:ok, %{session_params: session_params, url: url}} ->
-          Logger.info(
-            "Redirecting to #{inspect(url)} with session params #{inspect(session_params)}"
-          )
-
-          html = Plug.HTML.html_escape(url)
-          body = "<html><body>You are being <a href=\"#{html}\">redirected</a>.</body></html>"
-
-          conn
-          |> put_session(:session_params, session_params)
-          |> put_resp_header("location", url)
-          |> put_resp_header("content-type", "text/html")
-          |> send_resp(302, body)
-
-        {:error, error} ->
-          body = "<html><body>An error occurred: #{inspect(error)}.</body></html>"
-
-          conn
-          |> put_resp_header("content-type", "text/html")
-          |> send_resp(500, body)
-      end
+      |> handle_authorize_url(conn)
     end
 
     @file "#{__ENV__.file}##{path}_callback"
@@ -77,20 +56,47 @@ defmodule IntegrationServer.Router do
       |> config!()
       |> Keyword.put(:session_params, get_session(conn, :session_params))
       |> unquote(module).callback(conn.params)
-      |> case do
-        {:ok, %{user: user, token: token}} ->
-          body = "<html><body>#{inspect(%{user: user, token: token})}</body></html>"
-
-          send_resp(conn, 200, body)
-
-        {:error, error} ->
-          body = "<html><body>An error occurred: #{inspect(error)}.</body></html>"
-
-          conn
-          |> put_resp_header("content-type", "text/html")
-          |> send_resp(500, body)
-      end
+      |> handle_callback(conn)
     end
+  end
+
+  defp handle_authorize_url({:ok, res}, conn) do
+    session_params = res[:session_params]
+
+    Logger.info(
+      "Redirecting to #{inspect(res.url)} with session params #{inspect(session_params)}"
+    )
+
+    html = Plug.HTML.html_escape(res.url)
+    body = "<html><body>You are being <a href=\"#{html}\">redirected</a>.</body></html>"
+
+    conn
+    |> put_session(:session_params, session_params)
+    |> put_resp_header("location", res.url)
+    |> put_resp_header("content-type", "text/html")
+    |> send_resp(302, body)
+  end
+
+  defp handle_authorize_url({:error, error}, conn) do
+    body = "<html><body>An error occurred: #{inspect(error)}.</body></html>"
+
+    conn
+    |> put_resp_header("content-type", "text/html")
+    |> send_resp(500, body)
+  end
+
+  defp handle_callback({:ok, res}, conn) do
+    body = "<html><body>#{inspect(Map.take(res, [:user, :token]))}</body></html>"
+
+    send_resp(conn, 200, body)
+  end
+
+  defp handle_callback({:error, error}, conn) do
+    body = "<html><body>An error occurred: #{inspect(error)}.</body></html>"
+
+    conn
+    |> put_resp_header("content-type", "text/html")
+    |> send_resp(500, body)
   end
 
   get "/" do
