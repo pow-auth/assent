@@ -38,24 +38,59 @@ defmodule Assent.Strategy.OIDC do
 
   See `Assent.Strategy.OAuth2` for more configuration options.
 
-  ## Usage
+  ## Examples
 
-      config =  [
-        client_id: "REPLACE_WITH_CLIENT_ID",
-        base_url: "https://server.example.com",
-        authorization_params: [scope: "user:read user:write"]
-      ]
+      defmodule OIDCAuth do
+        import Plug.Conn
 
-      {:ok, {url: url, session_params: session_params}} =
-        config
-        |> Keyword.put(:redirect_uri, "http://localhost:4000/auth/callback")
-        |> Assent.Strategy.OIDC.authorize_url()
+        alias Assent.Strategy.OIDC
 
-      {:ok, %{user: user, token: token}} =
-        config
-        |> Keyword.put(:redirect_uri, "http://localhost:4000/auth/callback")
-        |> Keyword.put(:session_params, session_params)
-        |> Assent.Strategy.OIDC.callback(params)
+        defp config do
+          [
+            client_id: Application.fetch_env!(:my_app, :oidc, :client_id),
+            client_secret: Application.fetch_env!(:my_app, :oidc, :client_secret),
+            base_url: "https://server.example.com",
+            authorization_params: [scope: "user:read user:write"],
+            redirect_uri: "http://localhost:4000/auth/callback"
+          ]
+        end
+
+        def request(conn) do
+          config()
+          |> OIDC.authorize_url()
+          |> case do
+            {:ok, %{url: url, session_params: session_params}} ->
+              conn
+              |> put_session(:session_params, session_params)
+              |> put_resp_header("location", url)
+              |> send_resp(302, "")
+
+            {:error, _error} ->
+              send_resp(conn, 500, "Failed authorization")
+          end
+        end
+
+        def callback(conn) do
+          %{params: params} = fetch_query_params(conn)
+          session_params = get_session(conn, :session_params)
+          conn = delete_session(conn, :session_params)
+
+          config()
+          |> Keyword.put(:session_params, session_params)
+          |> OIDC.callback(params)
+          |> case do
+            {:ok, %{user: user, token: token}} ->
+              conn
+              |> put_session(:user, user)
+              |> put_session(:token, token)
+              |> put_resp_header("location", "/")
+              |> send_resp(302, "")
+
+            {:error, _error} ->
+              send_resp(conn, 500, "Failed authorization")
+          end
+        end
+      end
 
   ## Nonce
 
@@ -69,7 +104,7 @@ defmodule Assent.Strategy.OIDC do
       |> :crypto.strong_rand_bytes()
       |> Base.encode64(padding: false)
 
-  PowAssent will dynamically generate one for the session if `:nonce` is set to
+  Assent will dynamically generate one for the session if `:nonce` is set to
   `true`.
 
   See `Assent.Strategy.OIDC.authorize_url/1` for more.
