@@ -23,25 +23,60 @@ defmodule Assent.Strategy.OAuth do
       `:private_key_path`, required if `:signature_method` is `:rsa_sha1` and
       `:private_key_path` hasn't been set
 
-  ## Usage
+  ## Examples
 
-      config = [
-        consumer_key: "REPLACE_WITH_CONSUMER_KEY",
-        consumer_secret: "REPLACE_WITH_CONSUMER_SECRET",
-        base_url: "https://auth.example.com",
-        authorization_params: [scope: "user:read user:write"],
-        user_url: "https://example.com/api/user"
-      ]
+      defmodule OAuth do
+        import Plug.Conn
 
-      {:ok, {url: url, session_params: session_params}} =
-        config
-        |> Keyword.put(:redirect_uri, "http://localhost:4000/auth/callback")
-        |> OAuth.authorize_url()
+        alias Assent.Strategy.OAuth
 
-      {:ok, %{user: user, token: token}} =
-        config
-        |> Keyword.put(:session_params, session_params)
-        |> OAuth.callback(params)
+        defp config do
+          [
+            consumer_key: Application.fetch_env!(:my_app, :oauth, :consumer_key),
+            consumer_secret: Application.fetch_env!(:my_app, :oauth, :consumer_secret),
+            base_url: "https://auth.example.com",
+            authorization_params: [scope: "user:read user:write"],
+            user_url: "https://example.com/api/user",
+            redirect_uri: "http://localhost:4000/auth/callback"
+          ]
+        end
+
+        def request(conn) do
+          config()
+          |> OAuth.authorize_url()
+          |> case do
+            {:ok, %{url: url, session_params: session_params}} ->
+              conn
+              |> put_session(:session_params, session_params)
+              |> put_resp_header("location", url)
+              |> send_resp(302, "")
+
+            {:error, _error} ->
+              send_resp(conn, 500, "Failed authorization")
+          end
+        end
+
+        def callback(conn) do
+          %{params: params} = fetch_query_params(conn)
+          session_params = get_session(conn, :session_params)
+          conn = delete_session(conn, :session_params)
+
+          config()
+          |> Keyword.put(:session_params, session_params)
+          |> OAuth.callback(params)
+          |> case do
+            {:ok, %{user: user, token: token}} ->
+              conn
+              |> put_session(:user, user)
+              |> put_session(:token, token)
+              |> put_resp_header("location", "/")
+              |> send_resp(302, "")
+
+            {:error, _error} ->
+              send_resp(conn, 500, "Failed authorization")
+          end
+        end
+      end
   """
   @behaviour Assent.Strategy
 

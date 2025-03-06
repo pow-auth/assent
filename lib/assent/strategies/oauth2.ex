@@ -50,28 +50,61 @@ defmodule Assent.Strategy.OAuth2 do
       set to `true` the session params will contain `:code_verifier`,
       `:code_challenge`, and `:code_challenge_method` params.
 
-  ## Usage
+  ## Examples
 
-      config =
-        [
-          client_id: "REPLACE_WITH_CLIENT_ID",
-          client_secret: "REPLACE_WITH_CLIENT_SECRET",
-          auth_method: :client_secret_post,
-          base_url: "https://auth.example.com",
-          authorization_params: [scope: "user:read user:write"],
-          user_url: "https://example.com/api/user"
-        ]
+      defmodule OAuth2 do
+        import Plug.Conn
 
-      {:ok, %{url: url, session_params: session_params}} =
-        config
-        |> Keyword.put(:redirect_uri, "http://localhost:4000/auth/callback")
-        |> Assent.Strategy.OAuth2.authorize_url()
+        alias Assent.Strategy.OAuth2
 
-      {:ok, %{user: user, token: token}} =
-        config
-        |> Keyword.put(:redirect_uri, "http://localhost:4000/auth/callback")
-        |> Keyword.put(:session_params, session_params)
-        |> Assent.Strategy.OAuth2.callback(params)
+        defp config do
+          [
+            client_id: Application.fetch_env!(:my_app, :oidc, :client_id),
+            client_secret: Application.fetch_env!(:my_app, :oidc, :client_secret),
+            auth_method: :client_secret_post,
+            base_url: "https://auth.example.com",
+            authorization_params: [scope: "user:read user:write"],
+            user_url: "https://example.com/api/user",
+            redirect_uri: "http://localhost:4000/auth/callback"
+          ]
+        end
+
+        def request(conn) do
+          config()
+          |> OAuth2.authorize_url()
+          |> case do
+            {:ok, %{url: url, session_params: session_params}} ->
+              conn
+              |> put_session(:session_params, session_params)
+              |> put_resp_header("location", url)
+              |> send_resp(302, "")
+
+            {:error, _error} ->
+              send_resp(conn, 500, "Failed authorization")
+          end
+        end
+
+        def callback(conn) do
+          %{params: params} = fetch_query_params(conn)
+          session_params = get_session(conn, :session_params)
+          conn = delete_session(conn, :session_params)
+
+          config()
+          |> Keyword.put(:session_params, session_params)
+          |> OAuth2.callback(params)
+          |> case do
+            {:ok, %{user: user, token: token}} ->
+              conn
+              |> put_session(:user, user)
+              |> put_session(:token, token)
+              |> put_resp_header("location", "/")
+              |> send_resp(302, "")
+
+            {:error, _error} ->
+              send_resp(conn, 500, "Failed authorization")
+          end
+        end
+      end
   """
   @behaviour Assent.Strategy
 

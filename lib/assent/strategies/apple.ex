@@ -41,7 +41,7 @@ defmodule Assent.Strategy.Apple do
       {:ok, %{session_params: session_params}} = Assent.Strategy.Apple.authorize_url(config)
 
   Use the `session_params[:state]` value for `[STATE]`. The callback phase
-  would be identical to how it's explained in the [README](README.md).
+  would be identical to how it's explained in the `Assent` docs.
 
   See https://developer.apple.com/documentation/signinwithapplejs/configuring_your_webpage_for_sign_in_with_apple
   for more.

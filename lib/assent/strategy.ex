@@ -11,12 +11,14 @@ defmodule Assent.Strategy do
 
         alias Assent.Strategy, as: Helpers
 
+        @impl Assent.Strategy
         def authorize_url(config) do
           # Generate redirect URL
 
           {:ok, %{url: url, ...}}
         end
 
+        @impl Assent.Strategy
         def callback(config, params) do
           # Fetch user data
 

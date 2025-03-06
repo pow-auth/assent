@@ -39,77 +39,31 @@ Multi-provider authentication framework.
   * VK - `Assent.Strategy.VK`
   * Zitadel - `Assent.Strategy.Zitadel`
 
-<!-- MDOC !-->
+## Usage
 
-## Installation
+A strategy consists of two phases; request and callback. In the request phase, the user will be redirected to the auth provider for authentication and then returned to initiate the callback phase.
 
-Add Assent to your list of dependencies in `mix.exs`:
+### Single provider
 
-```elixir
-defp deps do
-  [
-    # ...
-    {:assent, "~> 0.3.0"}
-  ]
-end
-```
-
-Run `mix deps.get` to install it.
-
-#### HTTP client installation
-
-By default, `Req` is used if you have it in your dependency list. If not, Erlang's `:httpc` will be used instead.
-
-If you are using `:httpc` you should add the following dependencies to enable SSL validation:
+This is an example using the `Assent.Strategy.Github` strategy with `Plug`:
 
 ```elixir
-defp deps do
-  [
-    # ...
-    # Required for SSL validation when using the `:httpc` adapter
-    {:certifi, "~> 2.4"},
-    {:ssl_verify_fun, "~> 1.1"}
-  ]
-end
-```
-
-You must also add `:inets` to `:extra_applications` in `mix.exs`:
-
-```elixir
-def application do
-  [
-    # ...
-    extra_applications: [
-      # ...
-      :inets
-    ]
-  ]
-end
-```
-
-This is not necessary if you use another HTTP adapter like `Req` or `Finch`.
-
-## Getting started
-
-A strategy consists of two phases; request and callback. In the request phase, the user would normally be redirected to the provider for authentication and then returned to initiate the callback phase.
-
-### Single provider example
-
-```elixir
-defmodule ProviderAuth do
+defmodule GithubAuth do
   import Plug.Conn
 
-  alias Assent.{Config, Strategy.Github}
+  alias Assent.Strategy.Github
 
-  @config [
-    client_id: "REPLACE_WITH_CLIENT_ID",
-    client_secret: "REPLACE_WITH_CLIENT_SECRET",
-    redirect_uri: "http://localhost:4000/auth/github/callback"
-  ]
+  defp config do
+    [
+      client_id: Application.fetch_env!(:my_app, :github, :client_id),
+      client_secret: Application.fetch_env!(:my_app, :github, :client_secret),
+      redirect_uri: "http://localhost:4000/auth/github/callback"
+    ]
+  end
 
   # http://localhost:4000/auth/github
   def request(conn) do
-    @config
+    config()
     |> Github.authorize_url()
     |> case do
       {:ok, %{url: url, session_params: session_params}} ->
@@ -122,8 +76,9 @@ defmodule ProviderAuth do
         |> put_resp_header("location", url)
         |> send_resp(302, "")
 
-      {:error, error} ->
+      {:error, _error} ->
         # Something went wrong generating the request authorization url
+        send_resp(conn, 500, "Failed authorization")
     end
   end
 
@@ -139,24 +94,32 @@ defmodule ProviderAuth do
     # request phase will be used in the callback phase
     session_params = get_session(conn, :session_params)
 
-    @config
+    conn = delete_session(conn, :session_params)
+
+    config()
     # Session params should be added to the config so the strategy can use them
     |> Keyword.put(:session_params, session_params)
     |> Github.callback(params)
     |> case do
       {:ok, %{user: user, token: token}} ->
         # Authorization succesful
+        conn
+        |> put_session(:user, user)
+        |> put_session(:token, token)
+        |> put_resp_header("location", "/")
+        |> send_resp(302, "")
 
-      {:error, error} ->
+      {:error, _error} ->
         # Authorizaiton failed
+        send_resp(conn, 500, "Failed authorization")
     end
   end
 end
 ```
 
-### Multi-provider example
+### Multi-provider
 
-This is a generalized flow that's similar to what's used in [PowAssent](https://github.com/danschultzer/pow_assent).
+All assent strategies work the same way, so if you have more than one strategy you may want to set up a single module to handle any of the auth strategies. This example is a generalized flow that's similar to what's used in `PowAssent`.
 
 ```elixir
 config :my_app, :strategies,
@@ -165,13 +128,13 @@ config :my_app, :strategies,
     client_secret: "REPLACE_WITH_CLIENT_SECRET",
     strategy: Assent.Strategy.Github
   ],
-  # ...
+  # Other strategies
 ```
 
 ```elixir
 defmodule MultiProviderAuth do
-  @spec request(atom()) :: {:ok, map()} | {:error, term()}
-  def request(provider) do
+  @spec authorize_url(atom()) :: {:ok, map()} | {:error, term()}
+  def authorize_url(provider) do
     config = config!(provider)
 
     config[:strategy].authorize_url()
@@ -196,7 +159,7 @@ defmodule MultiProviderAuth do
 end
 ```
 
-## Custom provider
+### Custom provider
 
 You can create custom strategies. Here's an example of an OAuth 2.0 implementation using `Assent.Strategy.OAuth2.Base`:
 
@@ -247,21 +210,29 @@ If you need more control over the strategy than what the macros give you, you ca
 defmodule TestProvider do
   @behaviour Assent.Strategy
 
-  @spec authorize_url(Keyword.t()) :: {:ok, %{url: binary()}} | {:error, term()}
+  alias Assent.Strategy, as: Helpers
+
+  @impl Assent.Strategy
   def authorize_url(config) do
-    # Generate authorization url
+    # Generate redirect URL
+
+    {:ok, %{url: url}}
   end
 
-  @spec callback(Keyword.t(), map()) :: {:ok, %{user: map(), token: map()}} | {:error, term()}
+  @impl Assent.Strategy
   def callback(config, params) do
-    # Handle callback response
+    # Fetch user data
+
+    user = Helpers.normalize_userinfo(userinfo)
+
+    {:ok, %{user: user}}
   end
 end
 ```
 
 ## HTTP Client
 
-Assent supports [`Req`](https://github.com/wojtekmach/req), [`Finch`](https://github.com/sneako/finch), and [`:httpc`](https://www.erlang.org/doc/man/httpc.html) out of the box. The `Req` HTTP client adapter will be used by default if enabled, otherwise Erlang's `:httpc` adapter will be included.
+Assent supports [`Req`](https://github.com/wojtekmach/req), [`Finch`](https://github.com/sneako/finch), and [`:httpc`](https://www.erlang.org/doc/man/httpc.html) out of the box. The `Req` HTTP client adapter will be used by default if enabled, otherwise Erlang's `:httpc` adapter will be used.
 
 You can explicitly set the HTTP client adapter in the configuration:
 
@@ -279,9 +250,9 @@ Or globally in the config:
 config :assent, http_adapter: Assent.HTTPAdapter.Httpc
 ```
 
-### `Req`
+### Req
 
-Req doesn't require any additional configuration and will work out of the box:
+`Req` doesn't require any additional configuration and will work out of the box:
 
 ```elixir
 defp deps do
@@ -292,7 +263,7 @@ defp deps do
 end
 ```
 
-### `:httpc`
+### :httpc
 
 If `Req` is not available, Erlangs built-in `:httpc` is used for requests. SSL verification is automatically enabled when `:certifi` and `:ssl_verify_fun` packages are available. `:httpc` only supports HTTP/1.1.
 
@@ -311,7 +282,7 @@ You must include `:inets` to `:extra_applications` to include `:httpc` in your r
 
 ### Finch
 
-Finch will require a supervisor in your application.
+`Finch` will require a supervisor in your application.
 
 Update `mix.exs`:
 
@@ -364,6 +335,23 @@ Or globally in the config:
 ```elixir
 config :assent, jwt_adapter: Assent.JWTAdapter.JOSE
 ```
+
+<!-- MDOC !-->
+
+## Installation
+
+Add Assent to your list of dependencies in `mix.exs`:
+
+```elixir
+defp deps do
+  [
+    # ...
+    {:assent, "~> 0.3.0"}
+  ]
+end
+```
+
+Run `mix deps.get` to install it.
 
 ## LICENSE
 

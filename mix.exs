@@ -69,15 +69,21 @@ defmodule Assent.MixProject do
   defp docs do
     [
       source_ref: "v#{@version}",
-      main: "README",
+      main: "Assent",
       canonical: "http://hexdocs.pm/assent",
       source_url: @source_url,
       extras: [
-        "README.md": [filename: "README"],
         "CHANGELOG.md": [filename: "CHANGELOG"]
       ],
       groups_for_modules: [
-        Strategies: ~r/^Assent\.Strategy/,
+        "Base strategies": [Assent.Strategy.OAuth, Assent.Strategy.OAuth2, Assent.Strategy.OIDC],
+        "Custom strategies": [
+          Assent.Strategy,
+          Assent.Strategy.OAuth.Base,
+          Assent.Strategy.OAuth2.Base,
+          Assent.Strategy.OIDC.Base
+        ],
+        Strategies: ~r/^Assent\.Strategy\./,
         HTTP: ~r/^Assent\.HTTPAdapter.*(?<!Error)$/,
         JWT: ~r/^Assent\.JWTAdapter.*(?<!Error)$/
       ],
