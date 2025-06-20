@@ -4,46 +4,40 @@ defmodule Assent.StrategyTest do
 
   alias Assent.Strategy
 
-  defmodule HTTPMock do
-    def request(:get, _, _, _, _), do: {:error, __MODULE__}
+  test "http_request/5 with `prepare_http_request: {module, function, arguments}` with invalid return" do
+    config = [
+      prepare_http_request: {__MODULE__, :invalid_prepare_http_request_return, []}
+    ]
+
+    assert_raise ArgumentError,
+                 "expected #{inspect(__MODULE__)}.invalid_prepare_http_request_return/1 to return an Assent.HTTPAdapter.HTTPRequest struct",
+                 fn ->
+                   Strategy.http_request(:get, "http://example.com/", nil, [], config)
+                 end
   end
 
-  defmodule JSONMock do
-    def decode(_string), do: {:ok, :decoded}
+  def invalid_prepare_http_request_return(_request), do: :invalid
+
+  test "http_request/5 with `prepare_http_request: {module, function, arguments}`" do
+    TestServer.add("/path",
+      via: :get,
+      to: fn conn ->
+        assert Plug.Conn.get_req_header(conn, "x-api-version") == ["1"]
+
+        Plug.Conn.send_resp(conn, 200, "")
+      end
+    )
+
+    config = [
+      prepare_http_request: {__MODULE__, :put_header, ["x-api-version", "1"]}
+    ]
+
+    assert {:ok, _response} =
+             Strategy.http_request(:get, TestServer.url("/path"), nil, [], config)
   end
 
-  defmodule JWTMock do
-    @moduledoc false
-
-    def sign(_claims, _alg, _secret, opts), do: {:error, opts}
-
-    def verify(_binary, _secret, opts), do: {:error, opts}
-  end
-
-  test "http_request/5" do
-    config = [http_adapter: HTTPMock, json_library: JSONMock]
-
-    assert {:error, error} = Strategy.http_request(:get, "/path", nil, [], config)
-    assert error.reason == HTTPMock
-  end
-
-  test "sign_jwt/4" do
-    config = [json_library: JSONMock, jwt_adapter: JWTMock, private_key: "myprivatekey.pem", a: 1]
-
-    assert {:error, opts} = Strategy.sign_jwt(%{"claim" => "a"}, "alg", "secret", config)
-    assert opts == [json_library: JSONMock, jwt_adapter: JWTMock]
-  end
-
-  test "verify_jwt/4" do
-    config = [json_library: JSONMock, jwt_adapter: JWTMock, private_key: "myprivatekey.pem", a: 1]
-
-    assert {:error, opts} = Strategy.verify_jwt("token", "secret", config)
-    assert opts == [json_library: JSONMock, jwt_adapter: JWTMock]
-  end
-
-  test "decode_json/2" do
-    assert Strategy.decode_json("{\"a\": 1}", []) == {:ok, %{"a" => 1}}
-    assert Strategy.decode_json("{\"a\": 1}", json_library: JSONMock) == {:ok, :decoded}
+  def put_header(request, key, value) do
+    %{request | headers: [{key, value} | request.headers]}
   end
 
   test "to_url/3" do

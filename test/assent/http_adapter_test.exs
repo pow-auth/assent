@@ -2,7 +2,12 @@ defmodule Assent.HTTPAdapterTest do
   use Assent.TestCase
   doctest Assent.Strategy
 
-  alias Assent.{HTTPAdapter, HTTPAdapter.HTTPResponse, InvalidResponseError}
+  alias Assent.{
+    HTTPAdapter,
+    HTTPAdapter.HTTPRequest,
+    HTTPAdapter.HTTPResponse,
+    InvalidResponseError
+  }
 
   defmodule HTTPMock do
     @json_library (Code.ensure_loaded?(JSON) && JSON) || Jason
@@ -79,8 +84,11 @@ defmodule Assent.HTTPAdapterTest do
     end
   end
 
-  test "request/5" do
-    assert HTTPAdapter.request(:get, "http-adapter", nil, [], http_adapter: HTTPMock) ==
+  test "request/2" do
+    request = %HTTPRequest{method: :get}
+    opts = [http_adapter: HTTPMock]
+
+    assert HTTPAdapter.request(%{request | url: "http-adapter"}, opts) ==
              {:ok,
               %HTTPResponse{
                 status: 200,
@@ -90,7 +98,7 @@ defmodule Assent.HTTPAdapterTest do
                 request_url: "http-adapter"
               }}
 
-    assert HTTPAdapter.request(:get, "http-adapter-with-opts", nil, [],
+    assert HTTPAdapter.request(%{request | url: "http-adapter-with-opts"},
              http_adapter: {HTTPMock, a: 1}
            ) ==
              {:ok,
@@ -102,7 +110,7 @@ defmodule Assent.HTTPAdapterTest do
                 request_url: "http-adapter-with-opts"
               }}
 
-    assert HTTPAdapter.request(:get, "json-encoded-body", nil, [], http_adapter: HTTPMock) ==
+    assert HTTPAdapter.request(%{request | url: "json-encoded-body"}, opts) ==
              {:ok,
               %HTTPResponse{
                 status: 200,
@@ -112,9 +120,7 @@ defmodule Assent.HTTPAdapterTest do
                 request_url: "json-encoded-body"
               }}
 
-    assert HTTPAdapter.request(:get, "json-encoded-body-already-decoded", nil, [],
-             http_adapter: HTTPMock
-           ) ==
+    assert HTTPAdapter.request(%{request | url: "json-encoded-body-already-decoded"}, opts) ==
              {:ok,
               %HTTPResponse{
                 status: 200,
@@ -124,9 +130,7 @@ defmodule Assent.HTTPAdapterTest do
                 request_url: "json-encoded-body-already-decoded"
               }}
 
-    assert HTTPAdapter.request(:get, "json-encoded-body-text/javascript-header", nil, [],
-             http_adapter: HTTPMock
-           ) ==
+    assert HTTPAdapter.request(%{request | url: "json-encoded-body-text/javascript-header"}, opts) ==
              {:ok,
               %HTTPResponse{
                 status: 200,
@@ -137,9 +141,9 @@ defmodule Assent.HTTPAdapterTest do
               }}
 
     assert {:error, %InvalidResponseError{}} =
-             HTTPAdapter.request(:get, "invalid-json-body", nil, [], http_adapter: HTTPMock)
+             HTTPAdapter.request(%{request | url: "invalid-json-body"}, opts)
 
-    assert HTTPAdapter.request(:get, "json-no-headers", nil, [], http_adapter: HTTPMock) ==
+    assert HTTPAdapter.request(%{request | url: "json-no-headers"}, opts) ==
              {:ok,
               %HTTPResponse{
                 status: 200,
@@ -149,7 +153,7 @@ defmodule Assent.HTTPAdapterTest do
                 request_url: "json-no-headers"
               }}
 
-    assert HTTPAdapter.request(:get, "uppercase-header-names", nil, [], http_adapter: HTTPMock) ==
+    assert HTTPAdapter.request(%{request | url: "uppercase-header-names"}, opts) ==
              {:ok,
               %HTTPResponse{
                 status: 200,
@@ -159,7 +163,7 @@ defmodule Assent.HTTPAdapterTest do
                 request_url: "uppercase-header-names"
               }}
 
-    assert HTTPAdapter.request(:get, "form-data-body", nil, [], http_adapter: HTTPMock) ==
+    assert HTTPAdapter.request(%{request | url: "form-data-body"}, opts) ==
              {:ok,
               %HTTPResponse{
                 status: 200,
@@ -169,9 +173,7 @@ defmodule Assent.HTTPAdapterTest do
                 request_url: "form-data-body"
               }}
 
-    assert HTTPAdapter.request(:get, "form-data-body-already-decoded", nil, [],
-             http_adapter: HTTPMock
-           ) ==
+    assert HTTPAdapter.request(%{request | url: "form-data-body-already-decoded"}, opts) ==
              {:ok,
               %HTTPResponse{
                 status: 200,

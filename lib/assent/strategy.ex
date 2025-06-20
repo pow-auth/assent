@@ -28,7 +28,7 @@ defmodule Assent.Strategy do
         end
       end
   """
-  alias Assent.CastClaimsError
+  alias Assent.{CastClaimsError, HTTPAdapter.HTTPRequest}
 
   @callback authorize_url(Keyword.t()) ::
               {:ok, %{:url => binary(), optional(atom()) => any()}} | {:error, term()}
@@ -38,12 +38,33 @@ defmodule Assent.Strategy do
   @doc """
   Makes an HTTP request.
 
-  See `Assent.HTTPAdapter.request/5`.
+  ## Options
+
+    * `:prepare_http_request` - an MFA tuple `{module, function, arguments}`.
+      It is invoked before an HTTP request is sent. The request is prepended to
+      the argument list.
+
+  See `Assent.HTTPAdapter.request/2` for adapter options.
   """
   def http_request(method, url, body, headers, config) do
     opts = Keyword.take(config, [:http_adapter, :json_library])
 
-    Assent.HTTPAdapter.request(method, url, body, headers, opts)
+    %HTTPRequest{method: method, url: url, body: body, headers: headers}
+    |> apply_prepare_http_request(Keyword.get(config, :prepare_http_request))
+    |> Assent.HTTPAdapter.request(opts)
+  end
+
+  defp apply_prepare_http_request(request, nil), do: request
+
+  defp apply_prepare_http_request(request, {module, function, args}) do
+    case apply(module, function, [request | args]) do
+      %HTTPRequest{} = request ->
+        request
+
+      _other ->
+        raise ArgumentError,
+              "expected #{inspect(module)}.#{function}/#{length(args) + 1} to return an #{inspect(HTTPRequest)} struct"
+    end
   end
 
   @doc """
