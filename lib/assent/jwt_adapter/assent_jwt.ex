@@ -89,8 +89,9 @@ defmodule Assent.JWTAdapter.AssentJWT do
          {:ok, key} <- decode_pem(private_key) do
       der_signature = :public_key.sign(message, sha_alg, key)
       {:"ECDSA-Sig-Value", r, s} = :public_key.der_decode(:"ECDSA-Sig-Value", der_signature)
-      r_bin = sha_bit_pad(int_to_bin(r), sha_bit_size)
-      s_bin = sha_bit_pad(int_to_bin(s), sha_bit_size)
+
+      r_bin = sha_bit_pad(:binary.encode_unsigned(r), sha_bit_size)
+      s_bin = sha_bit_pad(:binary.encode_unsigned(s), sha_bit_size)
 
       {:ok, r_bin <> s_bin}
     end
@@ -120,24 +121,21 @@ defmodule Assent.JWTAdapter.AssentJWT do
   end
 
   # From erlang crypto lib
-  defp int_to_bin(x) when x < 0, do: int_to_bin_neg(x, [])
-  defp int_to_bin(x), do: int_to_bin_pos(x, [])
+  defp sha_bit_pad(binary, "256"), do: lpad_binary(binary, 32)
+  defp sha_bit_pad(binary, "384"), do: lpad_binary(binary, 48)
+  defp sha_bit_pad(binary, "512"), do: lpad_binary(binary, 66)
 
-  defp int_to_bin_pos(0, [_ | _] = ds), do: :erlang.list_to_binary(ds)
-  defp int_to_bin_pos(x, ds), do: int_to_bin_pos(:erlang.bsr(x, 8), [:erlang.band(x, 255) | ds])
-
-  defp int_to_bin_neg(-1, [msb | _] = ds) when msb >= 128, do: :erlang.list_to_binary(ds)
-  defp int_to_bin_neg(x, ds), do: int_to_bin_neg(:erlang.bsr(x, 8), [:erlang.band(x, 255) | ds])
-
-  defp sha_bit_pad(binary, "256"), do: lpad_binary(binary, byte_size(binary) - 32)
-  defp sha_bit_pad(binary, "384"), do: lpad_binary(binary, byte_size(binary) - 48)
-  defp sha_bit_pad(binary, "512"), do: lpad_binary(binary, byte_size(binary) - 66)
-
-  defp lpad_binary(binary, length) when length > 0 do
+  defp lpad_binary(binary, length) when byte_size(binary) < length do
     :binary.copy(<<0>>, length - byte_size(binary)) <> binary
   end
 
   defp lpad_binary(binary, _length), do: binary
+
+  if Mix.env() == :test do
+    # This allows testing padding as the the signing will only produce s or r
+    # values that a smaller in rare case.
+    def __sha_bit_pad__(binary, sha), do: sha_bit_pad(binary, sha)
+  end
 
   @impl JWTAdapter
   def verify(token, secret_or_public_key, opts) do
