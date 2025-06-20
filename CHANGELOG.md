@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.3.1 (TBA)
+
+### Bug fixes
+
+* `Assent.JWTAdapter.AssentJWT` fixed padding issue with ECDSA that caused invalid signatures
+
 ## v0.3.0 (2025-01-06)
 
 **This release consists of breaking changes.**

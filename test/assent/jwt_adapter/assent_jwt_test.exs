@@ -326,4 +326,21 @@ defmodule Assent.JWTAdapter.AssentJWTTest do
       end
     end
   end
+
+  test "__sha_bit_pad__/2" do
+    assert AssentJWT.__sha_bit_pad__(String.duplicate("a", 31), "256") ==
+             <<0>> <> String.duplicate("a", 31)
+
+    assert AssentJWT.__sha_bit_pad__(String.duplicate("a", 32), "256") ==
+             String.duplicate("a", 32)
+
+    assert AssentJWT.__sha_bit_pad__(String.duplicate("a", 33), "256") ==
+             String.duplicate("a", 33)
+
+    assert AssentJWT.__sha_bit_pad__(String.duplicate("a", 47), "384") ==
+             <<0>> <> String.duplicate("a", 47)
+
+    assert AssentJWT.__sha_bit_pad__(String.duplicate("a", 65), "512") ==
+             <<0>> <> String.duplicate("a", 65)
+  end
 end
