@@ -275,7 +275,7 @@ defmodule Assent.Strategy.OIDC do
   defp fetch_client_authentication_method(openid_config, config) do
     method = Keyword.get(config, :client_authentication_method, "client_secret_basic")
     methods = Map.get(openid_config, "token_endpoint_auth_methods_supported")
-    supported_method? = (is_nil(methods) && true) || method in methods
+    supported_method? = (is_nil(methods) && true) || method in methods || method == "none"
 
     case supported_method? do
       true -> parse_client_auth_method(method)
