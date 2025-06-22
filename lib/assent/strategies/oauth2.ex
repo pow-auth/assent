@@ -297,8 +297,9 @@ defmodule Assent.Strategy.OAuth2 do
   end
 
   defp authentication_params(nil, config) do
-    with {:ok, client_id} <- Assent.fetch_config(config, :client_id) do
-      headers = []
+    with {:ok, client_id} <- Assent.fetch_config(config, :client_id),
+         {:ok, auth_headers} <- Assent.fetch_config(config, :auth_headers, []) do
+      headers = auth_headers
       body = [client_id: client_id]
 
       {:ok, headers, body}
@@ -307,9 +308,10 @@ defmodule Assent.Strategy.OAuth2 do
 
   defp authentication_params(:client_secret_basic, config) do
     with {:ok, client_id} <- Assent.fetch_config(config, :client_id),
-         {:ok, client_secret} <- Assent.fetch_config(config, :client_secret) do
+         {:ok, client_secret} <- Assent.fetch_config(config, :client_secret),
+         {:ok, auth_headers} <- Assent.fetch_config(config, :auth_headers, []) do
       auth = Base.encode64("#{client_id}:#{client_secret}")
-      headers = [{"authorization", "Basic #{auth}"}]
+      headers = [{"authorization", "Basic #{auth}"}] ++ auth_headers
       body = []
 
       {:ok, headers, body}
@@ -318,8 +320,9 @@ defmodule Assent.Strategy.OAuth2 do
 
   defp authentication_params(:client_secret_post, config) do
     with {:ok, client_id} <- Assent.fetch_config(config, :client_id),
-         {:ok, client_secret} <- Assent.fetch_config(config, :client_secret) do
-      headers = []
+         {:ok, client_secret} <- Assent.fetch_config(config, :client_secret),
+         {:ok, auth_headers} <- Assent.fetch_config(config, :auth_headers, []) do
+      headers = auth_headers
       body = [client_id: client_id, client_secret: client_secret]
 
       {:ok, headers, body}
@@ -349,8 +352,9 @@ defmodule Assent.Strategy.OAuth2 do
 
   defp jwt_authentication_params(alg, secret, config) do
     with {:ok, claims} <- jwt_claims(config),
-         {:ok, token} <- Helpers.sign_jwt(claims, alg, secret, config) do
-      headers = []
+         {:ok, token} <- Helpers.sign_jwt(claims, alg, secret, config),
+         {:ok, auth_headers} <- Assent.fetch_config(config, :auth_headers, []) do
+      headers = auth_headers
 
       body = [
         client_assertion: token,

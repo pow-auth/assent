@@ -175,6 +175,19 @@ defmodule Assent do
   end
 
   @doc """
+  Fetches the key value from the configuration.
+
+  Returns `default` argument if the key is not found.
+  """
+  @spec fetch_config(Keyword.t(), atom(), any()) :: {:ok, any()}
+  def fetch_config(config, key, default) when is_list(config) and is_atom(key) do
+    case Keyword.fetch(config, key) do
+      {:ok, value} -> {:ok, value}
+      :error -> {:ok, default}
+    end
+  end
+
+  @doc """
   Fetches the key value from the params.
 
   Returns a `Assent.MissingParamError` if the key is not found.
