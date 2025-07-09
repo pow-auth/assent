@@ -2,6 +2,10 @@
 
 ## v0.3.2 (TBA)
 
+### Changes
+
+* `Assent.Strategy.Apple` JWT iat has been adjusted by -10 seconds clock skew to prevent rare timing issues
+
 ## Bug fixes
 
 * Switched from `:os.system_time(:second)` to `DateTime.to_unix(DateTime.utc_now())` to prevent monotic time drift

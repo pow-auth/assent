@@ -82,9 +82,10 @@ defmodule Assent.Strategy.Apple do
   end
 
   @jwt_expiration_seconds 600
+  @apple_clock_skew_seconds 10
 
   defp gen_client_secret(config) do
-    timestamp = DateTime.to_unix(DateTime.utc_now())
+    timestamp = DateTime.to_unix(DateTime.utc_now()) - @apple_clock_skew_seconds
 
     config =
       config
