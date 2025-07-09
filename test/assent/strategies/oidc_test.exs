@@ -485,14 +485,14 @@ defmodule Assent.Strategy.OIDCTest do
     end
 
     test "with expired id_token", %{config: config} do
-      id_token = gen_id_token(alg: "HS256", claims: %{"exp" => :os.system_time(:second)})
+      id_token = gen_id_token(alg: "HS256", claims: %{"exp" => DateTime.to_unix(DateTime.utc_now())})
 
       assert OIDC.validate_id_token(config, id_token) == {:error, "The ID Token has expired"}
     end
 
     test "with TTL reached for id_token", %{config: config} do
       config = Keyword.put(config, :id_token_ttl_seconds, 60)
-      id_token = gen_id_token(alg: "HS256", claims: %{"iat" => :os.system_time(:second) - 60})
+      id_token = gen_id_token(alg: "HS256", claims: %{"iat" => DateTime.to_unix(DateTime.utc_now()) - 60})
 
       assert OIDC.validate_id_token(config, id_token) ==
                {:error, "The ID Token was issued too long ago"}

@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.3.2 (TBA)
+
+## Bug fixes
+
+* Switched from `:os.system_time(:second)` to `DateTime.to_unix(DateTime.utc_now())` to prevent monotic time drift
+
 ## v0.3.1 (2025-06-20)
 
 ### Bug fixes

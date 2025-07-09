@@ -13,8 +13,8 @@ defmodule Assent.Strategy.GoogleTest do
     "hd" => "example.com",
     "email" => "jsmith@example.com",
     "email_verified" => "true",
-    "iat" => :os.system_time(:second),
-    "exp" => :os.system_time(:second) + 60,
+    "iat" => DateTime.to_unix(DateTime.utc_now()),
+    "exp" => DateTime.to_unix(DateTime.utc_now()) + 60,
     "nonce" => "0394852-3190485-2490358"
   }
   @user %{

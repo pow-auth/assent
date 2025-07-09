@@ -25,8 +25,8 @@ defmodule Assent.Strategy.AppleTest do
     "iss" => "https://appleid.apple.com",
     "sub" => "001473.fe6f6f83bf4b8e4590aacbabdcb8598bd0.2039",
     "aud" => @client_id,
-    "exp" => :os.system_time(:second) + 5 * 60,
-    "iat" => :os.system_time(:second),
+    "exp" => DateTime.to_unix(DateTime.utc_now()) + 5 * 60,
+    "iat" => DateTime.to_unix(DateTime.utc_now()),
     "email" => "john.doe@example.com"
   }
   @user %{

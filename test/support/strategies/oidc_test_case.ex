@@ -184,8 +184,8 @@ defmodule Assent.Test.OIDCTestCase do
     claims =
       @claims
       |> Map.put("iss", iss)
-      |> Map.put("exp", :os.system_time(:second) + 600)
-      |> Map.put("iat", :os.system_time(:second))
+      |> Map.put("exp", DateTime.to_unix(DateTime.utc_now()) + 600)
+      |> Map.put("iat", DateTime.to_unix(DateTime.utc_now()))
       |> Map.merge(claims)
 
     claims = Map.drop(claims, Enum.filter(Map.keys(claims), &is_nil(claims[&1])))

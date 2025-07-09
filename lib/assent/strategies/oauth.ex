@@ -181,7 +181,7 @@ defmodule Assent.Strategy.OAuth do
     with {:ok, consumer_key} <- Assent.fetch_config(config, :consumer_key) do
       nonce = gen_nonce()
       signature_method = signature_method_value(signature_method)
-      timestamp = to_string(:os.system_time(:second))
+      timestamp = to_string(DateTime.to_unix(DateTime.utc_now()))
 
       params =
         [

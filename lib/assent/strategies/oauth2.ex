@@ -362,7 +362,7 @@ defmodule Assent.Strategy.OAuth2 do
   end
 
   defp jwt_claims(config) do
-    timestamp = :os.system_time(:second)
+    timestamp = DateTime.to_unix(DateTime.utc_now())
 
     with {:ok, base_url} <- Assent.fetch_config(config, :base_url),
          {:ok, client_id} <- Assent.fetch_config(config, :client_id) do

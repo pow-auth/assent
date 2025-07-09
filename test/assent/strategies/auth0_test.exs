@@ -14,8 +14,8 @@ defmodule Assent.Strategy.Auth0Test do
     "iss" => "https://{yourDomain}/",
     "sub" => "auth0|USER-ID",
     "aud" => "{yourClientId}",
-    "exp" => :os.system_time(:second) + 60,
-    "iat" => :os.system_time(:second),
+    "exp" => DateTime.to_unix(DateTime.utc_now()) + 60,
+    "iat" => DateTime.to_unix(DateTime.utc_now()),
     "nonce" => "crypto-value",
     "at_hash" => "IoS3ZGppJKUn3Bta_LgE2A"
   }

@@ -84,7 +84,7 @@ defmodule Assent.Strategy.Apple do
   @jwt_expiration_seconds 600
 
   defp gen_client_secret(config) do
-    timestamp = :os.system_time(:second)
+    timestamp = DateTime.to_unix(DateTime.utc_now())
 
     config =
       config
