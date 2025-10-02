@@ -400,6 +400,34 @@ defmodule Assent.Strategy.OIDCTest do
                {:error, "Invalid issuer \"invalid\" in ID Token"}
     end
 
+    test "with valid `issuer` from list in id_token", %{config: config} do
+      openid_config =
+        Map.put(config[:openid_configuration], "issuer", [
+          "http://localhost",
+          "https://example.com"
+        ])
+
+      config = Keyword.put(config, :openid_configuration, openid_config)
+      id_token = gen_id_token(alg: "HS256", iss: "http://localhost")
+
+      assert {:ok, jwt} = OIDC.validate_id_token(config, id_token)
+      assert jwt.verified?
+    end
+
+    test "with invalid `issuer` not in list in id_token", %{config: config} do
+      openid_config =
+        Map.put(config[:openid_configuration], "issuer", [
+          "https://example.com",
+          "https://another.com"
+        ])
+
+      config = Keyword.put(config, :openid_configuration, openid_config)
+      id_token = gen_id_token(alg: "HS256", iss: "http://localhost")
+
+      assert OIDC.validate_id_token(config, id_token) ==
+               {:error, "Invalid issuer \"http://localhost\" in ID Token"}
+    end
+
     test "with unexpected `alg`", %{config: config, id_token: id_token} do
       assert OIDC.validate_id_token(
                Keyword.delete(config, :id_token_signed_response_alg),
