@@ -458,6 +458,13 @@ defmodule Assent.Strategy.OIDC do
 
   defp validate_issuer_identifier(%{claims: %{"iss" => iss}}, iss), do: :ok
 
+  defp validate_issuer_identifier(%{claims: %{"iss" => iss}}, issuers) when is_list(issuers) do
+    case iss in issuers do
+      true -> :ok
+      false -> {:error, "Invalid issuer \"#{iss}\" in ID Token"}
+    end
+  end
+
   defp validate_issuer_identifier(%{claims: %{"iss" => iss}}, _iss),
     do: {:error, "Invalid issuer \"#{iss}\" in ID Token"}
 
