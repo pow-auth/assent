@@ -5,9 +5,8 @@ defmodule Assent.HTTPAdapter.ReqTest do
   alias Assent.HTTPAdapter.{HTTPResponse, Req}
   alias Elixir.Req.{FinchSupervisor, TransportError}
 
-  # Test retries quickly but with enough time for the HTTP2 connection to be
-  # established
-  @req_opts [retry_delay: 10, retry_log_level: false]
+  # Test retries quickly
+  @req_opts [retry_delay: 0, retry_log_level: false]
 
   # HTTP2 pools will cause logger warnings when the test server is stopped so
   # we must terminate them after each test
@@ -27,8 +26,9 @@ defmodule Assent.HTTPAdapter.ReqTest do
       TestServer.add("/", via: :get)
 
       req_opts =
-        Keyword.put(
-          @req_opts,
+        @req_opts
+        |> Keyword.put(:retry_delay, 50)
+        |> Keyword.put(
           :connect_options,
           transport_opts: [cacerts: TestServer.x509_suite().cacerts],
           protocols: [:http2]
