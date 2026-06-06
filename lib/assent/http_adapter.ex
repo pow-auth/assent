@@ -82,30 +82,22 @@ defmodule Assent.HTTPAdapter do
     {"User-Agent", "Assent-#{version}"}
   end
 
-  @default_http_client Enum.find_value(
-                         [
-                           {Req, Assent.HTTPAdapter.Req},
-                           {:httpc, Assent.HTTPAdapter.Httpc}
-                         ],
-                         fn {dep, module} ->
-                           Code.ensure_loaded?(dep) && {module, []}
-                         end
-                       )
-
   @doc """
   Makes a HTTP request.
 
   ## Options
 
-  - `:http_adapter` - The HTTP adapter to use, defaults to
-    `#{inspect(elem(@default_http_client, 0))}`.
+  - `:http_adapter` - HTTP adapter configuration. Defaults to
+      `{Assent.HTTPAdapter.Req, []}`,
+      `{Assent.HTTPAdapter.Httpc, []}` depending on which HTTP client is
+      available in the project dependencies.
   - `:json_library` - The JSON library to use, see
     `Assent.json_library/1`.
   """
   @spec request(atom(), binary(), binary() | nil, list(), Keyword.t()) ::
           {:ok, HTTPResponse.t()} | {:error, HTTPResponse.t()} | {:error, term()}
   def request(method, url, body, headers, opts) do
-    {http_adapter, http_adapter_opts} = get_adapter(opts)
+    {http_adapter, http_adapter_opts} = get_http_adapter(opts)
 
     method
     |> http_adapter.request(url, body, headers, http_adapter_opts)
@@ -133,12 +125,20 @@ defmodule Assent.HTTPAdapter do
     end
   end
 
-  defp get_adapter(opts) do
-    default_http_adapter = Application.get_env(:assent, :http_adapter, @default_http_client)
+  defp get_http_adapter(opts) do
+    case Keyword.get_lazy(opts, :http_adapter, fn ->
+           Application.get_env(:assent, :http_adapter) || default_http_adapter()
+         end) do
+      {mod, server_options} when is_atom(mod) and is_list(server_options) -> {mod, server_options}
+      mod when is_atom(mod) -> {mod, nil}
+      other -> raise("Invalid http_adapter, got: #{inspect(other)}")
+    end
+  end
 
-    case Keyword.get(opts, :http_adapter, default_http_adapter) do
-      {http_adapter, opts} -> {http_adapter, opts}
-      http_adapter when is_atom(http_adapter) -> {http_adapter, nil}
+  defp default_http_adapter do
+    case Code.ensure_loaded?(Assent.HTTPAdapter.Req) do
+      true -> {Assent.HTTPAdapter.Req, []}
+      false -> {Assent.HTTPAdapter.Httpc, []}
     end
   end
 

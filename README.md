@@ -232,7 +232,7 @@ end
 
 ## HTTP Client
 
-Assent supports [`Req`](https://github.com/wojtekmach/req), [`Finch`](https://github.com/sneako/finch), and [`:httpc`](https://www.erlang.org/doc/man/httpc.html) out of the box. The `Req` HTTP client adapter will be used by default if enabled, otherwise Erlang's `:httpc` adapter will be used.
+Assent supports [`Req`](https://github.com/wojtekmach/req) and [`:httpc`](https://www.erlang.org/doc/man/httpc.html) out of the box. The `Req` HTTP client adapter will be used by default if enabled, otherwise Erlang's `:httpc` adapter will be used.
 
 You can explicitly set the HTTP client adapter in the configuration:
 
@@ -265,7 +265,7 @@ end
 
 ### :httpc
 
-If `Req` is not available, Erlangs built-in `:httpc` is used for requests. SSL verification is automatically enabled when `:certifi` and `:ssl_verify_fun` packages are available. `:httpc` only supports HTTP/1.1.
+If `Req` is not available, Erlangs built-in `:httpc` is used for requests. SSL verification is automatically enabled when `:certifi` and `:ssl_verify_fun` packages are available at compile time. `:httpc` only supports HTTP/1.1.
 
 ```elixir
 defp deps do
@@ -276,33 +276,6 @@ defp deps do
     {:ssl_verify_fun, "~> 1.1"}
   ]
 end
-```
-
-You must include `:inets` to `:extra_applications` to include `:httpc` in your release.
-
-### Finch
-
-`Finch` will require a supervisor in your application.
-
-Update `mix.exs`:
-
-```elixir
-defp deps do
-  [
-    # ...
-    {:finch, "~> 0.16"}
-  ]
-end
-```
-
-Ensure you start the Finch supervisor in your application, and set `:http_adapter` in your provider configuration using your connection pool:
-
-```elixir
-config = [
-  client_id: "REPLACE_WITH_CLIENT_ID",
-  client_secret: "REPLACE_WITH_CLIENT_SECRET",
-  http_adapter: {Assent.HTTPAdapter.Finch, supervisor: MyFinch}
-]
 ```
 
 ## JWT Adapter
