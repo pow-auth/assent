@@ -8,7 +8,7 @@ defmodule Assent.MixProject do
     [
       app: :assent,
       version: @version,
-      elixir: "~> 1.13",
+      elixir: "~> 1.15",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -19,16 +19,13 @@ defmodule Assent.MixProject do
 
       # Docs
       name: "Assent",
-      docs: docs(),
-      xref: [
-        exclude: [:certifi, :httpc, Mint.HTTP, JOSE.JWT, JOSE.JWK, JOSE.JWS, :ssl_verify_hostname]
-      ]
+      docs: docs()
     ]
   end
 
   def application do
     [
-      extra_applications: [:logger, :crypto, :public_key]
+      extra_applications: [:logger, :crypto, :public_key, :inets]
     ]
   end
 
@@ -39,7 +36,6 @@ defmodule Assent.MixProject do
       # HTTP clients
       {:certifi, ">= 0.0.0", optional: true},
       {:ssl_verify_fun, ">= 0.0.0", optional: true},
-      {:finch, "~> 0.15", optional: true},
       {:req, "~> 0.4", optional: true},
       # Docs and tests
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},

@@ -2,11 +2,24 @@ defmodule Assent.HTTPAdapter.ReqTest do
   use Assent.TestCase
   doctest Assent.HTTPAdapter.Req
 
-  alias Req.TransportError
   alias Assent.HTTPAdapter.{HTTPResponse, Req}
+  alias Elixir.Req.{FinchSupervisor, TransportError}
 
-  # Test retries quickly
-  @req_opts [retry_delay: 0]
+  # Test retries quickly but with enough time for the HTTP2 connection to be
+  # established
+  @req_opts [retry_delay: 10, retry_log_level: false]
+
+  # HTTP2 pools will cause logger warnings when the test server is stopped so
+  # we must terminate them after each test
+  setup do
+    on_exit(fn ->
+      for {_, pid, _, _} <- DynamicSupervisor.which_children(FinchSupervisor) do
+        DynamicSupervisor.terminate_child(FinchSupervisor, pid)
+      end
+    end)
+
+    :ok
+  end
 
   describe "request/4" do
     test "handles SSL" do
@@ -37,7 +50,7 @@ defmodule Assent.HTTPAdapter.ReqTest do
           transport_opts: [cacerts: TestServer.x509_suite().cacerts]
         )
 
-      assert {:error, %TransportError{reason: {:tls_alert, {:handshake_failure, _error}}}} =
+      assert {:error, %TransportError{reason: {:tls_alert, _bad_certificate}}} =
                Req.request(:get, bad_host_url, nil, [], req_opts)
     end
 

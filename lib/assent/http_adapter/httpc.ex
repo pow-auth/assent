@@ -1,134 +1,125 @@
-defmodule Assent.HTTPAdapter.Httpc do
-  @moduledoc """
-  HTTP adapter module for making http requests with `:httpc`.
+if Code.ensure_loaded?(:httpc) do
+  defmodule Assent.HTTPAdapter.Httpc do
+    @moduledoc """
+    HTTP adapter module for making http requests with `:httpc`.
 
-  SSL support will automatically be enabled if the `:certifi` and
-  `:ssl_verify_fun` libraries exists in your project. You can also override
-  the `:httpc` options by updating the configuration:
+    SSL verification is enabled automatically when both
+    [`:certifi`](https://hexdocs.pm/certifi/) and
+    [`:ssl_verify_fun`](https://hex.pm/packages/ssl_verify_fun) are present at
+    compile time. Add them to your dependencies in `mix.exs`:
 
-      http_adapter: {Assent.HTTPAdapter.Httpc, [...]}
-
-  For releases please make sure you have included `:inets` in your application:
-
-      extra_applications: [:inets]
-
-  See `Assent.HTTPAdapter` for more.
-  """
-  alias Assent.{HTTPAdapter, HTTPAdapter.HTTPResponse}
-
-  @behaviour HTTPAdapter
-
-  @impl HTTPAdapter
-  def request(method, url, body, headers, httpc_opts \\ nil) do
-    raise_on_missing_httpc!()
-
-    headers = headers ++ [HTTPAdapter.user_agent_header()]
-    request = httpc_request(url, body, headers)
-    opts = parse_httpc_ssl_opts(httpc_opts, url)
-
-    method
-    |> :httpc.request(request, opts, [])
-    |> format_response()
-  end
-
-  defp raise_on_missing_httpc! do
-    Code.ensure_loaded?(:httpc) ||
-      raise """
-      #{inspect(__MODULE__)} requires `:httpc` to be included in your
-      application.
-
-      Please add `:inets` to `:extra_applications`:
-
-        def application do
+        defp deps do
           [
-            # ...
-            extra_applications: [
-              #...
-              :inets
-            ]
+            {:certifi, "~> 2.4"},
+            {:ssl_verify_fun, "~> 1.1"}
           ]
         end
-      """
-  end
 
-  defp httpc_request(url, body, headers) do
-    url = to_charlist(url)
-    headers = Enum.map(headers, fn {k, v} -> {to_charlist(k), to_charlist(v)} end)
+    If these dependencies are added after Assent has been compiled,
+    recompile Assent to enable SSL verification support:
 
-    do_httpc_request(url, body, headers)
-  end
+        mix deps.compile assent --force
 
-  defp do_httpc_request(url, nil, headers) do
-    {url, headers}
-  end
+    You can also override the `:httpc` options by updating the configuration:
 
-  defp do_httpc_request(url, body, headers) do
-    {content_type, headers} = split_content_type_headers(headers)
-    body = to_charlist(body)
-    headers = set_content_length_header(headers, body)
+        http_adapter: {Assent.HTTPAdapter.Httpc, [...]}
 
-    {url, headers, content_type, body}
-  end
+    See `Assent.HTTPAdapter` for more.
+    """
+    alias Assent.{HTTPAdapter, HTTPAdapter.HTTPResponse}
 
-  defp split_content_type_headers(headers) do
-    case List.keytake(headers, ~c"content-type", 0) do
-      nil -> {~c"text/plain", headers}
-      {{_, ct}, headers} -> {ct, headers}
+    @behaviour HTTPAdapter
+
+    @impl HTTPAdapter
+    def request(method, url, body, headers, httpc_opts \\ nil) do
+      headers = headers ++ [HTTPAdapter.user_agent_header()]
+      request = httpc_request(url, body, headers)
+      opts = parse_httpc_ssl_opts(httpc_opts, url)
+
+      method
+      |> :httpc.request(request, opts, [])
+      |> format_response()
     end
-  end
 
-  defp set_content_length_header(headers, body) do
-    case List.keyfind(headers, ~c"content-length", 0) do
-      nil ->
-        length = body |> IO.iodata_length() |> Integer.to_string()
-        [{~c"content-length", length} | headers]
+    defp httpc_request(url, body, headers) do
+      url = to_charlist(url)
+      headers = Enum.map(headers, fn {k, v} -> {to_charlist(k), to_charlist(v)} end)
 
-      _ ->
-        headers
+      do_httpc_request(url, body, headers)
     end
-  end
 
-  defp format_response({:ok, {{_, status, _}, headers, body}}) do
-    headers =
-      Enum.map(headers, fn {key, value} ->
-        {String.downcase(to_string(key)), to_string(value)}
-      end)
+    defp do_httpc_request(url, nil, headers) do
+      {url, headers}
+    end
 
-    body = IO.iodata_to_binary(body)
+    defp do_httpc_request(url, body, headers) do
+      {content_type, headers} = split_content_type_headers(headers)
+      body = to_charlist(body)
+      headers = set_content_length_header(headers, body)
 
-    {:ok, %HTTPResponse{status: status, headers: headers, body: body}}
-  end
+      {url, headers, content_type, body}
+    end
 
-  defp format_response({:error, error}), do: {:error, error}
+    defp split_content_type_headers(headers) do
+      case List.keytake(headers, ~c"content-type", 0) do
+        nil -> {~c"text/plain", headers}
+        {{_, ct}, headers} -> {ct, headers}
+      end
+    end
 
-  defp parse_httpc_ssl_opts(nil, url), do: parse_httpc_ssl_opts([], url)
+    defp set_content_length_header(headers, body) do
+      case List.keyfind(headers, ~c"content-length", 0) do
+        nil ->
+          length = body |> IO.iodata_length() |> Integer.to_string()
+          [{~c"content-length", length} | headers]
 
-  defp parse_httpc_ssl_opts(opts, url) do
-    uri = URI.parse(url)
+        _ ->
+          headers
+      end
+    end
 
-    case uri.scheme do
-      "https" ->
-        ssl_opts =
+    defp format_response({:ok, {{_, status, _}, headers, body}}) do
+      headers =
+        Enum.map(headers, fn {key, value} ->
+          {String.downcase(to_string(key)), to_string(value)}
+        end)
+
+      body = IO.iodata_to_binary(body)
+
+      {:ok, %HTTPResponse{status: status, headers: headers, body: body}}
+    end
+
+    defp format_response({:error, error}), do: {:error, error}
+
+    defp parse_httpc_ssl_opts(nil, url), do: parse_httpc_ssl_opts([], url)
+
+    defp parse_httpc_ssl_opts(opts, url) do
+      uri = URI.parse(url)
+
+      case uri.scheme do
+        "https" ->
+          ssl_opts =
+            opts
+            |> Keyword.get(:ssl, [])
+            |> verify_fun_ssl_opts(uri)
+            |> cacerts_ssl_opts()
+
+          Keyword.put(opts, :ssl, ssl_opts)
+
+        "http" ->
           opts
-          |> Keyword.get(:ssl, [])
-          |> verify_fun_ssl_opts(uri)
-          |> cacerts_ssl_opts()
-
-        Keyword.put(opts, :ssl, ssl_opts)
-
-      "http" ->
-        opts
+      end
     end
-  end
 
-  defp verify_fun_ssl_opts(ssl_opts, uri) do
-    case Keyword.has_key?(ssl_opts, :verify_fun) do
-      true ->
-        ssl_opts
+    defp verify_fun_ssl_opts(ssl_opts, uri) do
+      case Keyword.has_key?(ssl_opts, :verify_fun) do
+        true -> ssl_opts
+        false -> default_verify_fun_ssl_opts(ssl_opts, uri)
+      end
+    end
 
-      false ->
-        raise_on_missing_ssl_verify_fun!()
-
+    if Code.ensure_loaded?(:ssl_verify_hostname) do
+      defp default_verify_fun_ssl_opts(ssl_opts, uri) do
         # This handles certificates for wildcard domain with SAN extension for
         # OTP >= 22
         hostname_match_check =
@@ -151,58 +142,66 @@ defmodule Assent.HTTPAdapter.Httpc do
           ] ++ hostname_match_check,
           ssl_opts
         )
+      end
+    else
+      defp default_verify_fun_ssl_opts(_ssl_opts, _uri) do
+        raise """
+        This request can NOT be verified for valid SSL certificate.
+
+        Please add `:ssl_verify_fun` to your projects dependencies:
+
+          {:ssl_verify_fun, "~> 1.1"}
+
+        And recompile Assent:
+
+          mix deps.compile assent --force
+
+        Or specify the ssl options in the `:http_adapter` config option:
+
+          config =
+            [
+              client_id: "REPLACE_WITH_CLIENT_ID",
+              client_secret: "REPLACE_WITH_CLIENT_SECRET",
+              http_adapter: {#{__MODULE__}, ssl: [verify_peer: :verify_peer, verify_fun: ...]}
+            ]
+        """
+      end
     end
-  end
 
-  defp raise_on_missing_ssl_verify_fun! do
-    Code.ensure_loaded?(:ssl_verify_hostname) ||
-      raise """
-      This request can NOT be verified for valid SSL certificate.
+    defp cacerts_ssl_opts(ssl_opts) do
+      case Keyword.has_key?(ssl_opts, :cacerts) || Keyword.has_key?(ssl_opts, :cacertfile) do
+        true -> ssl_opts
+        false -> default_cacerts_ssl_opts(ssl_opts)
+      end
+    end
 
-      Please add `:ssl_verify_fun` to your projects dependencies:
-
-        {:ssl_verify_fun, "~> 1.1"}
-
-      Or specify the ssl options in the `:http_adapter` config option:
-
-        config =
-          [
-            client_id: "REPLACE_WITH_CLIENT_ID",
-            client_secret: "REPLACE_WITH_CLIENT_SECRET",
-            http_adapter: {#{__MODULE__}, ssl: [verify_peer: :verify_peer, verify_fun: ...]}
-          ]
-      """
-  end
-
-  defp cacerts_ssl_opts(ssl_opts) do
-    case Keyword.has_key?(ssl_opts, :cacerts) || Keyword.has_key?(ssl_opts, :cacertfile) do
-      true ->
-        ssl_opts
-
-      false ->
-        raise_on_missing_certifi!()
-
+    if Code.ensure_loaded?(:certifi) do
+      defp default_cacerts_ssl_opts(ssl_opts) do
         ssl_opts ++ [cacerts: :certifi.cacerts()]
+      end
+    else
+      defp default_cacerts_ssl_opts(_ssl_opts) do
+        raise """
+        This request requires a CA trust store.
+
+        Please add `:certifi` to your projects dependencies:
+
+          {:certifi, "~> 2.4"}
+
+        And recompile Assent:
+
+          mix deps.compile assent --force
+
+        Or specify the ssl options in the `:http_adapter` config option:
+
+          config =
+            [
+              client_id: "REPLACE_WITH_CLIENT_ID",
+              client_secret: "REPLACE_WITH_CLIENT_SECRET",
+              http_adapter: {#{__MODULE__}, ssl: [cacerts: ...]}
+            ]
+        """
+      end
     end
-  end
-
-  defp raise_on_missing_certifi! do
-    Code.ensure_loaded?(:certifi) ||
-      raise """
-      This request requires a CA trust store.
-
-      Please add `:certifi` to your projects dependencies:
-
-        {:certifi, "~> 2.4"}
-
-      Or specify the ssl options in the `:http_adapter` config option:
-
-        config =
-          [
-            client_id: "REPLACE_WITH_CLIENT_ID",
-            client_secret: "REPLACE_WITH_CLIENT_SECRET",
-            http_adapter: {#{__MODULE__}, ssl: [cacerts: ...]}
-          ]
-      """
   end
 end

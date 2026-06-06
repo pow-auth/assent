@@ -5,7 +5,7 @@ defmodule IntegrationServer.MixProject do
     [
       app: :integration_server,
       version: "0.0.1",
-      elixir: "~> 1.13",
+      elixir: "~> 1.15",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       deps: deps()

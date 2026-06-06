@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+Now requires Elixir 1.15 / OTP 26.
+
+### Breaking changes
+
+* `Assent.HTTPAdapter.Finch` removed
+
+### Changes
+
+* `:inets` is now started automatically by `Assent`, and no longer required in `:extra_applications`
+
 ## v0.3.1 (2025-06-20)
 
 ### Bug fixes
