@@ -3,13 +3,14 @@ defmodule Assent.Strategy.Facebook do
   Facebook OAuth 2.0 strategy.
 
   The Facebook user endpoint does not provide data on email verification, email
-  is considered unverified. More here:
-  https://developers.facebook.com/docs/facebook-login/multiple-providers#postfb1
+  is considered unverified. See the [Facebook login
+  documentation](https://developers.facebook.com/docs/facebook-login/multiple-providers#postfb1)
+  for more.
 
   ## Configuration
 
-  - `:user_url_request_fields` - The fields for the resource, defaults to
-    `email,name,first_name,last_name,middle_name,link`
+    * `:user_url_request_fields` - the fields for the resource, defaults to
+      `email,name,first_name,last_name,middle_name,link`
 
   See `Assent.Strategy.OAuth2` for more.
 
@@ -21,12 +22,10 @@ defmodule Assent.Strategy.Facebook do
         redirect_uri: "http://localhost:4000/auth/callback"
       ]
 
-  See `Assent.Strategy.OAuth2` for more.
-
   ## With JS SDK
 
-  You can use the JS SDK instead of handling it through `auhorize_url/2`. All
-  you have to do is to set up you HTML page with the following way:
+  You can use the JS SDK instead of handling it through `authorize_url/1`. All
+  you have to do is to set up your HTML page in the following way:
 
       <fb:login-button scope="[SCOPES]" onlogin="checkLoginState();">
       </fb:login-button>

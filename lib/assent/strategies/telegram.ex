@@ -4,11 +4,11 @@ defmodule Assent.Strategy.Telegram do
 
   Supports both
   [Telegram Login Widget](https://core.telegram.org/widgets/login),
-  and  [Web Mini App](https://core.telegram.org/bots/webapps) authorizations.
+  and [Web Mini App](https://core.telegram.org/bots/webapps) authorizations.
 
   Note that using the `authorize_url/1` instead of the Telegram JavaScript
   embed script, will send the end-user to the `:return_to` path with a base64
-  url encoded JSON string in a URL fragment. This means that it can only be
+  URL-encoded JSON string in a URL fragment. This means that it can only be
   accessed client-side, so it must be parsed with JavaScript and resubmitted
   as query params:
 
@@ -42,16 +42,19 @@ defmodule Assent.Strategy.Telegram do
         }
       </script>
 
-  Note that the returned user claims can vary widelty, and are depend on the
+  Note that the returned user claims can vary widely, and depend on the
   authorization channel and user settings.
 
   ## Configuration
 
-    - `:bot_token` - The telegram bot token, required
-    - `:authorization_channel` - The authorization channel, optional, defaults
+    * `:bot_token` - the Telegram bot token, required
+
+    * `:authorization_channel` - the authorization channel, optional, defaults
       to `:login_widget`, may be one of `:login_widget` or `:web_mini_app`
-    - `:origin` - The origin URL for `authorize_url/1`, required
-    - `:return_to` - The return URL for `authorize_url/1`, required
+
+    * `:origin` - the origin URL for `authorize_url/1`, required
+
+    * `:return_to` - the return URL for `authorize_url/1`, required
 
   ## Usage
 
@@ -114,7 +117,7 @@ defmodule Assent.Strategy.Telegram do
   end
 
   @impl Assent.Strategy
-  @spec callback(Keyword.t(), map()) :: {:ok, %{user: map()} | {:error, term()}}
+  @spec callback(Keyword.t(), map()) :: {:ok, %{user: map()}} | {:error, term()}
   def callback(config, params) do
     with {:ok, authorization_channel} <- fetch_authorization_channel(config),
          {:ok, {hash, params}} <- split_hash_params(config, params, authorization_channel),

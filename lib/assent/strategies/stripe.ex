@@ -17,7 +17,6 @@ defmodule Assent.Strategy.Stripe do
   This strategy uses Connect Standard by default. To use Connect Express, the
   following config can be used:
 
-
       config = [
         client_id: "REPLACE_WITH_CLIENT_ID",
         client_secret: "REPLACE_WITH_CLIENT_SECRET",

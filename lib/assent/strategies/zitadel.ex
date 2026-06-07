@@ -1,12 +1,12 @@
 defmodule Assent.Strategy.Zitadel do
   @moduledoc """
-  Zitadel Sign In OIDC strategy.
+  Zitadel OpenID Connect strategy.
 
   ## Configuration
 
-    - `:resource_id` - The resource id, required
+    * `:resource_id` - the resource ID, required
 
-  See `Assent.Strategy.OIDC` for more configuration options.
+  See `Assent.Strategy.OIDC` for more.
 
   ## Usage
 

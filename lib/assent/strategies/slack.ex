@@ -1,15 +1,16 @@
 defmodule Assent.Strategy.Slack do
   @moduledoc """
-  Slack OAuth 2.0 OpenID Connect strategy.
+  Slack OpenID Connect strategy.
 
   The Slack user endpoint does not provide data on email verification, email is
   considered unverified.
 
   ## Configuration
 
-  - `:team_id` - The team id to restrict authorization for, optional, defaults to nil
+    * `:team_id` - the team ID to restrict authorization for, optional,
+      defaults to nil
 
-  See `Assent.Strategy.OAuth2` for more.
+  See `Assent.Strategy.OIDC` for more.
 
   ## Usage
 
@@ -20,7 +21,7 @@ defmodule Assent.Strategy.Slack do
       ]
 
   By default, the user can decide what team should be used for authorization.
-  If you want to limit to a specific team, please pass a team id to the
+  If you want to limit to a specific team, please pass a team ID to the
   configuration:
 
       config = [

@@ -2,9 +2,9 @@ defmodule Assent.JWTAdapter do
   @moduledoc """
   JWT adapter helper module.
 
-  You can configure the JWT adapter by updating the configuration:
+  You can configure which JWT adapter Assent uses by setting the configuration:
 
-      jwt_adapter: {Assent.JWTAdapter.AssentJWT, [...]}
+      jwt_adapter: Assent.JWTAdapter.AssentJWT
 
   Default options can be set by passing a list of options:
 
@@ -21,12 +21,12 @@ defmodule Assent.JWTAdapter do
 
         @impl true
         def sign(claims, alg, secret, opts) do
-          # ...
+          # Implement your JWT signing logic here. Return {:ok, token}.
         end
 
         @impl true
         def verify(token, secret, opts) do
-          # ...
+          # Implement your JWT verification logic here. Return {:ok, claims}.
         end
       end
   """
@@ -41,10 +41,11 @@ defmodule Assent.JWTAdapter do
 
   ## Options
 
-  - `:json_library` - The JSON library to use, optional, see
-    `Assent.json_library/1`.
-  - `:jwt_adapter` - The JWT adapter module to use, optional, defaults to
-    `#{inspect(@default_jwt_adapter)}`
+    * `:json_library` - the JSON library to use, optional, see
+      `Assent.json_library/1`
+
+    * `:jwt_adapter` - the JWT adapter module to use, optional, defaults to
+      `#{inspect(@default_jwt_adapter)}`
   """
   @spec sign(map(), binary(), binary(), Keyword.t()) :: {:ok, binary()} | {:error, term()}
   def sign(claims, alg, secret, opts \\ []) do
@@ -57,10 +58,11 @@ defmodule Assent.JWTAdapter do
 
   ## Options
 
-  - `:json_library` - The JSON library to use, optional, see
-    `Assent.json_library/1`.
-  - `:jwt_adapter` - The JWT adapter module to use, optional, defaults to
-    `#{inspect(@default_jwt_adapter)}`
+    * `:json_library` - the JSON library to use, optional, see
+      `Assent.json_library/1`
+
+    * `:jwt_adapter` - the JWT adapter module to use, optional, defaults to
+      `#{inspect(@default_jwt_adapter)}`
   """
   @spec verify(binary(), binary() | map() | nil, Keyword.t()) :: {:ok, map()} | {:error, any()}
   def verify(token, secret, opts \\ []) do
@@ -83,8 +85,10 @@ defmodule Assent.JWTAdapter do
 
   ## Options
 
-  - `:private_key_path` - The path to the private key file, optional.
-  - `:private_key` - The private key, required if `:private_key_path` is not set.
+    * `:private_key_path` - the path to the private key file, optional
+
+    * `:private_key` - the private key, required if `:private_key_path` is not
+      set
   """
   @spec load_private_key(Keyword.t()) :: {:ok, binary()} | {:error, term()}
   def load_private_key(config) do

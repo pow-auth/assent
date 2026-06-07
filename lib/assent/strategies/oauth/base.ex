@@ -1,18 +1,18 @@
 defmodule Assent.Strategy.OAuth.Base do
   @moduledoc """
-  OAuth 1.0 strategy base.
+  OAuth 1.0a strategy base.
 
   ## Usage
 
-      defmodule MyApp.MyOAuthStratey do
-        use Assent.Strategy.OAuth
+      defmodule MyApp.MyOAuthStrategy do
+        use Assent.Strategy.OAuth.Base
 
         @impl true
         def default_config(_config) do
           [
             base_url: "https://api.example.com",
             authorize_url: "/authorization/new",
-            access_token_url: "/authorization/access_token"
+            access_token_url: "/authorization/access_token",
             request_token_url: "/authorization/request_token",
             user_url: "/authorization.json",
             authorization_params: [scope: "default"]

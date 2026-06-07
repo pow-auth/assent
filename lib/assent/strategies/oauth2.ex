@@ -18,39 +18,52 @@ defmodule Assent.Strategy.OAuth2 do
 
   ## Configuration
 
-    - `:client_id` - The OAuth2 client id, required
-    - `:base_url` - The base URL of the OAuth2 server, required
-    - `:auth_method` - The authentication strategy used, optional. If not set,
+    * `:client_id` - the OAuth2 client ID, required
+
+    * `:base_url` - the base URL of the OAuth2 server, required
+
+    * `:auth_method` - the authentication strategy used, optional. If not set,
       no authentication will be used during the access token request (e.g.
       public clients). The value may be one of the following:
 
-      - `:client_secret_basic` - Authenticate with basic authorization header
-      - `:client_secret_post` - Authenticate with post params
-      - `:client_secret_jwt` - Authenticate with JWT using `:client_secret` as
+      * `:client_secret_basic` - authenticate with basic authorization header
+
+      * `:client_secret_post` - authenticate with post params
+
+      * `:client_secret_jwt` - authenticate with JWT using `:client_secret` as
         secret
-      - `:private_key_jwt` - Authenticate with JWT using `:private_key_path` or
+
+      * `:private_key_jwt` - authenticate with JWT using `:private_key_path` or
         `:private_key` as secret
-    - `:client_secret` - The OAuth2 client secret, required if `:auth_method`
-      is `:client_secret_basic`, `:client_secret_post`, or `:client_secret_jwt`
-    - `:private_key_id` - The private key ID, required if `:auth_method` is
+
+    * `:client_secret` - the OAuth2 client secret, required if `:auth_method`
+      is `:client_secret_basic`, `:client_secret_post`, or
+      `:client_secret_jwt`
+
+    * `:private_key_id` - the private key ID, required if `:auth_method` is
       `:private_key_jwt`
-    - `:private_key_path` - The path for the private key, required if
+
+    * `:private_key_path` - the path for the private key, required if
       `:auth_method` is `:private_key_jwt` and `:private_key` hasn't been set
-    - `:private_key` - The private key content that can be defined instead of
+
+    * `:private_key` - the private key content that can be defined instead of
       `:private_key_path`, required if `:auth_method` is `:private_key_jwt` and
       `:private_key_path` hasn't been set
-    - `:jwt_algorithm` - The algorithm to use for JWT signing, optional,
+
+    * `:jwt_algorithm` - the algorithm to use for JWT signing, optional,
       defaults to `HS256` for `:client_secret_jwt` and `RS256` for
       `:private_key_jwt`
-    - `:state` - A boolean or a string with the value of the state, optional,
-      defaults to `true`. When set to `true` a random 32 byte long url safe
+
+    * `:state` - a boolean or a string with the value of the state, optional,
+      defaults to `true`. When set to `true` a random 32 byte long URL-safe
       string is generated. When set to `false` state will not be verified.
-    - `:code_verifier` - Boolean to generate and use a random 128 byte long
-      url safe code verifier for PKCE flow, optional, defaults to `false`. When
+
+    * `:code_verifier` - boolean to generate and use a random 128 byte long
+      URL-safe code verifier for PKCE flow, optional, defaults to `false`. When
       set to `true` the session params will contain `:code_verifier`,
       `:code_challenge`, and `:code_challenge_method` params.
 
-  ## Examples
+  ## Usage
 
       defmodule OAuth2 do
         import Plug.Conn
@@ -120,6 +133,10 @@ defmodule Assent.Strategy.OAuth2 do
     UnexpectedResponseError
   }
 
+  @typedoc """
+  The session parameters returned from `authorize_url/1`, to be stored and
+  passed back into `callback/3`.
+  """
   @type session_params :: %{
           optional(:state) => binary(),
           optional(:code_verifier) => binary(),
@@ -127,20 +144,25 @@ defmodule Assent.Strategy.OAuth2 do
           optional(:code_challenge_method) => binary()
         }
 
+  @typedoc "Return value of `authorize_url/1`."
   @type on_authorize_url ::
           {:ok, %{session_params: session_params(), url: binary()}} | {:error, term()}
+
+  @typedoc "Return value of `callback/3`."
   @type on_callback :: {:ok, %{user: map(), token: map()}} | {:error, term()}
 
   @doc """
-  Generate authorization URL for request phase.
+  Generates an authorization URL for the request phase.
 
   ## Options
 
-    - `:redirect_uri` - The URI that the server redirects the user to after
+    * `:redirect_uri` - the URI that the server redirects the user to after
       authentication, required
-    - `:authorize_url` - The path or URL for the OAuth2 server to redirect
+
+    * `:authorize_url` - the path or URL for the OAuth2 server to redirect
       users to, defaults to `/oauth/authorize`
-    - `:authorization_params` - The authorization parameters, defaults to `[]`
+
+    * `:authorization_params` - the authorization parameters, defaults to `[]`
   """
   @impl true
   @spec authorize_url(Keyword.t()) :: on_authorize_url()
@@ -210,16 +232,18 @@ defmodule Assent.Strategy.OAuth2 do
   end
 
   @doc """
-  Callback phase for generating access token with authorization code and fetch
-  user data. Returns a map with access token in `:token` and user data in
-  `:user`.
+  Callback phase for generating an access token with the authorization code
+  and fetching user data. Returns a map with access token in `:token` and user
+  data in `:user`.
 
   ## Options
 
-    - `:token_url` - The path or URL to fetch the token from, optional,
+    * `:token_url` - the path or URL to fetch the token from, optional,
       defaults to `/oauth/token`
-    - `:user_url` - The path or URL to fetch user data, required
-    - `:session_params` - The session parameters that was returned from
+
+    * `:user_url` - the path or URL to fetch user data, required
+
+    * `:session_params` - the session parameters that were returned from
       `authorize_url/1`, optional
   """
   @impl true
@@ -418,7 +442,7 @@ defmodule Assent.Strategy.OAuth2 do
   end
 
   @doc """
-  Performs a HTTP request to the API using the access token.
+  Performs an HTTP request to the API using the access token.
   """
   @spec request(Keyword.t(), map(), atom(), binary(), map() | Keyword.t(), [{binary(), binary()}]) ::
           {:ok, map()} | {:error, term()}
@@ -470,7 +494,7 @@ defmodule Assent.Strategy.OAuth2 do
   defp url_params(_method, params), do: params
 
   @doc """
-  Fetch user data with the access token.
+  Fetches user data with the access token.
 
   Uses `request/6` to fetch the user data.
   """

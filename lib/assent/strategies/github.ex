@@ -1,10 +1,11 @@
 defmodule Assent.Strategy.Github do
   @moduledoc """
-  Github OAuth 2.0 strategy.
+  GitHub OAuth 2.0 strategy.
 
   ## Configuration
 
-  - `:user_emails_url` - The API path or URL to fetch e-mails from, defaults to `/user/emails`
+    * `:user_emails_url` - the API path or URL to fetch e-mails from, defaults
+      to `/user/emails`
 
   See `Assent.Strategy.OAuth2` for more.
 
@@ -15,8 +16,6 @@ defmodule Assent.Strategy.Github do
         client_secret: "REPLACE_WITH_CLIENT_SECRET",
         redirect_uri: "http://localhost:4000/auth/callback"
       ]
-
-  See `Assent.Strategy.OAuth2` for more.
   """
   use Assent.Strategy.OAuth2.Base
 

@@ -2,8 +2,8 @@ defmodule Assent.HTTPAdapter do
   @moduledoc """
   HTTP adapter helper module.
 
-  You can configure the which HTTP adapter Assent uses by setting the
-  configuring:
+  You can configure which HTTP adapter Assent uses by setting the
+  configuration:
 
       http_adapter: Assent.HTTPAdapter.Httpc
 
@@ -22,7 +22,8 @@ defmodule Assent.HTTPAdapter do
 
         @impl true
         def request(method, url, body, headers, opts) do
-          # ...
+          # Implement your HTTP request logic here using your preferred
+          # HTTP client library. Return {:ok, response} or {:error, reason}.
         end
       end
   """
@@ -83,16 +84,15 @@ defmodule Assent.HTTPAdapter do
   end
 
   @doc """
-  Makes a HTTP request.
+  Makes an HTTP request.
 
   ## Options
 
-  - `:http_adapter` - HTTP adapter configuration. Defaults to
-      `{Assent.HTTPAdapter.Req, []}`,
-      `{Assent.HTTPAdapter.Httpc, []}` depending on which HTTP client is
-      available in the project dependencies.
-  - `:json_library` - The JSON library to use, see
-    `Assent.json_library/1`.
+    * `:http_adapter` - HTTP adapter configuration. Defaults to
+      `{Assent.HTTPAdapter.Req, []}`, `{Assent.HTTPAdapter.Httpc, []}`
+      depending on which HTTP client is available in the project dependencies.
+
+    * `:json_library` - the JSON library to use, see `Assent.json_library/1`
   """
   @spec request(atom(), binary(), binary() | nil, list(), Keyword.t()) ::
           {:ok, HTTPResponse.t()} | {:error, HTTPResponse.t()} | {:error, term()}
@@ -147,8 +147,7 @@ defmodule Assent.HTTPAdapter do
 
   ## Options
 
-  - `:json_library` - The JSON library to use, see
-    `Assent.json_library/1`
+    * `:json_library` - the JSON library to use, see `Assent.json_library/1`
   """
   @spec decode_response(HTTPResponse.t(), Keyword.t()) ::
           {:ok, HTTPResponse.t()} | {:error, InvalidResponseError.t()}

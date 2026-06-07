@@ -1,6 +1,6 @@
 defmodule Assent.Strategy.Gitlab do
   @moduledoc """
-  Gitlab OpenID Connect strategy.
+  GitLab OpenID Connect strategy.
 
   ## Usage
 
@@ -10,7 +10,7 @@ defmodule Assent.Strategy.Gitlab do
         redirect_uri: "http://localhost:4000/auth/callback"
       ]
 
-  See `Assent.Strategy.OAuth2` for more.
+  See `Assent.Strategy.OIDC` for more.
   """
   use Assent.Strategy.OIDC.Base
 

@@ -1,6 +1,6 @@
 defmodule Assent.Strategy.Strava do
   @moduledoc """
-  Strava OAuth strategy.
+  Strava OAuth 2.0 strategy.
 
   The athlete endpoint, describing the currently authenticated user, does not
   return an email address - [changelog](https://developers.strava.com/docs/changelog/#january-17-2019).

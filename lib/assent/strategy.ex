@@ -36,7 +36,7 @@ defmodule Assent.Strategy do
               {:ok, %{:user => map(), optional(atom()) => any()}} | {:error, term()}
 
   @doc """
-  Makes a HTTP request.
+  Makes an HTTP request.
 
   See `Assent.HTTPAdapter.request/5`.
   """
@@ -47,12 +47,11 @@ defmodule Assent.Strategy do
   end
 
   @doc """
-  Decode a JSON string.
+  Decodes a JSON string.
 
   ## Options
 
-  - `:json_library` - The JSON library to use, see
-    `Assent.json_library/1`
+    * `:json_library` - the JSON library to use, see `Assent.json_library/1`
   """
   @spec decode_json(binary(), Keyword.t()) :: {:ok, term()} | {:error, term()}
   def decode_json(response, config), do: Assent.json_library(config).decode(response)
@@ -159,7 +158,7 @@ defmodule Assent.Strategy do
   }
 
   @doc """
-  Normalize API user request response into standard claims.
+  Normalizes API user request response into standard claims.
 
   The function will cast values to adhere to the following types:
 
@@ -169,7 +168,8 @@ defmodule Assent.Strategy do
 
   Returns an `Assent.CastClaimsError` if any of the above types can't be casted.
 
-  Based on https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.5.1
+  Based on the [OpenID Connect Core 1.0 standard
+  claims](https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.5.1).
   """
   @spec normalize_userinfo(map(), map()) :: {:ok, map()} | {:error, term()}
   def normalize_userinfo(claims, extra \\ %{}) do

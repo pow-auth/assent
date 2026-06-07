@@ -4,7 +4,9 @@ defmodule Assent.Strategy.Auth0 do
 
   ## Configuration
 
-  - `:base_url` - The Auth0 base URL, required
+    * `:base_url` - the Auth0 base URL, required
+
+  See `Assent.Strategy.OIDC` for more.
 
   ## Usage
 
@@ -14,8 +16,6 @@ defmodule Assent.Strategy.Auth0 do
         base_url: "https://my-domain.auth0.com",
         redirect_uri: "http://localhost:4000/auth/callback"
       ]
-
-  See `Assent.Strategy.OAuth2` for more.
   """
   use Assent.Strategy.OIDC.Base
 

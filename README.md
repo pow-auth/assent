@@ -1,6 +1,6 @@
 # Assent
 
-[![Github CI](https://github.com/pow-auth/assent/workflows/CI/badge.svg)](https://github.com/pow-auth/assent/actions?query=workflow%3ACI)
+[![GitHub CI](https://github.com/pow-auth/assent/workflows/CI/badge.svg)](https://github.com/pow-auth/assent/actions?query=workflow%3ACI)
 [![hexdocs.pm](https://img.shields.io/badge/api-docs-green.svg?style=flat)](https://hexdocs.pm/assent)
 [![hex.pm](https://img.shields.io/hexpm/v/assent.svg?style=flat)](https://hex.pm/packages/assent)
 
@@ -11,7 +11,7 @@ Multi-provider authentication framework.
 ## Features
 
 * Includes the following base strategies:
-  * OAuth 1.0 - `Assent.Strategy.OAuth`
+  * OAuth 1.0a - `Assent.Strategy.OAuth`
   * OAuth 2.0 - `Assent.Strategy.OAuth2`
   * OpenID Connect - `Assent.Strategy.OIDC`
 * Includes the following provider strategies:
@@ -23,15 +23,15 @@ Multi-provider authentication framework.
   * DigitalOcean - `Assent.Strategy.DigitalOcean`
   * Discord - `Assent.Strategy.Discord`
   * Facebook - `Assent.Strategy.Facebook`
-  * Github - `Assent.Strategy.Github`
-  * Gitlab - `Assent.Strategy.Gitlab`
+  * GitHub - `Assent.Strategy.Github`
+  * GitLab - `Assent.Strategy.Gitlab`
   * Google - `Assent.Strategy.Google`
   * Instagram - `Assent.Strategy.Instagram`
   * LINE Login - `Assent.Strategy.LINE`
-  * Linkedin - `Assent.Strategy.Linkedin`
+  * LinkedIn - `Assent.Strategy.Linkedin`
+  * Slack - `Assent.Strategy.Slack`
   * Spotify - `Assent.Strategy.Spotify`
   * Strava - `Assent.Strategy.Strava`
-  * Slack - `Assent.Strategy.Slack`
   * Stripe Connect - `Assent.Strategy.Stripe`
   * Telegram - `Assent.Strategy.Telegram`
   * Twitch - `Assent.Strategy.Twitch`
@@ -41,7 +41,7 @@ Multi-provider authentication framework.
 
 ## Usage
 
-A strategy consists of two phases; request and callback. In the request phase, the user will be redirected to the auth provider for authentication and then returned to initiate the callback phase.
+A strategy consists of two phases: Request and callback. In the request phase, the user will be redirected to the auth provider for authentication and then returned to initiate the callback phase.
 
 ### Single provider
 
@@ -71,13 +71,13 @@ defmodule GithubAuth do
         # retrieved when user returns for the callback phase
         conn = put_session(conn, :session_params, session_params)
 
-        # Redirect end-user to Github to authorize access to their account
+        # Redirect end-user to GitHub to authorize access to their account
         conn
         |> put_resp_header("location", url)
         |> send_resp(302, "")
 
       {:error, _error} ->
-        # Something went wrong generating the request authorization url
+        # Something went wrong generating the request authorization URL
         send_resp(conn, 500, "Failed authorization")
     end
   end
@@ -87,7 +87,7 @@ defmodule GithubAuth do
     # End-user will return to the callback URL with params attached to the
     # request. These must be passed on to the strategy. In this example we only
     # expect GET query params, but the provider could also return the user with
-    # a POST request where the params is in the POST body.
+    # a POST request where the params are in the POST body.
     %{params: params} = fetch_query_params(conn)
 
     # The session params (used for OAuth 2.0 and OIDC strategies) stored in the
@@ -102,7 +102,7 @@ defmodule GithubAuth do
     |> Github.callback(params)
     |> case do
       {:ok, %{user: user, token: token}} ->
-        # Authorization succesful
+        # Authorization successful
         conn
         |> put_session(:user, user)
         |> put_session(:token, token)
@@ -110,7 +110,7 @@ defmodule GithubAuth do
         |> send_resp(302, "")
 
       {:error, _error} ->
-        # Authorizaiton failed
+        # Authorization failed
         send_resp(conn, 500, "Failed authorization")
     end
   end
@@ -119,7 +119,7 @@ end
 
 ### Multi-provider
 
-All assent strategies work the same way, so if you have more than one strategy you may want to set up a single module to handle any of the auth strategies. This example is a generalized flow that's similar to what's used in `PowAssent`.
+All Assent strategies work the same way, so if you have more than one strategy you may want to set up a single module to handle any of the auth strategies. This example is a generalized flow that's similar to what's used in `PowAssent`.
 
 ```elixir
 config :my_app, :strategies,
@@ -153,7 +153,7 @@ defmodule MultiProviderAuth do
     config =
       Application.get_env(:my_app, :strategies)[provider] ||
         raise "No provider configuration for #{provider}"
-    
+
     Keyword.put(config, :redirect_uri, "http://localhost:4000/oauth/#{provider}/callback")
   end
 end
@@ -172,7 +172,7 @@ defmodule TestProvider do
     [
       # `:base_url` will be used for any paths below
       base_url: "http://localhost:4000/api/v1",
-       # Definining an absolute URI overrides the `:base_url`
+      # Defining an absolute URI overrides the `:base_url`
       authorize_url: "http://localhost:4000/oauth/authorize",
       token_url: "/oauth/access_token",
       user_url: "/user",
@@ -265,7 +265,7 @@ end
 
 ### :httpc
 
-If `Req` is not available, Erlangs built-in `:httpc` is used for requests. SSL verification is automatically enabled when `:certifi` and `:ssl_verify_fun` packages are available at compile time. `:httpc` only supports HTTP/1.1.
+If `Req` is not available, Erlang's built-in `:httpc` is used for requests. SSL verification is automatically enabled when `:certifi` and `:ssl_verify_fun` packages are available at compile time. `:httpc` only supports HTTP/1.1.
 
 ```elixir
 defp deps do
