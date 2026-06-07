@@ -29,7 +29,7 @@ defmodule Assent.Strategy.LINETest do
     "sub" => "U1234567890abcdef1234567890abcdef "
   }
 
-  test "authorize_url/2", %{config: config} do
+  test "authorize_url/1", %{config: config} do
     assert {:ok, %{url: url}} = LINE.authorize_url(config)
     assert url =~ "scope=openid+email+profile"
     assert url =~ "response_type=code"

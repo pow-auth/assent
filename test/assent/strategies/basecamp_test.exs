@@ -45,7 +45,7 @@ defmodule Assent.Strategy.BasecampTest do
     "sub" => "9999999"
   }
 
-  test "authorize_url/2", %{config: config} do
+  test "authorize_url/1", %{config: config} do
     assert {:ok, %{url: url}} = Basecamp.authorize_url(config)
     assert url =~ "/authorization/new"
     assert url =~ "type=web_server"

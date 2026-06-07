@@ -69,28 +69,22 @@ defmodule Assent.Strategy.BitbucketTest do
     "sub" => "8675309:1bf26c46-c29b-4fc0-bda2-e5c5f1adde19"
   }
 
-  test "authorize_url/2", %{config: config} do
+  test "authorize_url/1", %{config: config} do
     assert {:ok, %{url: url}} = Bitbucket.authorize_url(config)
     assert url =~ "/oauth2/authorize?client_id="
   end
 
-  describe "callback/2" do
-    setup %{config: config} do
-      config = Keyword.put(config, :token_url, TestServer.url("/site/oauth2/access_token"))
+  test "callback/2", %{config: config, callback_params: params} do
+    config = Keyword.put(config, :token_url, TestServer.url("/site/oauth2/access_token"))
 
-      {:ok, config: config}
-    end
+    expect_oauth2_access_token_request([uri: "/site/oauth2/access_token"], fn _conn, params ->
+      assert params["client_secret"] == config[:client_secret]
+    end)
 
-    test "callback/2", %{config: config, callback_params: params} do
-      expect_oauth2_access_token_request([uri: "/site/oauth2/access_token"], fn _conn, params ->
-        assert params["client_secret"] == config[:client_secret]
-      end)
+    expect_oauth2_user_request(@user_response, uri: "/user")
+    expect_oauth2_api_request("/user/emails", @emails_response)
 
-      expect_oauth2_user_request(@user_response, uri: "/user")
-      expect_oauth2_api_request("/user/emails", @emails_response)
-
-      assert {:ok, %{user: user}} = Bitbucket.callback(config, params)
-      assert user == @user
-    end
+    assert {:ok, %{user: user}} = Bitbucket.callback(config, params)
+    assert user == @user
   end
 end

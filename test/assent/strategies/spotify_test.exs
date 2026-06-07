@@ -35,27 +35,21 @@ defmodule Assent.Strategy.SpotifyTest do
     "name" => "nick"
   }
 
-  test "authorize_url/2", %{config: config} do
+  test "authorize_url/1", %{config: config} do
     assert {:ok, %{url: url}} = Spotify.authorize_url(config)
     assert url =~ "https://accounts.spotify.com/authorize?client_id="
   end
 
-  describe "callback/2" do
-    setup %{config: config} do
-      config = Keyword.put(config, :token_url, TestServer.url("/api/token"))
+  test "callback/2", %{config: config, callback_params: params} do
+    config = Keyword.put(config, :token_url, TestServer.url("/api/token"))
 
-      {:ok, config: config}
-    end
+    expect_oauth2_access_token_request([uri: "/api/token"], fn _conn, params ->
+      assert params["client_secret"] == config[:client_secret]
+    end)
 
-    test "callback/2", %{config: config, callback_params: params} do
-      expect_oauth2_access_token_request([uri: "/api/token"], fn _conn, params ->
-        assert params["client_secret"] == config[:client_secret]
-      end)
+    expect_oauth2_user_request(@user_response, uri: "/me")
 
-      expect_oauth2_user_request(@user_response, uri: "/me")
-
-      assert {:ok, %{user: user}} = Spotify.callback(config, params)
-      assert user == @user
-    end
+    assert {:ok, %{user: user}} = Spotify.callback(config, params)
+    assert user == @user
   end
 end

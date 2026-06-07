@@ -58,7 +58,7 @@ defmodule Assent.Strategy.AppleTest do
     {:ok, config: config}
   end
 
-  test "authorize_url/2", %{config: config} do
+  test "authorize_url/1", %{config: config} do
     assert {:ok, %{url: url}} = Apple.authorize_url(config)
     assert url =~ "/auth/authorize"
     assert url =~ "response_mode=form_post"
@@ -66,6 +66,16 @@ defmodule Assent.Strategy.AppleTest do
   end
 
   if :crypto.supports()[:curves] do
+    test "callback/2 with missing private key file", %{config: config, callback_params: params} do
+      config =
+        config
+        |> Keyword.delete(:private_key)
+        |> Keyword.put(:private_key_path, "tmp/missing.pem")
+
+      assert Apple.callback(config, params) ==
+               {:error, "Failed to read \"tmp/missing.pem\", got; :enoent"}
+    end
+
     test "callback/2", %{config: config, callback_params: params} do
       url = TestServer.url()
 
@@ -118,16 +128,6 @@ defmodule Assent.Strategy.AppleTest do
 
       assert {:ok, %{user: user}} = Apple.callback(config, params)
       assert user == expected_user
-    end
-
-    test "callback/2 with missing private key file", %{config: config, callback_params: params} do
-      config =
-        config
-        |> Keyword.delete(:private_key)
-        |> Keyword.put(:private_key_path, "tmp/missing.pem")
-
-      assert Apple.callback(config, params) ==
-               {:error, "Failed to read \"tmp/missing.pem\", got; :enoent"}
     end
   else
     IO.warn("No support curve algorithms, can't test #{__MODULE__}")

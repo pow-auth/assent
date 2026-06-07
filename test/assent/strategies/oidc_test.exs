@@ -10,7 +10,7 @@ defmodule Assent.Strategy.OIDCTest do
     UnexpectedResponseError
   }
 
-  describe "authorize_url/2" do
+  describe "authorize_url/1" do
     test "generates url and state", %{config: config} do
       assert {:ok, %{url: url, session_params: %{state: state}}} = OIDC.authorize_url(config)
 
@@ -22,7 +22,7 @@ defmodule Assent.Strategy.OIDCTest do
                )
     end
 
-    test "can add nonce", %{config: config} do
+    test "with `:nonce` config", %{config: config} do
       assert {:ok, %{url: url, session_params: %{state: state, nonce: nonce}}} =
                config
                |> Keyword.put(:nonce, "n-0S6_WzA2Mj")
@@ -38,6 +38,28 @@ defmodule Assent.Strategy.OIDCTest do
   end
 
   describe "callback/2 with static OpenID configuration" do
+    test "with invalid authentication method", %{config: config, callback_params: params} do
+      config = Keyword.put(config, :client_authentication_method, "invalid")
+
+      assert OIDC.callback(config, params) ==
+               {:error, "Invalid client authentication method: invalid"}
+    end
+
+    test "with unsupported authentication method", %{config: config, callback_params: params} do
+      openid_configuration =
+        Map.put(config[:openid_configuration], "token_endpoint_auth_methods_supported", [
+          "private_key_jwt"
+        ])
+
+      config =
+        config
+        |> Keyword.put(:client_authentication_method, "client_secret_basic")
+        |> Keyword.put(:openid_configuration, openid_configuration)
+
+      assert OIDC.callback(config, params) ==
+               {:error, "Unsupported client authentication method: client_secret_basic"}
+    end
+
     test "with missing `token_endpoint` configuration options", %{
       config: config,
       callback_params: params
@@ -73,28 +95,6 @@ defmodule Assent.Strategy.OIDCTest do
       "email_verified" => true,
       "http://localhost:4000/additional" => "info"
     }
-
-    test "with invalid authentication method", %{config: config, callback_params: params} do
-      config = Keyword.put(config, :client_authentication_method, "invalid")
-
-      assert OIDC.callback(config, params) ==
-               {:error, "Invalid client authentication method: invalid"}
-    end
-
-    test "with unsupported authentication method", %{config: config, callback_params: params} do
-      openid_configuration =
-        Map.put(config[:openid_configuration], "token_endpoint_auth_methods_supported", [
-          "private_key_jwt"
-        ])
-
-      config =
-        config
-        |> Keyword.put(:client_authentication_method, "client_secret_basic")
-        |> Keyword.put(:openid_configuration, openid_configuration)
-
-      assert OIDC.callback(config, params) ==
-               {:error, "Unsupported client authentication method: client_secret_basic"}
-    end
 
     test "with `none` authentication method", %{
       config: config,
@@ -400,19 +400,6 @@ defmodule Assent.Strategy.OIDCTest do
                {:error, "Invalid issuer \"invalid\" in ID Token"}
     end
 
-    test "with unexpected `alg`", %{config: config, id_token: id_token} do
-      assert OIDC.validate_id_token(
-               Keyword.delete(config, :id_token_signed_response_alg),
-               id_token
-             ) == {:error, "Expected `alg` in ID Token to be \"RS256\", got \"HS256\""}
-
-      JOSE.unsecured_signing(true)
-      id_token = gen_id_token(alg: "none")
-
-      assert OIDC.validate_id_token(config, id_token) ==
-               {:error, "Expected `alg` in ID Token to be \"HS256\", got \"none\""}
-    end
-
     test "with invalid `aud` in id_token", %{config: config} do
       id_token = gen_id_token(alg: "HS256", claims: %{"aud" => "invalid"})
 
@@ -474,6 +461,19 @@ defmodule Assent.Strategy.OIDCTest do
       id_token = gen_id_token(alg: "HS256", claims: %{"azp" => "id"})
 
       assert {:ok, _} = OIDC.validate_id_token(config, id_token)
+    end
+
+    test "with unexpected `alg`", %{config: config, id_token: id_token} do
+      assert OIDC.validate_id_token(
+               Keyword.delete(config, :id_token_signed_response_alg),
+               id_token
+             ) == {:error, "Expected `alg` in ID Token to be \"RS256\", got \"HS256\""}
+
+      JOSE.unsecured_signing(true)
+      id_token = gen_id_token(alg: "none")
+
+      assert OIDC.validate_id_token(config, id_token) ==
+               {:error, "Expected `alg` in ID Token to be \"HS256\", got \"none\""}
     end
 
     test "with invalid signature in id_token", %{config: config, id_token: id_token} do

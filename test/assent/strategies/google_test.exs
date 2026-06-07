@@ -24,7 +24,7 @@ defmodule Assent.Strategy.GoogleTest do
     "sub" => "10769150350006150715113082367"
   }
 
-  test "authorize_url/2", %{config: config} do
+  test "authorize_url/1", %{config: config} do
     assert {:ok, %{url: url}} = Google.authorize_url(config)
 
     uri = URI.parse(url)
