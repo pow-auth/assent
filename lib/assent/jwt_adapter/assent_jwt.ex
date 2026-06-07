@@ -104,8 +104,8 @@ defmodule Assent.JWTAdapter.AssentJWT do
     end
   end
 
-  defp sign_message(_message, alg, _jwk),
-    do: {:error, "Unsupported JWT alg #{alg} or invalid JWK"}
+  defp sign_message(_message, alg, _secret_or_private_key),
+    do: {:error, "Unsupported JWT alg: #{inspect(alg)}"}
 
   defp sha2_alg("256"), do: {:ok, :sha256}
   defp sha2_alg("384"), do: {:ok, :sha384}
@@ -269,6 +269,9 @@ defmodule Assent.JWTAdapter.AssentJWT do
       {:ok, :public_key.verify(message, sha_alg, signature, pem)}
     end
   end
+
+  defp verify_message(_message, _signature, alg, _secret_or_public_key),
+    do: {:error, "Unsupported JWT alg: #{inspect(alg)}"}
 
   defp decode_key(pem) when is_binary(pem), do: decode_pem(pem)
 

@@ -38,18 +38,20 @@ defmodule Assent.JWTAdapter.AssentJWTTest do
     assert error.data == unencodable
   end
 
-  test "sign/2 with invalid algorithm" do
-    assert {:error, error} = AssentJWT.sign(@claims, "none", @secret, json_library: @json_library)
-    assert error.message == "Failed to sign JWT"
-    assert error.reason == "Unsupported JWT alg none or invalid JWK"
-    assert {_, "none"} = error.data
-
+  test "sign/2 with invalid SHA-2 algorithm bit size" do
     assert {:error, error} =
              AssentJWT.sign(@claims, "HS000", @secret, json_library: @json_library)
 
     assert error.message == "Failed to sign JWT"
     assert error.reason == "Invalid SHA-2 algorithm bit size: 000"
     assert {_, "HS000"} = error.data
+  end
+
+  test "sign/2 with unsupported algorithm" do
+    assert {:error, error} = AssentJWT.sign(@claims, "none", @secret, json_library: @json_library)
+    assert error.message == "Failed to sign JWT"
+    assert error.reason == "Unsupported JWT alg: \"none\""
+    assert {_, "none"} = error.data
   end
 
   test "verify/3" do
@@ -160,6 +162,17 @@ defmodule Assent.JWTAdapter.AssentJWTTest do
   test "verify/3 with no secret" do
     assert {:ok, jwt} = AssentJWT.verify(@token, nil, json_library: @json_library)
     refute jwt.verified?
+  end
+
+  @header Base.url_encode64(@json_library.encode!(%{"alg" => "invalid"}), padding: false)
+  test "verify/3 with unsupported alg" do
+    token = replace_jwt_at(@token, 0, @header)
+
+    assert {:error, error} = AssentJWT.verify(token, @secret, json_library: @json_library)
+
+    assert error.message == "Failed to verify signature"
+    assert error.reason == "Unsupported JWT alg: \"invalid\""
+    assert {_, _, "invalid"} = error.data
   end
 
   describe "with private key" do
@@ -300,7 +313,7 @@ defmodule Assent.JWTAdapter.AssentJWTTest do
         assert jwt.verified?
       end
 
-      test "sign/2 with invalid algorithm" do
+      test "sign/2 with invalid SHA-2 algorithm bit size" do
         assert {:error, error} =
                  AssentJWT.sign(@claims, "ES000", @private_key, json_library: @json_library)
 
