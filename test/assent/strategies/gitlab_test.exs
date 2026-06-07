@@ -36,7 +36,7 @@ defmodule Assent.Strategy.GitlabTest do
     "sub_legacy" => "71404f201852be9e557f9a3d85724711a2a6a09959beaf1450cc4f548a8182bc"
   }
 
-  test "authorize_url/2", %{config: config} do
+  test "authorize_url/1", %{config: config} do
     assert {:ok, %{url: url}} = Gitlab.authorize_url(config)
     assert url =~ "/oauth/authorize?client_id=id"
     assert url =~ "scope=openid+email+profile"

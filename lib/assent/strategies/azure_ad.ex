@@ -4,7 +4,7 @@ defmodule Assent.Strategy.AzureAD do
 
   ## Configuration
 
-  - `:tenant_id` - The Azure tenant ID, optional, defaults to `common`
+    * `:tenant_id` - the Azure tenant ID, optional, defaults to `common`
 
   See `Assent.Strategy.OIDC` for more.
 
@@ -16,7 +16,7 @@ defmodule Assent.Strategy.AzureAD do
         redirect_uri: "http://localhost:4000/auth/callback"
       ]
 
-  A tenant id can be set to limit scope of users who can get access (defaults
+  A tenant ID can be set to limit scope of users who can get access (defaults
   to "common"):
 
       config = [
@@ -28,8 +28,8 @@ defmodule Assent.Strategy.AzureAD do
 
   ## Setting up Azure AD
 
-  Login to Azure, and set up a new application:
-  https://docs.microsoft.com/en-us/azure/active-directory/develop/quickstart-register-app
+  Login to Azure, and [set up a new
+  application](https://docs.microsoft.com/en-us/azure/active-directory/develop/quickstart-register-app):
 
   * The callback URL should be added to "Redirect URI" for the application.
   * `client_id` is the "Application ID".

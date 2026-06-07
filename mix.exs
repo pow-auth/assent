@@ -14,7 +14,7 @@ defmodule Assent.MixProject do
       deps: deps(),
 
       # Hex
-      description: "Multi-provider framework",
+      description: "Multi-provider authentication framework",
       package: package(),
 
       # Docs
@@ -58,7 +58,7 @@ defmodule Assent.MixProject do
         "GitHub" => @source_url,
         "Sponsor" => "https://github.com/sponsors/danschultzer"
       },
-      files: ~w(lib LICENSE mix.exs README.md)
+      files: ~w(CHANGELOG.md lib LICENSE mix.exs README.md)
     ]
   end
 
@@ -66,10 +66,13 @@ defmodule Assent.MixProject do
     [
       source_ref: "v#{@version}",
       main: "Assent",
-      canonical: "http://hexdocs.pm/assent",
+      canonical: "https://hexdocs.pm/assent",
       source_url: @source_url,
       extras: [
         "CHANGELOG.md": [filename: "CHANGELOG"]
+      ],
+      skip_undefined_reference_warnings_on: [
+        "CHANGELOG.md"
       ],
       groups_for_modules: [
         "Base strategies": [Assent.Strategy.OAuth, Assent.Strategy.OAuth2, Assent.Strategy.OIDC],
@@ -82,9 +85,6 @@ defmodule Assent.MixProject do
         Strategies: ~r/^Assent\.Strategy\./,
         HTTP: ~r/^Assent\.HTTPAdapter.*(?<!Error)$/,
         JWT: ~r/^Assent\.JWTAdapter.*(?<!Error)$/
-      ],
-      skip_undefined_reference_warnings_on: [
-        "CHANGELOG.md"
       ]
     ]
   end

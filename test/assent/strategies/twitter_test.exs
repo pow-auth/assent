@@ -140,7 +140,7 @@ defmodule Assent.Strategy.TwitterTest do
     {:ok, config: config, callback_params: callback_params}
   end
 
-  test "authorize_url/2", %{config: config} do
+  test "authorize_url/1", %{config: config} do
     expect_oauth_request_token_request(
       uri: "/oauth/request_token",
       params: %{
@@ -159,6 +159,15 @@ defmodule Assent.Strategy.TwitterTest do
              )
 
     refute is_nil(oauth_token_secret)
+  end
+
+  test "callback/2 with `denied` param", %{config: config, callback_params: params} do
+    assert {:error, %CallbackError{} = error} =
+             Twitter.callback(config, %{"denied" => params["oauth_token"]})
+
+    assert error.message == "The user denied the authorization request"
+    refute error.error
+    refute error.error_uri
   end
 
   test "callback/2", %{config: config, callback_params: params} do
@@ -184,14 +193,5 @@ defmodule Assent.Strategy.TwitterTest do
 
     assert {:ok, %{user: user}} = Twitter.callback(config, params)
     assert user == @user
-  end
-
-  test "callback/2 when user denies", %{config: config, callback_params: params} do
-    assert {:error, %CallbackError{} = error} =
-             Twitter.callback(config, %{"denied" => params["oauth_token"]})
-
-    assert error.message == "The user denied the authorization request"
-    refute error.error
-    refute error.error_uri
   end
 end

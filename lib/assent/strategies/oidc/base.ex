@@ -1,18 +1,20 @@
 defmodule Assent.Strategy.OIDC.Base do
   @moduledoc """
-  OIDC OAuth 2.0 strategy base.
+  OpenID Connect strategy base.
 
   ## Usage
 
       defmodule MyApp.MyOIDCStrategy do
         use Assent.Strategy.OIDC.Base
 
+        @impl true
         def default_config(_config) do
           [
             base_url: "https://oidc.example.com"
           ]
         end
 
+        @impl true
         def normalize(_config, user), do: {:ok, user}
       end
   """

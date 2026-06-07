@@ -1,6 +1,6 @@
 defmodule Assent.Strategy.Twitter do
   @moduledoc """
-  Twitter OAuth strategy.
+  Twitter OAuth 1.0a strategy.
 
   The Twitter user endpoint only returns verified email, `email_verified` will
   always be `true`.

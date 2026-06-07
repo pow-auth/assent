@@ -4,15 +4,16 @@ defmodule Assent.Strategy.Bitbucket do
 
   ## Configuration
 
-  - `:user_emails_url` - The API path or URL to fetch e-mails from, defaults to `/user/emails`
+    * `:user_emails_url` - the API path or URL to fetch e-mails from, defaults
+      to `/user/emails`
 
   See `Assent.Strategy.OAuth2` for more.
 
   ## Usage
 
       config = [
-        client_id: "REPLACE_WITH_CONSUMER_KEY",
-        client_secret: "REPLACE_WITH_CONSUMER_SECRET",
+        client_id: "REPLACE_WITH_CLIENT_ID",
+        client_secret: "REPLACE_WITH_CLIENT_SECRET",
         redirect_uri: "http://localhost:4000/auth/callback"
       ]
   """

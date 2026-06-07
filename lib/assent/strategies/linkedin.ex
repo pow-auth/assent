@@ -1,9 +1,10 @@
 defmodule Assent.Strategy.Linkedin do
   @moduledoc """
-  Sign In with LinkedIn V2 OpenID Connect Strategy.
+  Sign In with LinkedIn V2 OpenID Connect strategy.
 
-  You'll need the `Sign In with LinkedIn v2` product enabled in your app. See the
-  [LinkedIn integration guide](https://learn.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/sign-in-with-linkedin-v2)
+  You'll need the `Sign In with LinkedIn v2` product enabled in your app. See
+  the [LinkedIn integration
+  guide](https://learn.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/sign-in-with-linkedin-v2)
   for more.
 
   ## Usage

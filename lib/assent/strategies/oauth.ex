@@ -7,23 +7,30 @@ defmodule Assent.Strategy.OAuth do
 
   ## Configuration
 
-    - `:consumer_key` - The OAuth consumer key, required
-    - `:base_url` - The base URL of the OAuth server, required
-    - `:signature_method` -  The signature method, optional, defaults to
+    * `:consumer_key` - the OAuth consumer key, required
+
+    * `:base_url` - the base URL of the OAuth server, required
+
+    * `:signature_method` - the signature method, optional, defaults to
       `:hmac_sha1`. The value may be one of the following:
 
-      - `:hmac_sha1` - Generates signature with HMAC-SHA1
-      - `:rsa_sha1` - Generates signature with RSA-SHA1
-      - `:plaintext` - Doesn't generate signature
-    - `:consumer_secret` - The OAuth consumer secret, required if
+      * `:hmac_sha1` - generates signature with HMAC-SHA1
+
+      * `:rsa_sha1` - generates signature with RSA-SHA1
+
+      * `:plaintext` - doesn't generate signature
+
+    * `:consumer_secret` - the OAuth consumer secret, required if
       `:signature_method` is either `:hmac_sha1` or `:plaintext`
-    - `:private_key_path` - The path for the private key, required if
+
+    * `:private_key_path` - the path for the private key, required if
       `:signature_method` is `:rsa_sha1` and `:private_key` hasn't been set
-    - `:private_key` - The private key content that can be defined instead of
+
+    * `:private_key` - the private key content that can be defined instead of
       `:private_key_path`, required if `:signature_method` is `:rsa_sha1` and
       `:private_key_path` hasn't been set
 
-  ## Examples
+  ## Usage
 
       defmodule OAuth do
         import Plug.Conn
@@ -90,26 +97,36 @@ defmodule Assent.Strategy.OAuth do
     UnexpectedResponseError
   }
 
+  @typedoc """
+  The session parameters returned from `authorize_url/1`, to be stored and
+  passed back into `callback/3`.
+  """
   @type session_params :: %{
           oauth_token_secret: binary()
         }
 
+  @typedoc "Return value of `authorize_url/1`."
   @type on_authorize_url ::
           {:ok, %{session_params: session_params(), url: binary()}} | {:error, term()}
+
+  @typedoc "Return value of `callback/3`."
   @type on_callback :: {:ok, %{user: map(), token: map()}} | {:error, term()}
 
   @doc """
-  Generate authorization URL for request phase.
+  Generates an authorization URL for the request phase.
 
   ## Options
 
-    - `:redirect_uri` - The URI that the server redirects the user to after
+    * `:redirect_uri` - the URI that the server redirects the user to after
       authentication, required
-    - `:request_token_url` - The path or URL to fetch the token from, optional,
-      defaults to `/oauth/request_token`
-    - `:authorize_url` - The path or URL for the OAuth server to redirect users
-      to, defaults to `/oauth/authenticate`
-    - `:authorization_params` - The authorization parameters, defaults to `[]`
+
+    * `:request_token_url` - the path or URL to fetch the token from, optional,
+      defaults to `/request_token`
+
+    * `:authorize_url` - the path or URL for the OAuth server to redirect users
+      to, defaults to `/authorize`
+
+    * `:authorization_params` - the authorization parameters, defaults to `[]`
   """
   @impl true
   @spec authorize_url(Keyword.t()) :: on_authorize_url()
@@ -358,14 +375,16 @@ defmodule Assent.Strategy.OAuth do
   end
 
   @doc """
-  Callback phase for generating access token and fetch user data.
+  Callback phase for generating an access token and fetching user data.
 
   ## Options
 
-    - `:access_token_url` - The path or URL to fetch the access token from,
-      optional, defaults to `/oauth/access_token`
-    - `:user_url` - The path or URL to fetch user data, required
-    - `:session_params` - The session parameters that was returned from
+    * `:access_token_url` - the path or URL to fetch the access token from,
+      optional, defaults to `/access_token`
+
+    * `:user_url` - the path or URL to fetch user data, required
+
+    * `:session_params` - the session parameters that were returned from
       `authorize_url/1`, optional
   """
   @impl true
@@ -400,7 +419,7 @@ defmodule Assent.Strategy.OAuth do
   end
 
   @doc """
-  Performs a signed HTTP request to the API using the oauth token.
+  Performs a signed HTTP request to the API using the OAuth token.
   """
   @spec request(Keyword.t(), map(), atom(), binary(), map() | Keyword.t(), [{binary(), binary()}]) ::
           {:ok, map()} | {:error, term()}

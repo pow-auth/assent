@@ -68,28 +68,22 @@ defmodule Assent.Strategy.GithubTest do
     "sub" => "1"
   }
 
-  test "authorize_url/2", %{config: config} do
+  test "authorize_url/1", %{config: config} do
     assert {:ok, %{url: url}} = Github.authorize_url(config)
     assert url =~ "https://github.com/login/oauth/authorize?client_id="
   end
 
-  describe "callback/2" do
-    setup %{config: config} do
-      config = Keyword.put(config, :token_url, TestServer.url("/login/oauth/access_token"))
+  test "callback/2", %{config: config, callback_params: params} do
+    config = Keyword.put(config, :token_url, TestServer.url("/login/oauth/access_token"))
 
-      {:ok, config: config}
-    end
+    expect_oauth2_access_token_request([uri: "/login/oauth/access_token"], fn _conn, params ->
+      assert params["client_secret"] == config[:client_secret]
+    end)
 
-    test "normalizes data", %{config: config, callback_params: params} do
-      expect_oauth2_access_token_request([uri: "/login/oauth/access_token"], fn _conn, params ->
-        assert params["client_secret"] == config[:client_secret]
-      end)
+    expect_oauth2_user_request(@user_response, uri: "/user")
+    expect_oauth2_api_request("/user/emails", @emails_response)
 
-      expect_oauth2_user_request(@user_response, uri: "/user")
-      expect_oauth2_api_request("/user/emails", @emails_response)
-
-      assert {:ok, %{user: user}} = Github.callback(config, params)
-      assert user == @user
-    end
+    assert {:ok, %{user: user}} = Github.callback(config, params)
+    assert user == @user
   end
 end

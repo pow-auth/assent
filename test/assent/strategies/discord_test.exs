@@ -23,7 +23,7 @@ defmodule Assent.Strategy.DiscordTest do
     "sub" => "80351110224678912"
   }
 
-  test "authorize_url/2", %{config: config} do
+  test "authorize_url/1", %{config: config} do
     assert {:ok, %{url: url}} = Discord.authorize_url(config)
     assert url =~ "/oauth2/authorize?client_id="
   end

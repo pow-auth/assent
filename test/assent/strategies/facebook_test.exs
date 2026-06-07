@@ -19,33 +19,31 @@ defmodule Assent.Strategy.FacebookTest do
     "sub" => "1000001"
   }
 
-  test "authorize_url/2", %{config: config} do
+  test "authorize_url/1", %{config: config} do
     assert {:ok, %{url: url}} = Facebook.authorize_url(config)
     assert url =~ "https://www.facebook.com/v4.0/dialog/oauth?client_id="
   end
 
-  describe "callback/2" do
-    test "normalizes data", %{config: config, callback_params: params} do
-      expect_oauth2_access_token_request([uri: "/oauth/access_token"], fn _conn, params ->
-        assert params["client_secret"] == config[:client_secret]
-      end)
+  test "callback/2", %{config: config, callback_params: params} do
+    expect_oauth2_access_token_request([uri: "/oauth/access_token"], fn _conn, params ->
+      assert params["client_secret"] == config[:client_secret]
+    end)
 
-      expect_oauth2_user_request(@user_response, [uri: "/me"], fn conn ->
-        assert Plug.Conn.get_req_header(conn, "accept") == ["application/json"]
+    expect_oauth2_user_request(@user_response, [uri: "/me"], fn conn ->
+      assert Plug.Conn.get_req_header(conn, "accept") == ["application/json"]
 
-        conn = Plug.Conn.fetch_query_params(conn)
+      conn = Plug.Conn.fetch_query_params(conn)
 
-        assert conn.params["access_token"] == "access_token"
-        assert conn.params["fields"] == "email,name,first_name,last_name,middle_name,link"
+      assert conn.params["access_token"] == "access_token"
+      assert conn.params["fields"] == "email,name,first_name,last_name,middle_name,link"
 
-        assert conn.params["appsecret_proof"] ==
-                 Base.encode16(:crypto.mac(:hmac, :sha256, "secret", "access_token"),
-                   case: :lower
-                 )
-      end)
+      assert conn.params["appsecret_proof"] ==
+               Base.encode16(:crypto.mac(:hmac, :sha256, "secret", "access_token"),
+                 case: :lower
+               )
+    end)
 
-      assert {:ok, %{user: user}} = Facebook.callback(config, params)
-      assert user == Map.put(@user, "picture", TestServer.url("/1000001/picture"))
-    end
+    assert {:ok, %{user: user}} = Facebook.callback(config, params)
+    assert user == Map.put(@user, "picture", TestServer.url("/1000001/picture"))
   end
 end

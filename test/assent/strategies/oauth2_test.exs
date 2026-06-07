@@ -59,7 +59,7 @@ defmodule Assent.Strategy.OAuth2Test do
   -----END PUBLIC KEY-----
   """
 
-  describe "authorize_url/2" do
+  describe "authorize_url/1" do
     test "with missing `:redirect_uri` config", %{config: config} do
       config = Keyword.delete(config, :redirect_uri)
 
@@ -302,58 +302,6 @@ defmodule Assent.Strategy.OAuth2Test do
       assert error.response.body == %{"error" => "Error"}
     end
 
-    test "with missing `:user_url` config", %{config: config, callback_params: params} do
-      config = Keyword.delete(config, :user_url)
-
-      expect_oauth2_access_token_request()
-
-      assert {:error, %MissingConfigError{} = error} = OAuth2.callback(config, params)
-      assert error.key == :user_url
-    end
-
-    test "with invalid token type", %{config: config, callback_params: params} do
-      expect_oauth2_access_token_request(
-        params: %{access_token: "access_token", token_type: "invalid"}
-      )
-
-      assert OAuth2.callback(config, params) ==
-               {:error, "Authorization with token type `invalid` not supported"}
-    end
-
-    test "with `:user_url` being unreachable", %{config: config, callback_params: params} do
-      config = Keyword.put(config, :user_url, "http://localhost:8888/api/user")
-
-      expect_oauth2_access_token_request()
-
-      assert {:error, %ServerUnreachableError{} = error} = OAuth2.callback(config, params)
-      assert Exception.message(error) =~ "The server was unreachable."
-      assert error.http_adapter == Assent.HTTPAdapter.Httpc
-      assert error.request_url == config[:user_url]
-      assert {:failed_connect, _} = error.reason
-    end
-
-    test "with `:user_url` returning 401", %{config: config, callback_params: params} do
-      expect_oauth2_access_token_request()
-      expect_oauth2_user_request(%{"error" => "Unauthorized"}, status_code: 401)
-
-      assert {:error, %RequestError{} = error} = OAuth2.callback(config, params)
-      assert error.message == "Unauthorized token"
-      assert error.response.status == 401
-      assert error.response.body == %{"error" => "Unauthorized"}
-    end
-
-    test "with `:user_url` not returning decoded map in body", %{
-      config: config,
-      callback_params: params
-    } do
-      expect_oauth2_access_token_request()
-      expect_oauth2_user_request("%")
-
-      assert {:error, %UnexpectedResponseError{} = error} = OAuth2.callback(config, params)
-      assert Exception.message(error) =~ "An unexpected response was received."
-      assert error.response.body == "%"
-    end
-
     @user_api_params %{name: "Dan Schultzer", email: "foo@example.com", uid: "1"}
 
     test "with no `:auth_method` config", %{config: config, callback_params: params} do
@@ -528,11 +476,56 @@ defmodule Assent.Strategy.OAuth2Test do
                OAuth2.callback(config, params)
     end
 
-    test "with 201 response", %{config: config, callback_params: params} do
-      expect_oauth2_access_token_request(status_code: 201)
-      expect_oauth2_user_request(@user_api_params)
+    test "with missing `:user_url` config", %{config: config, callback_params: params} do
+      config = Keyword.delete(config, :user_url)
 
-      assert {:ok, _any} = OAuth2.callback(config, params)
+      expect_oauth2_access_token_request()
+
+      assert {:error, %MissingConfigError{} = error} = OAuth2.callback(config, params)
+      assert error.key == :user_url
+    end
+
+    test "with invalid token type", %{config: config, callback_params: params} do
+      expect_oauth2_access_token_request(
+        params: %{access_token: "access_token", token_type: "invalid"}
+      )
+
+      assert OAuth2.callback(config, params) ==
+               {:error, "Authorization with token type `invalid` not supported"}
+    end
+
+    test "with `:user_url` being unreachable", %{config: config, callback_params: params} do
+      config = Keyword.put(config, :user_url, "http://localhost:8888/api/user")
+
+      expect_oauth2_access_token_request()
+
+      assert {:error, %ServerUnreachableError{} = error} = OAuth2.callback(config, params)
+      assert Exception.message(error) =~ "The server was unreachable."
+      assert error.http_adapter == Assent.HTTPAdapter.Httpc
+      assert error.request_url == config[:user_url]
+      assert {:failed_connect, _} = error.reason
+    end
+
+    test "with `:user_url` returning 401", %{config: config, callback_params: params} do
+      expect_oauth2_access_token_request()
+      expect_oauth2_user_request(%{"error" => "Unauthorized"}, status_code: 401)
+
+      assert {:error, %RequestError{} = error} = OAuth2.callback(config, params)
+      assert error.message == "Unauthorized token"
+      assert error.response.status == 401
+      assert error.response.body == %{"error" => "Unauthorized"}
+    end
+
+    test "with `:user_url` not returning decoded map in body", %{
+      config: config,
+      callback_params: params
+    } do
+      expect_oauth2_access_token_request()
+      expect_oauth2_user_request("%")
+
+      assert {:error, %UnexpectedResponseError{} = error} = OAuth2.callback(config, params)
+      assert Exception.message(error) =~ "An unexpected response was received."
+      assert error.response.body == "%"
     end
 
     test "normalizes data", %{config: config, callback_params: params} do
@@ -542,6 +535,13 @@ defmodule Assent.Strategy.OAuth2Test do
       assert {:ok, %{user: user, token: token}} = OAuth2.callback(config, params)
       assert user == %{"email" => "foo@example.com", "name" => "Dan Schultzer", "uid" => "1"}
       assert token == %{"access_token" => "access_token"}
+    end
+
+    test "with access token 201 response", %{config: config, callback_params: params} do
+      expect_oauth2_access_token_request(status_code: 201)
+      expect_oauth2_user_request(@user_api_params)
+
+      assert {:ok, _any} = OAuth2.callback(config, params)
     end
   end
 

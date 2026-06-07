@@ -23,7 +23,7 @@ defmodule Assent.Strategy.VKTest do
     "email" => "lindsay.stirling@example.com"
   }
 
-  test "authorize_url/2", %{config: config} do
+  test "authorize_url/1", %{config: config} do
     assert {:ok, %{url: url}} = VK.authorize_url(config)
     assert url =~ "/authorize"
   end
@@ -33,6 +33,15 @@ defmodule Assent.Strategy.VKTest do
       config = Keyword.put(config, :token_url, TestServer.url("/access_token"))
 
       {:ok, config: config}
+    end
+
+    test "with invalid user response", %{config: config, callback_params: params} do
+      expect_oauth2_access_token_request(uri: "/access_token", params: @token_response)
+      expect_oauth2_user_request(%{"a" => 1}, uri: "/method/users.get")
+
+      assert {:error, %RuntimeError{} = error} = VK.callback(config, params)
+      assert error.message =~ "Retrieved an invalid response fetching VK user"
+      assert error.message =~ "%{\"a\" => 1}"
     end
 
     test "normalizes data", %{config: config, callback_params: params} do
@@ -53,15 +62,6 @@ defmodule Assent.Strategy.VKTest do
 
       assert {:ok, %{user: user}} = VK.callback(config, params)
       assert user == @user
-    end
-
-    test "handles invalid user response", %{config: config, callback_params: params} do
-      expect_oauth2_access_token_request(uri: "/access_token", params: @token_response)
-      expect_oauth2_user_request(%{"a" => 1}, uri: "/method/users.get")
-
-      assert {:error, %RuntimeError{} = error} = VK.callback(config, params)
-      assert error.message =~ "Retrieved an invalid response fetching VK user"
-      assert error.message =~ "%{\"a\" => 1}"
     end
   end
 end

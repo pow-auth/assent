@@ -63,7 +63,7 @@ defmodule Assent.Strategy.LinkedInTest do
     {:ok, config: config}
   end
 
-  test "authorize_url/2", %{config: config} do
+  test "authorize_url/1", %{config: config} do
     assert {:ok, %{url: url}} = Linkedin.authorize_url(config)
     assert url =~ "scope=openid+profile+email"
   end

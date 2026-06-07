@@ -5,7 +5,7 @@ defmodule Assent.HTTPAdapter.HttpcTest do
   alias Assent.HTTPAdapter.{Httpc, HTTPResponse}
 
   describe "request/4" do
-    test "handles SSL" do
+    test "with HTTPS request" do
       TestServer.start(scheme: :https)
       TestServer.add("/", via: :get)
 
@@ -31,7 +31,7 @@ defmodule Assent.HTTPAdapter.HttpcTest do
                )
     end
 
-    test "handles SSL with bad certificate" do
+    test "with HTTPS request with bad certificate" do
       TestServer.start(scheme: :https)
 
       bad_host_url = TestServer.url(host: "bad-host.localhost")
@@ -43,7 +43,7 @@ defmodule Assent.HTTPAdapter.HttpcTest do
       assert {:tls_alert, _bad_certificate} = inet_error(error)
     end
 
-    test "handles SSL with bad certificate and no verification" do
+    test "with HTTPS request with bad certificate with no verification" do
       TestServer.start(scheme: :https)
       TestServer.add("/", via: :get)
 
@@ -61,8 +61,8 @@ defmodule Assent.HTTPAdapter.HttpcTest do
                Httpc.request(:get, bad_host_url, nil, [], httpc_opts)
     end
 
-    test "with missing ssl_verify_fun" do
-      error = request_with_deps(["{:certifi, \">= 0.0.0\"}"])
+    test "with HTTPS request with missing `:ssl_verify_fun` dep" do
+      error = https_request_with_deps(["{:certifi, \">= 0.0.0\"}"])
 
       assert error =~ "RuntimeError"
       assert error =~ "This request can NOT be verified for valid SSL certificate"
@@ -70,8 +70,8 @@ defmodule Assent.HTTPAdapter.HttpcTest do
       assert error =~ "ssl: [verify_peer: :verify_peer, verify_fun: ...]"
     end
 
-    test "with missing cacerts" do
-      error = request_with_deps(["{:ssl_verify_fun, \">= 0.0.0\"}"])
+    test "with HTTPS request with missing `:cacerts` dep" do
+      error = https_request_with_deps(["{:ssl_verify_fun, \">= 0.0.0\"}"])
 
       assert error =~ "RuntimeError"
       assert error =~ "This request requires a CA trust store"
@@ -79,7 +79,7 @@ defmodule Assent.HTTPAdapter.HttpcTest do
       assert error =~ "ssl: [cacerts: ...]"
     end
 
-    test "handles unreachable host" do
+    test "when network error" do
       TestServer.start()
       url = TestServer.url()
       TestServer.stop()
@@ -88,7 +88,7 @@ defmodule Assent.HTTPAdapter.HttpcTest do
       assert inet_error(error) == :econnrefused
     end
 
-    test "handles query in URL" do
+    test "with URL containing query" do
       TestServer.add("/get",
         via: :get,
         to: fn conn ->
@@ -102,7 +102,7 @@ defmodule Assent.HTTPAdapter.HttpcTest do
                Httpc.request(:get, TestServer.url("/get?a=1"), nil, [])
     end
 
-    test "handles POST" do
+    test "with POST request" do
       TestServer.add("/post",
         via: :post,
         to: fn conn ->
@@ -131,7 +131,7 @@ defmodule Assent.HTTPAdapter.HttpcTest do
 
   defp inet_error([_, {:inet, [:inet], error}]), do: error
 
-  defp request_with_deps(deps) do
+  defp https_request_with_deps(deps) do
     deps = deps ++ ["{:assent, path: \"../../\"}"]
 
     File.rm_rf!("tmp/test_app")

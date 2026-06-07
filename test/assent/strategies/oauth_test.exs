@@ -53,7 +53,7 @@ defmodule Assent.Strategy.OAuthTest do
   -----END PUBLIC KEY-----
   """
 
-  describe "authorize_url/2" do
+  describe "authorize_url/1" do
     test "with missing `:redirect_uri` config", %{config: config} do
       config = Keyword.delete(config, :redirect_uri)
 
@@ -244,7 +244,7 @@ defmodule Assent.Strategy.OAuthTest do
     method_uri <> encoded_normalized_params
   end
 
-  describe "authorize_url/2 with RSA-SHA1 signature method" do
+  describe "authorize_url/1 with RSA-SHA1 signature method" do
     setup %{config: config} do
       config =
         config
@@ -326,7 +326,7 @@ defmodule Assent.Strategy.OAuthTest do
     end
   end
 
-  describe "authorize_url/2 with PLAINTEXT signature method" do
+  describe "authorize_url/1 with PLAINTEXT signature method" do
     setup %{config: config} do
       config = Keyword.put(config, :signature_method, :plaintext)
 

@@ -23,7 +23,7 @@ defmodule Assent.Strategy.TwitchTest do
     "preferred_username" => "scotwht"
   }
 
-  test "authorize_url/2", %{config: config} do
+  test "authorize_url/1", %{config: config} do
     assert {:ok, %{url: url}} = Twitch.authorize_url(config)
 
     uri = URI.parse(url)

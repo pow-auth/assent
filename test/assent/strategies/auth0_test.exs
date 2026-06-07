@@ -29,7 +29,7 @@ defmodule Assent.Strategy.Auth0Test do
     "updated_at" => 1_490_886_820
   }
 
-  test "authorize_url/2", %{config: config} do
+  test "authorize_url/1", %{config: config} do
     assert {:ok, %{url: url}} = Auth0.authorize_url(config)
     assert url =~ "/oauth/authorize?client_id=id"
     assert url =~ "scope=openid+email+profile"

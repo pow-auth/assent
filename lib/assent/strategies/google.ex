@@ -26,7 +26,7 @@ defmodule Assent.Strategy.Google do
         ]
       ]
 
-  See `Assent.Strategy.OAuth2` for more.
+  See `Assent.Strategy.OIDC` for more.
   """
   use Assent.Strategy.OIDC.Base
 

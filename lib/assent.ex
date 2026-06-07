@@ -4,6 +4,9 @@ defmodule Assent do
              |> File.read!()
              |> String.split("<!-- MDOC !-->")
              |> Enum.fetch!(1)
+             # Replace Markdown-linked HexDocs cross-references with plain
+             # references so ExDoc can resolve links correctly.
+             |> then(&Regex.replace(~r/\[(`[^`]+`)\]\([^)]+\)/, &1, "\\1"))
 
   defmodule MissingConfigError do
     defexception [:key, :config]
@@ -23,6 +26,12 @@ defmodule Assent do
 
   defmodule CallbackError do
     defexception [:message, :error, :error_uri]
+
+    @type t :: %__MODULE__{
+            message: binary(),
+            error: binary() | nil,
+            error_uri: binary() | nil
+          }
   end
 
   defmodule CallbackCSRFError do
@@ -164,7 +173,7 @@ defmodule Assent do
   @doc """
   Fetches the key value from the configuration.
 
-  Returns a `Assent.MissingConfigError` if the key is not found.
+  Returns an `Assent.MissingConfigError` if the key is not found.
   """
   @spec fetch_config(Keyword.t(), atom()) :: {:ok, any()} | {:error, MissingConfigError.t()}
   def fetch_config(config, key) when is_list(config) and is_atom(key) do
@@ -177,7 +186,7 @@ defmodule Assent do
   @doc """
   Fetches the key value from the params.
 
-  Returns a `Assent.MissingParamError` if the key is not found.
+  Returns an `Assent.MissingParamError` if the key is not found.
   """
   @spec fetch_param(map(), binary()) :: {:ok, any()} | {:error, MissingParamError.t()}
   def fetch_param(params, key) when is_map(params) and is_binary(key) do

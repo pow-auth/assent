@@ -1,6 +1,6 @@
 defmodule Assent.Strategy.Apple do
   @moduledoc """
-  Apple Sign In OAuth 2.0 strategy.
+  Apple Sign In OpenID Connect strategy.
 
   You'll need to collect the 10-char long Team ID, the Services ID, the 10-char
   Key ID and download the private key from the portal. Save the private key to
@@ -19,8 +19,8 @@ defmodule Assent.Strategy.Apple do
 
   ## With JS SDK
 
-  You can use the JS SDK instead of handling it through `auhorize_url/2`. All you
-  have to do is to set up you HTML page with the following way:
+  You can use the JS SDK instead of handling it through `authorize_url/1`. All
+  you have to do is to set up your HTML page in the following way:
 
       <html>
         <head>
@@ -36,14 +36,15 @@ defmodule Assent.Strategy.Apple do
       </html>
 
   You can get the state by generating the session params using the
-  `authorize_url/2`:
+  `authorize_url/1`:
 
       {:ok, %{session_params: session_params}} = Assent.Strategy.Apple.authorize_url(config)
 
   Use the `session_params[:state]` value for `[STATE]`. The callback phase
   would be identical to how it's explained in the `Assent` docs.
 
-  See https://developer.apple.com/documentation/signinwithapplejs/configuring_your_webpage_for_sign_in_with_apple
+  See the [Sign in with Apple JS
+  documentation](https://developer.apple.com/documentation/signinwithapplejs/configuring_your_webpage_for_sign_in_with_apple)
   for more.
   """
   use Assent.Strategy.OIDC.Base

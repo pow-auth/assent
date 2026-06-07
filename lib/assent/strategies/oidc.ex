@@ -7,38 +7,51 @@ defmodule Assent.Strategy.OIDC do
 
   ## Configuration
 
-    - `:client_id` - The client id, required
-    - `:base_url` - The OIDC issuer, required
-    - `:openid_configuration_uri` - The URI for OpenID Provider, optional,
+    * `:client_id` - the client ID, required
+
+    * `:base_url` - the OIDC issuer, required
+
+    * `:openid_configuration_uri` - the URI for OpenID Provider, optional,
       defaults to `/.well-known/openid-configuration`
-    - `:client_authentication_method` - The Client Authentication method to
-      use, optional, defaults to `client_secret_basic`.  The value may be one
+
+    * `:client_authentication_method` - the Client Authentication method to
+      use, optional, defaults to `client_secret_basic`. The value may be one
       of the following:
 
-      - `none` - No client authentication, used with public clients
-      - `client_secret_basic` - Authenticate with basic authorization header
-      - `client_secret_post` - Authenticate with post params
-      - `client_secret_jwt` - Authenticate with JWT using `:client_secret` as
+      * `none` - no client authentication, used with public clients
+
+      * `client_secret_basic` - authenticate with basic authorization header
+
+      * `client_secret_post` - authenticate with post params
+
+      * `client_secret_jwt` - authenticate with JWT using `:client_secret` as
         secret
-      - `private_key_jwt` - Authenticate with JWT using `:private_key_path` or
+
+      * `private_key_jwt` - authenticate with JWT using `:private_key_path` or
         `:private_key` as secret
-    - `:client_secret` - The client secret, required if
+
+    * `:client_secret` - the client secret, required if
       `:client_authentication_method` is `client_secret_basic`,
       `:client_secret_post`, or `:client_secret_jwt`
-    - `:openid_configuration` - The OpenID configuration, optional, the
+
+    * `:openid_configuration` - the OpenID configuration, optional, the
       configuration will be fetched from `:openid_configuration_uri` if this is
       not defined
-    - `:id_token_signed_response_alg` - The `id_token_signed_response_alg`
+
+    * `:id_token_signed_response_alg` - the `id_token_signed_response_alg`
       parameter sent by the Client during Registration, defaults to `RS256`
-    - `:id_token_ttl_seconds` - The number of seconds from `iat` that an ID
+
+    * `:id_token_ttl_seconds` - the number of seconds from `iat` that an ID
       Token will be considered valid, optional, defaults to nil
-    - `:nonce` - The nonce to use for authorization request, optional, MUST be
+
+    * `:nonce` - the nonce to use for authorization request, optional, MUST be
       session based and unguessable
-    - `:trusted_audiences` - A list of audiences that are trusted, optional.
 
-  See `Assent.Strategy.OAuth2` for more configuration options.
+    * `:trusted_audiences` - a list of audiences that are trusted, optional
 
-  ## Examples
+  See `Assent.Strategy.OAuth2` for more.
+
+  ## Usage
 
       defmodule OIDCAuth do
         import Plug.Conn
@@ -96,7 +109,7 @@ defmodule Assent.Strategy.OIDC do
 
   `:nonce` can be set in the provider config. The `:nonce` will be returned in
   the `:session_params` along with `:state`. You can use this to store the value
-  in the current session e.g. a httpOnly session cookie.
+  in the current session e.g. an `HttpOnly` session cookie.
 
   A random value generator can look like this:
 
@@ -121,6 +134,10 @@ defmodule Assent.Strategy.OIDC do
     UnexpectedResponseError
   }
 
+  @typedoc """
+  The session parameters returned from `authorize_url/1`, to be stored and
+  passed back into `callback/3`.
+  """
   @type session_params :: %{
           optional(:state) => binary(),
           optional(:code_verifier) => binary(),
@@ -129,13 +146,16 @@ defmodule Assent.Strategy.OIDC do
           optional(:nonce) => binary()
         }
 
+  @typedoc "Return value of `authorize_url/1`."
   @type on_authorize_url :: OAuth2.on_authorize_url()
+
+  @typedoc "Return value of `callback/3`."
   @type on_callback :: OAuth2.on_callback()
 
   @doc """
-  Generates an authorization URL for request phase.
+  Generates an authorization URL for the request phase.
 
-  The authorization url will be fetched from the OpenID configuration URI.
+  The authorization URL will be fetched from the OpenID configuration URI.
 
   `openid` will automatically be added to the `:scope` in
   `:authorization_params`, unless `:openid_default_scope` has been set.
@@ -143,7 +163,7 @@ defmodule Assent.Strategy.OIDC do
   Add `:nonce` to the config to pass it with the authorization request. The
   nonce will be returned in `:session_params`. The nonce MUST be session based
   and unguessable. A cryptographic hash of a cryptographically random value
-  could be stored in a httpOnly session cookie.
+  could be stored in an `HttpOnly` session cookie.
 
   See `Assent.Strategy.OAuth2.authorize_url/1` for more.
   """
@@ -244,9 +264,9 @@ defmodule Assent.Strategy.OIDC do
     do: {:error, error}
 
   @doc """
-  Callback phase for generating access token and fetch user data.
+  Callback phase for generating an access token and fetching user data.
 
-  The token url will be fetched from the OpenID configuration URI.
+  The token URL will be fetched from the OpenID configuration URI.
 
   If the returned ID Token is signed with a symmetric key, `:client_secret`
   will be required and used to verify the ID Token. If it was signed with a
@@ -304,7 +324,7 @@ defmodule Assent.Strategy.OIDC do
   @doc """
   Fetches user params from ID token.
 
-  The ID Token is validated, and the claims is returned as the user params.
+  The ID Token is validated, and the claims are returned as the user params.
   Use `fetch_userinfo/2` to fetch the claims from the `userinfo` endpoint.
   """
   @spec fetch_user(Keyword.t(), map()) :: {:ok, map()} | {:error, term()}

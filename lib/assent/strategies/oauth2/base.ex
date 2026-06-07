@@ -7,6 +7,7 @@ defmodule Assent.Strategy.OAuth2.Base do
       defmodule MyApp.MyOAuth2Strategy do
         use Assent.Strategy.OAuth2.Base
 
+        @impl true
         def default_config(_config) do
           [
             base_url: "https://api.example.com",
