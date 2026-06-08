@@ -43,15 +43,11 @@ defmodule Assent.Strategy.GitlabTest do
   end
 
   test "callback/2", %{config: config, callback_params: params} do
-    openid_config =
-      Map.put(config[:openid_configuration], "token_endpoint_auth_methods_supported", [
-        "client_secret_post"
-      ])
-
     config =
-      Keyword.merge(config,
-        openid_configuration: openid_config,
-        client_id: "4843ae8973e91d7f63baf626a88e221648d8839d0edee5878c9f1535f6930a1a"
+      Keyword.put(
+        config,
+        :client_id,
+        "4843ae8973e91d7f63baf626a88e221648d8839d0edee5878c9f1535f6930a1a"
       )
 
     [key | _rest] = expect_oidc_jwks_uri_request()

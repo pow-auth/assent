@@ -282,7 +282,7 @@ defmodule Assent.Strategy.OIDC do
   @spec callback(Keyword.t(), map(), atom()) :: on_callback()
   def callback(config, params, strategy \\ __MODULE__) do
     with {:ok, openid_config} <- fetch_openid_configuration(config),
-         {:ok, method} <- fetch_client_authentication_method(openid_config, config),
+         {:ok, method} <- fetch_client_authentication_method(config),
          {:ok, token_url} <- fetch_from_openid_config(openid_config, "token_endpoint") do
       config
       |> Keyword.put(:openid_configuration, openid_config)
@@ -292,15 +292,10 @@ defmodule Assent.Strategy.OIDC do
     end
   end
 
-  defp fetch_client_authentication_method(openid_config, config) do
-    method = Keyword.get(config, :client_authentication_method, "client_secret_basic")
-    methods = Map.get(openid_config, "token_endpoint_auth_methods_supported")
-    supported_method? = (is_nil(methods) && true) || method in methods || method == "none"
-
-    case supported_method? do
-      true -> parse_client_auth_method(method)
-      false -> {:error, "Unsupported client authentication method: #{method}"}
-    end
+  defp fetch_client_authentication_method(config) do
+    config
+    |> Keyword.get(:client_authentication_method, "client_secret_basic")
+    |> parse_client_auth_method()
   end
 
   defp parse_client_auth_method("none"), do: {:ok, nil}

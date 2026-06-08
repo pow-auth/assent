@@ -36,11 +36,7 @@ defmodule Assent.Strategy.Auth0Test do
   end
 
   test "callback/2", %{config: config, callback_params: params} do
-    openid_config =
-      config[:openid_configuration]
-      |> Map.put("issuer", "https://{yourDomain}/")
-      |> Map.put("token_endpoint_auth_methods_supported", ["client_secret_post"])
-
+    openid_config = Map.put(config[:openid_configuration], "issuer", "https://{yourDomain}/")
     session_params = Map.put(config[:session_params], :nonce, "crypto-value")
 
     config =
