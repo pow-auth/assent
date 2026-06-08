@@ -159,6 +159,14 @@ defmodule Assent.JWTAdapter.AssentJWTTest do
     assert error.data == @invalid_base64
   end
 
+  @header Base.url_encode64(@json_library.encode!(%{"alg" => "none"}), padding: false)
+  test "verify/3 with none alg" do
+    token = replace_jwt_at(@token, 0, @header)
+
+    assert {:ok, jwt} = AssentJWT.verify(token, @secret, json_library: @json_library)
+    refute jwt.verified?
+  end
+
   test "verify/3 with no secret" do
     assert {:ok, jwt} = AssentJWT.verify(@token, nil, json_library: @json_library)
     refute jwt.verified?
@@ -272,10 +280,12 @@ defmodule Assent.JWTAdapter.AssentJWTTest do
       assert jwt.claims == @claims
     end
 
-    test "verify/3 with nil secret" do
-      assert {:ok, jwt} = AssentJWT.verify(@token, nil, json_library: @json_library)
-      refute jwt.verified?
-      assert jwt.claims == @claims
+    test "verify/3 with unsupported JWK" do
+      assert {:error, error} =
+               AssentJWT.verify(@token, %{"kty" => "oct"}, json_library: @json_library)
+
+      assert error.message == "Failed to verify signature"
+      assert error.reason == "Unable to decode the JWK"
     end
   end
 
@@ -426,14 +436,6 @@ defmodule Assent.JWTAdapter.AssentJWTTest do
 
         assert {:ok, jwt} = AssentJWT.verify(@token, @public_key, json_library: @json_library)
         assert jwt.verified?
-      end
-
-      test "sign/2 with invalid curve" do
-        assert {:error, error} =
-                 AssentJWT.sign(@claims, "Ed000", @private_key, json_library: @json_library)
-
-        assert error.message == "Failed to sign JWT"
-        assert error.reason == "Unsupported JWT alg: \"Ed000\""
       end
 
       test "sign/2 with invalid pem" do

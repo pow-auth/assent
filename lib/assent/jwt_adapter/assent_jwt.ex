@@ -138,8 +138,8 @@ defmodule Assent.JWTAdapter.AssentJWT do
   defp lpad_binary(binary, _length), do: binary
 
   if Mix.env() == :test do
-    # This allows testing padding as the the signing will only produce s or r
-    # values that a smaller in rare case.
+    # Exposed for testing: signing only occasionally produces r or s values
+    # shorter than the fixed coordinate size, so this lets us test the padding.
     def __sha_bit_pad__(binary, sha), do: sha_bit_pad(binary, sha)
   end
 
