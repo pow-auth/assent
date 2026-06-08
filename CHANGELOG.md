@@ -14,6 +14,7 @@ Now requires Elixir 1.15 / OTP 26.
 * `Assent.JWTAdapter.AssentJWT` now supports EdDSA algorithms
 * `Assent.JWTAdapter.AssentJWT` now supports EC JWKs
 * `Assent.Strategy.OIDC` no longer rejects a `:client_authentication_method` missing from the provider's `token_endpoint_auth_methods_supported`
+* `Assent.Strategy.OIDC` accepts additional ID Token issuers via the `:trusted_issuers` config option
 
 ### Bug fixes
 

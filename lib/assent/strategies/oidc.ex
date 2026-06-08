@@ -47,7 +47,13 @@ defmodule Assent.Strategy.OIDC do
     * `:nonce` - the nonce to use for authorization request, optional, MUST be
       session based and unguessable
 
-    * `:trusted_audiences` - a list of audiences that are trusted, optional
+    * `:trusted_audiences` - a list of audiences to trust in addition to the
+      client_id, optional
+
+    * `:trusted_issuers` - a list of issuers to trust in addition to the
+      provider's issuer, optional. The OIDC spec requires `iss` to match
+      exactly, so only set this for providers that issue under more than one
+      issuer.
 
   See `Assent.Strategy.OAuth2` for more.
 
@@ -359,7 +365,7 @@ defmodule Assent.Strategy.OIDC do
          {:ok, issuer} <- fetch_from_openid_config(openid_config, "issuer"),
          {:ok, jwt} <- verify_jwt(id_token, openid_config, config),
          :ok <- validate_required_fields(jwt),
-         :ok <- validate_issuer_identifier(jwt, issuer),
+         :ok <- validate_issuer_identifier(jwt, issuer, config),
          :ok <- validate_audience(jwt, client_id, config),
          :ok <- validate_authorization_party(jwt, client_id, config),
          :ok <- validate_alg(jwt, expected_alg),
@@ -456,10 +462,12 @@ defmodule Assent.Strategy.OIDC do
     end)
   end
 
-  defp validate_issuer_identifier(%{claims: %{"iss" => iss}}, iss), do: :ok
-
-  defp validate_issuer_identifier(%{claims: %{"iss" => iss}}, _iss),
-    do: {:error, "Invalid issuer \"#{iss}\" in ID Token"}
+  defp validate_issuer_identifier(%{claims: %{"iss" => iss}}, issuer, config) do
+    case iss in [issuer | Keyword.get(config, :trusted_issuers, [])] do
+      true -> :ok
+      false -> {:error, "Untrusted issuer #{inspect(iss)} in ID Token"}
+    end
+  end
 
   defp validate_audience(%{claims: %{"aud" => aud} = claims} = jwt, client_id, config)
        when is_binary(aud) do
@@ -469,7 +477,7 @@ defmodule Assent.Strategy.OIDC do
   defp validate_audience(%{claims: %{"aud" => [client_id]}}, client_id, _config), do: :ok
 
   defp validate_audience(%{claims: %{"aud" => auds}}, client_id, config) do
-    trusted_audiences = Keyword.get(config, :trusted_audiences, []) ++ [client_id]
+    trusted_audiences = [client_id | Keyword.get(config, :trusted_audiences, [])]
     missing_client_id? = client_id not in auds
     untrusted_auds = Enum.filter(auds, &(&1 not in trusted_audiences))
 

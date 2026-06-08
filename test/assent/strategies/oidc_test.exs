@@ -372,11 +372,27 @@ defmodule Assent.Strategy.OIDCTest do
       end
     end
 
-    test "with invalid `issuer` in id_token", %{config: config} do
+    test "with invalid `iss` in id_token", %{config: config} do
       id_token = gen_id_token(alg: "HS256", claims: %{"iss" => "invalid"})
 
       assert OIDC.validate_id_token(config, id_token) ==
-               {:error, "Invalid issuer \"invalid\" in ID Token"}
+               {:error, "Untrusted issuer \"invalid\" in ID Token"}
+    end
+
+    test "with `iss` in `:trusted_issuers`", %{config: config} do
+      config = Keyword.put(config, :trusted_issuers, ["https://example.com"])
+      id_token = gen_id_token(alg: "HS256", iss: "https://example.com")
+
+      assert {:ok, jwt} = OIDC.validate_id_token(config, id_token)
+      assert jwt.verified?
+    end
+
+    test "with `iss` not the issuer nor in `:trusted_issuers`", %{config: config} do
+      config = Keyword.put(config, :trusted_issuers, ["https://example.com"])
+      id_token = gen_id_token(alg: "HS256", iss: "https://untrusted.com")
+
+      assert OIDC.validate_id_token(config, id_token) ==
+               {:error, "Untrusted issuer \"https://untrusted.com\" in ID Token"}
     end
 
     test "with invalid `aud` in id_token", %{config: config} do
