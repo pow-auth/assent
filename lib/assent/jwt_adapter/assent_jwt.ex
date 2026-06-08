@@ -104,6 +104,12 @@ defmodule Assent.JWTAdapter.AssentJWT do
     end
   end
 
+  defp sign_message(message, "EdDSA", private_key) do
+    with {:ok, key} <- decode_pem(private_key) do
+      {:ok, :public_key.sign(message, :none, key)}
+    end
+  end
+
   defp sign_message(_message, alg, _secret_or_private_key),
     do: {:error, "Unsupported JWT alg: #{inspect(alg)}"}
 
@@ -270,6 +276,12 @@ defmodule Assent.JWTAdapter.AssentJWT do
     end
   end
 
+  defp verify_message(message, signature, "EdDSA", public_key) do
+    with {:ok, key} <- decode_key(public_key) do
+      {:ok, :public_key.verify(message, :none, signature, key)}
+    end
+  end
+
   defp verify_message(_message, _signature, alg, _secret_or_public_key),
     do: {:error, "Unsupported JWT alg: #{inspect(alg)}"}
 
@@ -282,5 +294,27 @@ defmodule Assent.JWTAdapter.AssentJWT do
     end
   end
 
+  defp decode_key(%{"kty" => "EC", "crv" => crv, "x" => x, "y" => y}) do
+    with {:ok, curve} <- jwk_curve(crv),
+         {:ok, x} <- decode_base64_url(x),
+         {:ok, y} <- decode_base64_url(y) do
+      {:ok, {{:ECPoint, <<4>> <> x <> y}, {:namedCurve, curve}}}
+    end
+  end
+
+  defp decode_key(%{"kty" => "OKP", "crv" => crv, "x" => x}) do
+    with {:ok, curve} <- jwk_curve(crv),
+         {:ok, public_key} <- decode_base64_url(x) do
+      {:ok, {{:ECPoint, public_key}, {:namedCurve, curve}}}
+    end
+  end
+
   defp decode_key(jwk) when is_map(jwk), do: {:error, "Unable to decode the JWK"}
+
+  defp jwk_curve("P-256"), do: {:ok, :secp256r1}
+  defp jwk_curve("P-384"), do: {:ok, :secp384r1}
+  defp jwk_curve("P-521"), do: {:ok, :secp521r1}
+  defp jwk_curve("Ed25519"), do: {:ok, {1, 3, 101, 112}}
+  defp jwk_curve("Ed448"), do: {:ok, {1, 3, 101, 113}}
+  defp jwk_curve(crv), do: {:error, "Unsupported JWK crv: #{inspect(crv)}"}
 end
