@@ -634,12 +634,12 @@ defmodule Assent.Strategy.OAuthTest do
       assert response.body == %{"success" => true}
     end
 
-    test "with uppercase url", %{config: config, token: token} do
+    test "with uppercase scheme and host", %{config: config, token: token} do
       shared_secret = "#{config[:consumer_secret]}&#{token["oauth_token_secret"]}"
       config = Keyword.put(config, :base_url, String.upcase(config[:base_url]))
-      info_url = TestServer.url("/info")
+      info_url = TestServer.url("/Info")
 
-      expect_oauth_api_request("/INFO", %{"success" => true}, [], fn _conn, oauth_params ->
+      expect_oauth_api_request("/Info", %{"success" => true}, [], fn _conn, oauth_params ->
         signature_base_string =
           gen_signature_base_string("GET&#{URI.encode_www_form(info_url)}&", oauth_params)
 
@@ -649,7 +649,9 @@ defmodule Assent.Strategy.OAuthTest do
         assert :crypto.mac(:hmac, :sha, shared_secret, signature_base_string) == decoded_signature
       end)
 
-      assert {:ok, response} = OAuth.request(config, token, :get, "/INFO")
+      # Per RFC 5849 §3.4.1.2 the host and scheme should be case-insensitive
+      refute String.starts_with?(info_url, config[:base_url])
+      assert {:ok, response} = OAuth.request(config, token, :get, "/Info")
       assert response.body == %{"success" => true}
     end
 

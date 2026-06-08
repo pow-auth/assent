@@ -290,9 +290,12 @@ defmodule Assent.Strategy.OAuth do
       |> String.upcase()
 
     base_string_uri =
-      %{uri | query: nil, host: uri.host}
-      |> URI.to_string()
-      |> String.downcase()
+      URI.to_string(%{
+        uri
+        | query: nil,
+          scheme: String.downcase(uri.scheme),
+          host: String.downcase(uri.host)
+      })
 
     normalized_request_params =
       request_params

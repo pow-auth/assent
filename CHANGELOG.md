@@ -14,6 +14,10 @@ Now requires Elixir 1.15 / OTP 26.
 * `Assent.JWTAdapter.AssentJWT` now supports EdDSA algorithms
 * `Assent.JWTAdapter.AssentJWT` now supports EC JWKs
 
+### Bug fixes
+
+* `Assent.Strategy.OAuth` no longer lowercases the request path for signature base string, per RFC 5849 3.4.1.2
+
 ## v0.3.1 (2025-06-20)
 
 ### Bug fixes
