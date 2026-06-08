@@ -11,6 +11,8 @@ Now requires Elixir 1.15 / OTP 26.
 ### Changes
 
 * `:inets` is now started automatically by `Assent`, and no longer required in `:extra_applications`
+* `Assent.JWTAdapter.AssentJWT` now supports EdDSA algorithms
+* `Assent.JWTAdapter.AssentJWT` now supports EC JWKs
 
 ## v0.3.1 (2025-06-20)
 

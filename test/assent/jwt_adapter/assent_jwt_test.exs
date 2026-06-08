@@ -38,18 +38,20 @@ defmodule Assent.JWTAdapter.AssentJWTTest do
     assert error.data == unencodable
   end
 
-  test "sign/2 with invalid algorithm" do
-    assert {:error, error} = AssentJWT.sign(@claims, "none", @secret, json_library: @json_library)
-    assert error.message == "Failed to sign JWT"
-    assert error.reason == "Unsupported JWT alg none or invalid JWK"
-    assert {_, "none"} = error.data
-
+  test "sign/2 with invalid SHA-2 algorithm bit size" do
     assert {:error, error} =
              AssentJWT.sign(@claims, "HS000", @secret, json_library: @json_library)
 
     assert error.message == "Failed to sign JWT"
     assert error.reason == "Invalid SHA-2 algorithm bit size: 000"
     assert {_, "HS000"} = error.data
+  end
+
+  test "sign/2 with unsupported algorithm" do
+    assert {:error, error} = AssentJWT.sign(@claims, "none", @secret, json_library: @json_library)
+    assert error.message == "Failed to sign JWT"
+    assert error.reason == "Unsupported JWT alg: \"none\""
+    assert {_, "none"} = error.data
   end
 
   test "verify/3" do
@@ -157,9 +159,28 @@ defmodule Assent.JWTAdapter.AssentJWTTest do
     assert error.data == @invalid_base64
   end
 
+  @header Base.url_encode64(@json_library.encode!(%{"alg" => "none"}), padding: false)
+  test "verify/3 with none alg" do
+    token = replace_jwt_at(@token, 0, @header)
+
+    assert {:ok, jwt} = AssentJWT.verify(token, @secret, json_library: @json_library)
+    refute jwt.verified?
+  end
+
   test "verify/3 with no secret" do
     assert {:ok, jwt} = AssentJWT.verify(@token, nil, json_library: @json_library)
     refute jwt.verified?
+  end
+
+  @header Base.url_encode64(@json_library.encode!(%{"alg" => "invalid"}), padding: false)
+  test "verify/3 with unsupported alg" do
+    token = replace_jwt_at(@token, 0, @header)
+
+    assert {:error, error} = AssentJWT.verify(token, @secret, json_library: @json_library)
+
+    assert error.message == "Failed to verify signature"
+    assert error.reason == "Unsupported JWT alg: \"invalid\""
+    assert {_, _, "invalid"} = error.data
   end
 
   describe "with private key" do
@@ -253,21 +274,23 @@ defmodule Assent.JWTAdapter.AssentJWTTest do
         "nzyis1ZjfNB0bBgKFMSvvkTtwlvBsaJq7S5wA-kzeVOVpVWwkWdVha4s38XM_pa_yr47av7-z3VTmvDRyAHcaT92whREFpLv9cj5lTeJSibyr_Mrm_YtjCZVWgaOYIhwrXwKLqPr_11inWsAkfIytvHWTxZYEcXLgAXFuUuaS3uF9gEiNQwzGTU1v0FqkqTBr4B8nW3HCN47XUu0t8Y0e-lf4s4OxQawWD79J9_5d3Ry0vbV3Am1FtGJiJvOwRsIfVChDpYStTcHTCMqtvWbV6L11BWkpzGXSW4Hv43qa-GSYOD2QU68Mb59oSk2OB-BtOLpJofmbGEGgvmwyCI9Mw"
     }
 
-    test "verify/3 with JWK" do
+    test "verify/3 with RSA JWK" do
       assert {:ok, jwt} = AssentJWT.verify(@token, @jwk, json_library: @json_library)
       assert jwt.verified?
       assert jwt.claims == @claims
     end
 
-    test "verify/3 with nil secret" do
-      assert {:ok, jwt} = AssentJWT.verify(@token, nil, json_library: @json_library)
-      refute jwt.verified?
-      assert jwt.claims == @claims
+    test "verify/3 with unsupported JWK" do
+      assert {:error, error} =
+               AssentJWT.verify(@token, %{"kty" => "oct"}, json_library: @json_library)
+
+      assert error.message == "Failed to verify signature"
+      assert error.reason == "Unable to decode the JWK"
     end
   end
 
   if :crypto.supports()[:curves] do
-    describe "with private key using ES256" do
+    describe "with private key using ES" do
       @token "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.tyh-VfuzIxCyGYDlkBA7DfyjrqmSHu6pQ2hoZuFqUSLPNY2N0mpHb3nk5K17HWP_3cYHBw7AhHale5wky6-sVA"
       @private_key """
       -----BEGIN PRIVATE KEY-----
@@ -289,7 +312,7 @@ defmodule Assent.JWTAdapter.AssentJWTTest do
         "iat" => 1_516_239_022
       }
 
-      test "signs and verifies" do
+      test "signs and verifies with ES256" do
         assert {:ok, token} =
                  AssentJWT.sign(@claims, "ES256", @private_key, json_library: @json_library)
 
@@ -300,7 +323,7 @@ defmodule Assent.JWTAdapter.AssentJWTTest do
         assert jwt.verified?
       end
 
-      test "sign/2 with invalid algorithm" do
+      test "sign/2 with invalid SHA-2 algorithm bit size" do
         assert {:error, error} =
                  AssentJWT.sign(@claims, "ES000", @private_key, json_library: @json_library)
 
@@ -323,6 +346,150 @@ defmodule Assent.JWTAdapter.AssentJWTTest do
 
         assert error.message == "Failed to sign JWT"
         assert error.reason == "Private key should only have one entry"
+      end
+
+      @jwk %{
+        "crv" => "P-256",
+        "kty" => "EC",
+        "x" => "EVs_o5-uQbTjL3chynL4wXgUg2R9q9UU8I5mEovUf84",
+        "y" => "kGe5DgSIycKp8w9aJmoHhB1sB3QTugfnRWm5nU_TzsY"
+      }
+
+      test "verify/3 with JWK with ES256" do
+        assert {:ok, jwt} = AssentJWT.verify(@token, @jwk, json_library: @json_library)
+        assert jwt.verified?
+        assert jwt.claims == @claims
+      end
+
+      @token "eyJhbGciOiJFUzM4NCIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.VUPWQZuClnkFbaEKCsPy7CZVMh5wxbCSpaAWFLpnTe9J0--PzHNeTFNXCrVHysAa3eFbuzD8_bLSsgTKC8SzHxRVSj5eN86vBPo_1fNfE7SHTYhWowjY4E_wuiC13yoj"
+      @jwk %{
+        "crv" => "P-384",
+        "kty" => "EC",
+        "x" => "C1uWSXj2czCDwMTLWV5BFmwxdM6PX9p-Pk9Yf9rIf374m5XP1U8q79dBhLSIuaoj",
+        "y" => "svOT39UUcPJROSD1FqYLued0rXiooIii1D3jaW6pmGVJFhodzC31cy5sfOYotrzF"
+      }
+
+      test "verify/3 with JWK with ES384" do
+        assert {:ok, jwt} = AssentJWT.verify(@token, @jwk, json_library: @json_library)
+        assert jwt.verified?
+        assert jwt.claims == @claims
+      end
+
+      @token "eyJhbGciOiJFUzUxMiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.AbVUinMiT3J_03je8WTOIl-VdggzvoFgnOsdouAs-DLOtQzau9valrq-S6pETyi9Q18HH-EuwX49Q7m3KC0GuNBJAc9Tksulgsdq8GqwIqZqDKmG7hNmDzaQG1Dpdezn2qzv-otf3ZZe-qNOXUMRImGekfQFIuH_MjD2e8RZyww6lbZk"
+      @jwk %{
+        "crv" => "P-521",
+        "kty" => "EC",
+        "x" =>
+          "AYHOB2c_v3wWwu5ZhMMNADtzSvcFWTw2dFRJ7GlBSxGKU82_dJyE7SVHD1G7zrHWSGdUPH526rgGIMVy-VIBzKMs",
+        "y" =>
+          "AIm-O-jJMsmID5NAV2at5quMyJk0TbmlPbJY_U1Sd0nE9y9W18FbjyQ86a-RjhaWo_lsDAJfBuwqsKCTrFuynXZ7"
+      }
+
+      test "verify/3 with JWK with ES512" do
+        assert {:ok, jwt} = AssentJWT.verify(@token, @jwk, json_library: @json_library)
+        assert jwt.verified?
+        assert jwt.claims == @claims
+      end
+
+      @jwk %{
+        "crv" => "P-000",
+        "kty" => "EC",
+        "x" =>
+          "AYHOB2c_v3wWwu5ZhMMNADtzSvcFWTw2dFRJ7GlBSxGKU82_dJyE7SVHD1G7zrHWSGdUPH526rgGIMVy-VIBzKMs",
+        "y" =>
+          "AIm-O-jJMsmID5NAV2at5quMyJk0TbmlPbJY_U1Sd0nE9y9W18FbjyQ86a-RjhaWo_lsDAJfBuwqsKCTrFuynXZ7"
+      }
+
+      test "verify/3 with JWK with invalid crv" do
+        assert {:error, error} = AssentJWT.verify(@token, @jwk, json_library: @json_library)
+        assert error.message == "Failed to verify signature"
+        assert error.reason == "Unsupported JWK crv: \"P-000\""
+        assert {_, _, "ES512"} = error.data
+      end
+    end
+
+    describe "with private key using EdDSA" do
+      @token "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.t6eOz8i8eC08KttS4mFvTvuFkvhWBa358MBtXSSIkR7VWMzz-TC5ix-BzpLXu8crmoINL4nvdweQ5jOKi_6SDQ"
+      @private_key """
+      -----BEGIN PRIVATE KEY-----
+      MC4CAQAwBQYDK2VwBCIEIFxEb2I7tPuKvihV4PgA55HDyMoVPHs2p0/nqJOBeuGG
+      -----END PRIVATE KEY-----
+      """
+      @public_key """
+      -----BEGIN PUBLIC KEY-----
+      MCowBQYDK2VwAyEAwmK6SSAu2E9V7uynkCKEaj5nZJyTvNG4x0KohsRzLpg=
+      -----END PUBLIC KEY-----
+      """
+      @claims %{
+        "sub" => "1234567890",
+        "name" => "John Doe",
+        "admin" => true,
+        "iat" => 1_516_239_022
+      }
+
+      test "signs and verifies" do
+        assert {:ok, token} =
+                 AssentJWT.sign(@claims, "EdDSA", @private_key, json_library: @json_library)
+
+        assert {:ok, jwt} = AssentJWT.verify(token, @public_key, json_library: @json_library)
+        assert jwt.verified?
+
+        assert {:ok, jwt} = AssentJWT.verify(@token, @public_key, json_library: @json_library)
+        assert jwt.verified?
+      end
+
+      test "sign/2 with invalid pem" do
+        assert {:error, error} =
+                 AssentJWT.sign(@claims, "EdDSA", "invalid", json_library: @json_library)
+
+        assert error.message == "Failed to sign JWT"
+        assert error.reason == "Invalid private key"
+
+        assert {:error, error} =
+                 AssentJWT.sign(@claims, "EdDSA", @private_key <> @private_key,
+                   json_library: @json_library
+                 )
+
+        assert error.message == "Failed to sign JWT"
+        assert error.reason == "Private key should only have one entry"
+      end
+
+      @jwk %{
+        "crv" => "Ed25519",
+        "kty" => "OKP",
+        "x" => "wmK6SSAu2E9V7uynkCKEaj5nZJyTvNG4x0KohsRzLpg"
+      }
+
+      test "verify/3 with JWK with Ed25519" do
+        assert {:ok, jwt} = AssentJWT.verify(@token, @jwk, json_library: @json_library)
+        assert jwt.verified?
+        assert jwt.claims == @claims
+      end
+
+      @ed448_token "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwiaWF0IjoxNTE2MjM5MDIyLCJuYW1lIjoiSm9obiBEb2UiLCJzdWIiOiIxMjM0NTY3ODkwIn0.yq2fZDvLNONNlhyIUC76c5qLnf5b3ZN3GL1aM6jHbZ2hSWOSiGlQ_XL4yMExxg-y6uny8rMCfSEAK5Ob0_kWAPLiESgDxLNfrSPot79niWdFzv7xKE6TdaYP_ctynhEzmfMWYu6Tt7UH1LsXZbUjtBMA"
+      @jwk %{
+        "kty" => "OKP",
+        "crv" => "Ed448",
+        "x" => "Xjgj9-bueb7y2s34jEbprJ7aBUYllkXRpLXknpOIK8lwV0v0H9bGViwyl3DHtKgFhJtoPWkgdugA"
+      }
+
+      test "verify/3 with JWK with Ed448" do
+        assert {:ok, jwt} = AssentJWT.verify(@ed448_token, @jwk, json_library: @json_library)
+        assert jwt.verified?
+        assert jwt.claims == @claims
+      end
+
+      @jwk %{
+        "crv" => "Ed0",
+        "kty" => "OKP",
+        "x" => "wmK6SSAu2E9V7uynkCKEaj5nZJyTvNG4x0KohsRzLpg"
+      }
+
+      test "verify/3 with JWK with invalid crv" do
+        assert {:error, error} = AssentJWT.verify(@token, @jwk, json_library: @json_library)
+        assert error.message == "Failed to verify signature"
+        assert error.reason == "Unsupported JWK crv: \"Ed0\""
+        assert {_, _, "EdDSA"} = error.data
       end
     end
   end
