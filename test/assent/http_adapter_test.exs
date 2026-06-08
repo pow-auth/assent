@@ -51,6 +51,15 @@ defmodule Assent.HTTPAdapterTest do
       {:ok, %HTTPResponse{status: 200, headers: [], body: @json_library.encode!(%{"a" => 1})}}
     end
 
+    def request(:get, "uppercase-header-names", nil, [], nil) do
+      {:ok,
+       %HTTPResponse{
+         status: 200,
+         headers: [{"Content-Type", "application/json"}],
+         body: @json_library.encode!(%{"a" => 1})
+       }}
+    end
+
     def request(:get, "form-data-body", nil, [], nil) do
       {:ok,
        %HTTPResponse{
@@ -138,6 +147,16 @@ defmodule Assent.HTTPAdapterTest do
                 body: @json_library.encode!(%{"a" => 1}),
                 http_adapter: HTTPMock,
                 request_url: "json-no-headers"
+              }}
+
+    assert HTTPAdapter.request(:get, "uppercase-header-names", nil, [], http_adapter: HTTPMock) ==
+             {:ok,
+              %HTTPResponse{
+                status: 200,
+                headers: [{"content-type", "application/json"}],
+                body: %{"a" => 1},
+                http_adapter: HTTPMock,
+                request_url: "uppercase-header-names"
               }}
 
     assert HTTPAdapter.request(:get, "form-data-body", nil, [], http_adapter: HTTPMock) ==

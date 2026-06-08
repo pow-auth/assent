@@ -102,6 +102,22 @@ defmodule Assent.HTTPAdapter.HttpcTest do
                Httpc.request(:get, TestServer.url("/get?a=1"), nil, [])
     end
 
+    test "with response headers" do
+      TestServer.add("/",
+        via: :get,
+        to: fn conn ->
+          conn
+          |> Plug.Conn.put_resp_header("x-header", "value")
+          |> Plug.Conn.send_resp(200, "")
+        end
+      )
+
+      assert {:ok, %HTTPResponse{headers: headers}} =
+               Httpc.request(:get, TestServer.url(), nil, [])
+
+      assert {"x-header", "value"} in headers
+    end
+
     test "with POST request" do
       TestServer.add("/post",
         via: :post,

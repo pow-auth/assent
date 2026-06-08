@@ -34,10 +34,7 @@ if Code.ensure_loaded?(Req) do
       |> Req.request()
       |> case do
         {:ok, response} ->
-          headers =
-            Enum.map(headers, fn {key, value} ->
-              {String.downcase(to_string(key)), to_string(value)}
-            end)
+          headers = for {key, values} <- response.headers, value <- values, do: {key, value}
 
           {:ok, %HTTPResponse{status: response.status, headers: headers, body: response.body}}
 
