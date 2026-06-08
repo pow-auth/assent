@@ -35,9 +35,7 @@ defmodule Assent.Strategy.GoogleTest do
 
   test "callback/2", %{config: config, callback_params: params} do
     openid_config =
-      config[:openid_configuration]
-      |> Map.put("issuer", "https://accounts.google.com")
-      |> Map.put("token_endpoint_auth_methods_supported", ["client_secret_post"])
+      Map.put(config[:openid_configuration], "issuer", "https://accounts.google.com")
 
     session_params = Map.put(config[:session_params], :nonce, "0394852-3190485-2490358")
 

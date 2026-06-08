@@ -13,6 +13,7 @@ Now requires Elixir 1.15 / OTP 26.
 * `:inets` is now started automatically by `Assent`, and no longer required in `:extra_applications`
 * `Assent.JWTAdapter.AssentJWT` now supports EdDSA algorithms
 * `Assent.JWTAdapter.AssentJWT` now supports EC JWKs
+* `Assent.Strategy.OIDC` no longer rejects a `:client_authentication_method` missing from the provider's `token_endpoint_auth_methods_supported`
 
 ### Bug fixes
 

@@ -45,21 +45,6 @@ defmodule Assent.Strategy.OIDCTest do
                {:error, "Invalid client authentication method: invalid"}
     end
 
-    test "with unsupported authentication method", %{config: config, callback_params: params} do
-      openid_configuration =
-        Map.put(config[:openid_configuration], "token_endpoint_auth_methods_supported", [
-          "private_key_jwt"
-        ])
-
-      config =
-        config
-        |> Keyword.put(:client_authentication_method, "client_secret_basic")
-        |> Keyword.put(:openid_configuration, openid_configuration)
-
-      assert OIDC.callback(config, params) ==
-               {:error, "Unsupported client authentication method: client_secret_basic"}
-    end
-
     test "with missing `token_endpoint` configuration options", %{
       config: config,
       callback_params: params
@@ -187,15 +172,9 @@ defmodule Assent.Strategy.OIDCTest do
       config: config,
       callback_params: params
     } do
-      openid_configuration =
-        Map.put(config[:openid_configuration], "token_endpoint_auth_methods_supported", [
-          "private_key_jwt"
-        ])
-
       config =
         config
         |> Keyword.put(:client_authentication_method, "private_key_jwt")
-        |> Keyword.put(:openid_configuration, openid_configuration)
         |> Keyword.put(:private_key, @private_rsa_key)
         |> Keyword.put(:private_key_id, "key_id")
 
