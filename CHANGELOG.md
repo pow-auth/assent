@@ -17,6 +17,7 @@ Now requires Elixir 1.15 / OTP 26.
 ### Bug fixes
 
 * `Assent.Strategy.OAuth` no longer lowercases the request path for signature base string, per RFC 5849 3.4.1.2
+* `Assent.HTTPAdapter.Req` now returns the response headers instead of the request headers
 
 ## v0.3.1 (2025-06-20)
 

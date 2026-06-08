@@ -103,7 +103,9 @@ defmodule Assent.HTTPAdapter do
     |> http_adapter.request(url, body, headers, http_adapter_opts)
     |> case do
       {:ok, response} ->
-        decode_response(response, opts)
+        response
+        |> normalize_headers()
+        |> decode_response(opts)
 
       {:error, error} ->
         {:error,
@@ -140,6 +142,10 @@ defmodule Assent.HTTPAdapter do
       true -> {Assent.HTTPAdapter.Req, []}
       false -> {Assent.HTTPAdapter.Httpc, []}
     end
+  end
+
+  defp normalize_headers(%HTTPResponse{headers: headers} = response) do
+    %{response | headers: Enum.map(headers, fn {key, value} -> {String.downcase(key), value} end)}
   end
 
   @doc """

@@ -30,6 +30,22 @@ defmodule Assent.HTTPAdapter.ReqTest do
                Req.request(:get, url, nil, [], retry: false)
     end
 
+    test "with response headers" do
+      TestServer.add("/",
+        via: :get,
+        to: fn conn ->
+          conn
+          |> Plug.Conn.put_resp_header("x-header", "value")
+          |> Plug.Conn.send_resp(200, "")
+        end
+      )
+
+      assert {:ok, %HTTPResponse{headers: headers}} =
+               Req.request(:get, TestServer.url(), nil, [], @req_opts)
+
+      assert {"x-header", "value"} in headers
+    end
+
     test "with POST request" do
       TestServer.add("/post",
         via: :post,

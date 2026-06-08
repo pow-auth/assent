@@ -79,11 +79,7 @@ if Code.ensure_loaded?(:httpc) do
     end
 
     defp format_response({:ok, {{_, status, _}, headers, body}}) do
-      headers =
-        Enum.map(headers, fn {key, value} ->
-          {String.downcase(to_string(key)), to_string(value)}
-        end)
-
+      headers = for {key, value} <- headers, do: {to_string(key), to_string(value)}
       body = IO.iodata_to_binary(body)
 
       {:ok, %HTTPResponse{status: status, headers: headers, body: body}}
