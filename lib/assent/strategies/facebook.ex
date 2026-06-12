@@ -10,7 +10,8 @@ defmodule Assent.Strategy.Facebook do
   ## Configuration
 
     * `:user_url_request_fields` - the fields for the resource, defaults to
-      `email,name,first_name,last_name,middle_name,link`
+      `email,name,first_name,last_name,middle_name,link,picture`. A larger
+      image can be requested by using `picture.type(large){url}`.
 
   See `Assent.Strategy.OAuth2` for more.
 
@@ -78,7 +79,7 @@ defmodule Assent.Strategy.Facebook do
       token_url: "/oauth/access_token",
       user_url: "/me",
       authorization_params: [scope: "email"],
-      user_url_request_fields: "email,name,first_name,last_name,middle_name,link",
+      user_url_request_fields: "email,name,first_name,last_name,middle_name,link,picture",
       auth_method: :client_secret_post
     ]
   end
@@ -100,9 +101,8 @@ defmodule Assent.Strategy.Facebook do
     end
   end
 
-  defp picture_url(base_url, user) do
-    "#{base_url}/#{user["id"]}/picture"
-  end
+  defp picture_url(_base_url, %{"picture" => %{"data" => %{"url" => url}}}), do: url
+  defp picture_url(base_url, %{"id" => id}), do: "#{base_url}/#{id}/picture"
 
   @impl true
   def fetch_user(config, access_token) do
