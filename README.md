@@ -178,6 +178,8 @@ defmodule TestProvider do
       user_url: "/user",
       authorization_params: [scope: "email profile"],
       auth_method: :client_secret_post
+      # Optional: additional headers sent in grant access token request
+      auth_headers: [{"X-Api-Version", "1"}]
     ]
   end
 
