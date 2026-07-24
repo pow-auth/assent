@@ -316,7 +316,21 @@ defmodule Assent.Strategy.OAuth2 do
 
       :post
       |> Helpers.http_request(url, body, headers, config)
-      |> process_access_token_response()
+      |> process_access_token_response(config)
+    end
+  end
+
+  # A strategy built on `OAuth2.Base` may reshape a non-standard token-response
+  # body (e.g. one wrapped in an envelope) via `normalize_access_token/1` before
+  # it is matched. `config[:strategy]` is set by `OAuth2.Base`; a strategy used
+  # directly (no `:strategy`) is unaffected.
+  defp normalize_access_token_body(body, config) do
+    strategy = Keyword.get(config, :strategy)
+
+    if strategy && function_exported?(strategy, :normalize_access_token, 1) do
+      strategy.normalize_access_token(body)
+    else
+      {:ok, body}
     end
   end
 
@@ -402,13 +416,18 @@ defmodule Assent.Strategy.OAuth2 do
   end
 
   defp process_access_token_response(
-         {:ok, %HTTPResponse{status: status, body: %{"access_token" => _} = token}}
+         {:ok, %HTTPResponse{status: status, body: body} = response},
+         config
        )
-       when status in [200, 201] do
-    {:ok, token}
+       when status in [200, 201] and is_map(body) do
+    case normalize_access_token_body(body, config) do
+      {:ok, %{"access_token" => _} = token} -> {:ok, token}
+      {:ok, _other} -> process_response({:ok, response})
+      {:error, error} -> {:error, error}
+    end
   end
 
-  defp process_access_token_response(any), do: process_response(any)
+  defp process_access_token_response(any, _config), do: process_response(any)
 
   defp process_response({:ok, %HTTPResponse{} = response}),
     do: {:error, UnexpectedResponseError.exception(response: response)}

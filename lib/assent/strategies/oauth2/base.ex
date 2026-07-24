@@ -31,6 +31,20 @@ defmodule Assent.Strategy.OAuth2.Base do
           }
         end
       end
+
+  ## Non-standard token responses
+
+  Some providers wrap the token response in an envelope rather than returning
+  the OAuth2-standard `{"access_token": ...}` object at the top level. Override
+  `normalize_access_token/1` to reshape the decoded response body before it is
+  processed:
+
+      @impl true
+      def normalize_access_token(%{"data" => token}), do: {:ok, token}
+      def normalize_access_token(token), do: {:ok, token}
+
+  It defaults to the identity function, so standard providers need not
+  implement it.
   """
   alias Assent.Strategy, as: Helpers
   alias Assent.Strategy.OAuth2
@@ -38,6 +52,7 @@ defmodule Assent.Strategy.OAuth2.Base do
   @callback default_config(Keyword.t()) :: Keyword.t()
   @callback normalize(Keyword.t(), map()) :: {:ok, map()} | {:ok, map(), map()} | {:error, term()}
   @callback fetch_user(Keyword.t(), map()) :: {:ok, map()} | {:error, term()}
+  @callback normalize_access_token(map()) :: {:ok, map()} | {:error, term()}
 
   @doc false
   defmacro __using__(_opts) do
@@ -55,6 +70,9 @@ defmodule Assent.Strategy.OAuth2.Base do
 
       @impl unquote(__MODULE__)
       def fetch_user(config, token), do: OAuth2.fetch_user(config, token)
+
+      @impl unquote(__MODULE__)
+      def normalize_access_token(response_body), do: {:ok, response_body}
 
       defoverridable unquote(__MODULE__)
     end
