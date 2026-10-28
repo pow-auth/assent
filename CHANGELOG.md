@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.3.2 (2026-10-28)
 
 * `Assent.Strategy.Apple` no longer allows unverified `user` callback parameters to override identity claims
 
