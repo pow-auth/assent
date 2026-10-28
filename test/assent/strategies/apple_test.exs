@@ -96,11 +96,10 @@ defmodule Assent.Strategy.AppleTest do
       assert user == @user
     end
 
-    test "callback/2 with name scope", %{config: config, callback_params: params} do
-      expected_user = Map.merge(@user, %{"given_name" => "John", "family_name" => "Doe"})
-
+    test "callback/2 with user param", %{config: config, callback_params: params} do
       encoded_user =
         @json_library.encode!(%{
+          email: "user@example.com",
           name: %{
             firstName: "John",
             lastName: "Doe"
@@ -117,7 +116,35 @@ defmodule Assent.Strategy.AppleTest do
       expect_oidc_jwks_uri_request(uri: "/auth/keys", keys: [@jwk])
 
       assert {:ok, %{user: user}} = Apple.callback(config, params)
-      assert user == expected_user
+      assert user == @user
+    end
+
+    test "callback/2 with user param with include_unverified_name: true", %{
+      config: config,
+      callback_params: params
+    } do
+      config = Keyword.put(config, :include_unverified_name, true)
+
+      encoded_user =
+        @json_library.encode!(%{
+          email: "user@example.com",
+          name: %{
+            firstName: "John",
+            lastName: "Doe"
+          }
+        })
+
+      params = Map.put(params, "user", encoded_user)
+
+      expect_oidc_access_token_request(
+        id_token_opts: [claims: @id_token_claims, kid: @jwk["kid"]],
+        uri: "/auth/token"
+      )
+
+      expect_oidc_jwks_uri_request(uri: "/auth/keys", keys: [@jwk])
+
+      assert {:ok, %{user: user}} = Apple.callback(config, params)
+      assert user == Map.merge(@user, %{"given_name" => "John", "family_name" => "Doe"})
     end
 
     test "callback/2 with missing private key file", %{config: config, callback_params: params} do
