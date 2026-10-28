@@ -18,6 +18,7 @@ Now requires Elixir 1.15 / OTP 26.
 * `Assent.Strategy.Facebook` now requests the user `picture` field
 * Strategies now accept a `:prepare_http_request` configuration option for rewriting HTTP requests
 * `Assent.HTTPAdapter.request/5` is deprecated in favor of `Assent.HTTPAdapter.request/2`
+* `Assent.Strategy.Apple` no longer allows unverified `user` callback parameters to override identity claims
 
 ### Bug fixes
 

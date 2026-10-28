@@ -46,10 +46,23 @@ defmodule Assent.Strategy.Apple do
   See the [Sign in with Apple JS
   documentation](https://developer.apple.com/documentation/signinwithapplejs/configuring_your_webpage_for_sign_in_with_apple)
   for more.
+
+  ## Names
+
+  For privacy, Apple [doesn't include](https://developer.apple.com/documentation/signinwithapplerestapi/request-an-authorization-to-the-sign-in-with-apple-server.#Get-the-user-information-and-tokens)
+  the user's name in the ID token. Instead, the browser submits it in a `user`
+  parameter during initial authorization. This data is unverified and can be
+  modified by the end user. If you want to include the name in the user info,
+  add this to the config:
+
+      include_unverified_name: true
+
+  Once enabled and if available in the `user` parameter, `given_name` and
+  `family_name` fields will be included in the user info.
   """
   use Assent.Strategy.OIDC.Base
 
-  alias Assent.{JWTAdapter, Strategy.OIDC, Strategy.OIDC.Base}
+  alias Assent.{JWTAdapter, Strategy.OIDC.Base}
 
   @impl true
   def default_config(config) do
@@ -74,11 +87,11 @@ defmodule Assent.Strategy.Apple do
   @impl true
   def callback(config, params) do
     with {:ok, client_secret} <- gen_client_secret(config),
-         {:ok, user_info} <- decode_user_params(config, params) do
+         {:ok, apple_user_params} <- decode_apple_user_params(config, params) do
       config
       |> Keyword.put(:client_secret, client_secret)
-      |> Keyword.put(:user, user_info)
       |> Base.callback(params, __MODULE__)
+      |> put_apple_user_params(config, apple_user_params)
     end
   end
 
@@ -115,16 +128,36 @@ defmodule Assent.Strategy.Apple do
     end
   end
 
-  defp decode_user_params(config, %{"user" => user}), do: Helpers.decode_json(user, config)
-  defp decode_user_params(_config, %{}), do: {:ok, %{}}
+  defp decode_apple_user_params(config, %{"user" => user}), do: Helpers.decode_json(user, config)
+  defp decode_apple_user_params(_config, %{}), do: {:ok, %{}}
 
-  @impl true
-  def fetch_user(config, token) do
-    with {:ok, user} <- OIDC.fetch_user(config, token),
-         {:ok, user_info} <- Assent.fetch_config(config, :user) do
-      {:ok, Map.merge(user, user_info)}
+  defp put_apple_user_params({:ok, response}, config, apple_user_params) do
+    case Keyword.get(config, :include_unverified_name, false) do
+      true ->
+        user =
+          apple_user_params
+          |> get_name()
+          |> Map.merge(response.user)
+
+        {:ok, %{response | user: user}}
+
+      false ->
+        {:ok, response}
     end
   end
+
+  defp put_apple_user_params({:error, error}, _config, _apple_user_params), do: {:error, error}
+
+  defp get_name(%{"name" => name}) when is_map(name) do
+    [
+      {"given_name", name["firstName"]},
+      {"family_name", name["lastName"]}
+    ]
+    |> Enum.filter(fn {_key, value} -> is_binary(value) end)
+    |> Map.new()
+  end
+
+  defp get_name(_params), do: %{}
 
   @impl true
   def normalize(_config, user) do
@@ -132,9 +165,7 @@ defmodule Assent.Strategy.Apple do
      %{
        "sub" => user["sub"],
        "email" => user["email"],
-       "email_verified" => true,
-       "given_name" => Map.get(user, "name", %{})["firstName"],
-       "family_name" => Map.get(user, "name", %{})["lastName"]
+       "email_verified" => true
      }}
   end
 end
