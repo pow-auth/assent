@@ -37,7 +37,7 @@ defmodule Assent.HTTPAdapter.ReqTest do
           transport_opts: [cacerts: TestServer.x509_suite().cacerts]
         )
 
-      assert {:error, %TransportError{reason: {:tls_alert, {:handshake_failure, _error}}}} =
+      assert {:error, %TransportError{reason: {:tls_alert, _bad_certificate}}} =
                Req.request(:get, bad_host_url, nil, [], req_opts)
     end
 

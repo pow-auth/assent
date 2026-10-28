@@ -40,7 +40,7 @@ defmodule Assent.HTTPAdapter.HttpcTest do
       assert {:error, {:failed_connect, error}} =
                Httpc.request(:get, bad_host_url, nil, [], httpc_opts)
 
-      assert {:tls_alert, {:handshake_failure, _error}} = inet_error(error)
+      assert {:tls_alert, _bad_certificate} = inet_error(error)
     end
 
     test "handles SSL with bad certificate and no verification" do
