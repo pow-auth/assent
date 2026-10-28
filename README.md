@@ -230,6 +230,33 @@ defmodule TestProvider do
 end
 ```
 
+## HTTP request rewrites
+
+Strategies can rewrite HTTP requests before they are sent. This example adds a custom header to requests for a particular endpoint:
+
+```elixir
+defmodule TestProvider do
+  # ...
+
+  def default_config(_config) do
+    [
+      base_url: "https://example.com",
+      token_url: "https://api.example.com/oauth/token",
+      prepare_http_request: {__MODULE__, :prepare_http_request, []}
+    ]
+  end
+
+  def prepare_http_request(request) do
+    case URI.parse(request.url) do
+      %{host: "api.example.com"} -> %{request | headers: [{"x-api-version", "1"} | request.headers]}
+      _other -> request
+    end
+  end
+
+  # ...
+end
+```
+
 ## HTTP Client
 
 Assent supports [`Req`](https://github.com/wojtekmach/req) and [`:httpc`](https://www.erlang.org/doc/man/httpc.html) out of the box. The `Req` HTTP client adapter will be used by default if enabled, otherwise Erlang's `:httpc` adapter will be used.

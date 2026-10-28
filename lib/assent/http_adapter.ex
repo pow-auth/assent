@@ -29,6 +29,22 @@ defmodule Assent.HTTPAdapter do
   """
   alias Assent.{InvalidResponseError, ServerUnreachableError}
 
+  defmodule HTTPRequest do
+    @moduledoc """
+    Struct used by HTTP adapters to normalize HTTP requests.
+    """
+
+    @type header :: {binary(), binary()}
+    @type t :: %__MODULE__{
+            method: atom(),
+            url: binary(),
+            body: binary() | nil,
+            headers: [header()]
+          }
+
+    defstruct [:method, :url, :body, headers: []]
+  end
+
   defmodule HTTPResponse do
     @moduledoc """
     Struct used by HTTP adapters to normalize HTTP responses.
@@ -94,13 +110,13 @@ defmodule Assent.HTTPAdapter do
 
     * `:json_library` - the JSON library to use, see `Assent.json_library/1`
   """
-  @spec request(atom(), binary(), binary() | nil, list(), Keyword.t()) ::
+  @spec request(HTTPRequest.t(), Keyword.t()) ::
           {:ok, HTTPResponse.t()} | {:error, HTTPResponse.t()} | {:error, term()}
-  def request(method, url, body, headers, opts) do
+  def request(%HTTPRequest{} = request, opts) do
     {http_adapter, http_adapter_opts} = get_http_adapter(opts)
 
-    method
-    |> http_adapter.request(url, body, headers, http_adapter_opts)
+    request.method
+    |> http_adapter.request(request.url, request.body, request.headers, http_adapter_opts)
     |> case do
       {:ok, response} ->
         response
@@ -112,19 +128,24 @@ defmodule Assent.HTTPAdapter do
          ServerUnreachableError.exception(
            reason: error,
            http_adapter: http_adapter,
-           request_url: url
+           request_url: request.url
          )}
     end
     |> case do
       {:ok, %{status: status} = resp} when status in 200..399 ->
-        {:ok, %{resp | http_adapter: http_adapter, request_url: url}}
+        {:ok, %{resp | http_adapter: http_adapter, request_url: request.url}}
 
       {:ok, %{status: status} = resp} when status in 400..599 ->
-        {:error, %{resp | http_adapter: http_adapter, request_url: url}}
+        {:error, %{resp | http_adapter: http_adapter, request_url: request.url}}
 
       {:error, error} ->
         {:error, error}
     end
+  end
+
+  @deprecated "Use `request/2` instead. This will be removed in v1.0.0."
+  def request(method, url, body, headers, opts) do
+    request(%HTTPRequest{method: method, url: url, body: body, headers: headers}, opts)
   end
 
   defp get_http_adapter(opts) do

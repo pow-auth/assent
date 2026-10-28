@@ -16,6 +16,8 @@ Now requires Elixir 1.15 / OTP 26.
 * `Assent.Strategy.OIDC` no longer rejects a `:client_authentication_method` missing from the provider's `token_endpoint_auth_methods_supported`
 * `Assent.Strategy.OIDC` accepts additional ID Token issuers via the `:trusted_issuers` config option
 * `Assent.Strategy.Facebook` now requests the user `picture` field
+* Strategies now accept a `:prepare_http_request` configuration option for rewriting HTTP requests
+* `Assent.HTTPAdapter.request/5` is deprecated in favor of `Assent.HTTPAdapter.request/2`
 
 ### Bug fixes
 
