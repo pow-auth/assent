@@ -20,19 +20,26 @@ defmodule Assent.Strategy.AppleTest do
   q9UU8I5mEovUf86QZ7kOBIjJwqnzD1omageEHWwHdBO6B+dFabmdT9POxg==
   -----END PUBLIC KEY-----
   """
-  # Based on https://developer.apple.com/documentation/signinwithapplerestapi/authenticating_users_with_sign_in_with_apple
+  # Based on https://developer.apple.com/documentation/signinwithapplejs/authorizationi/id_token
   @id_token_claims %{
     "iss" => "https://appleid.apple.com",
     "sub" => "001473.fe6f6f83bf4b8e4590aacbabdcb8598bd0.2039",
     "aud" => @client_id,
     "exp" => :os.system_time(:second) + 5 * 60,
     "iat" => :os.system_time(:second),
-    "email" => "john.doe@example.com"
+    "email" => "john.doe@example.com",
+    "email_verified" => "true",
+    "is_private_email" => "false",
+    "real_user_status" => 2,
+    "org_id" => "org_123"
   }
   @user %{
     "email" => "john.doe@example.com",
     "email_verified" => true,
-    "sub" => "001473.fe6f6f83bf4b8e4590aacbabdcb8598bd0.2039"
+    "sub" => "001473.fe6f6f83bf4b8e4590aacbabdcb8598bd0.2039",
+    "is_private_email" => false,
+    "real_user_status" => 2,
+    "org_id" => "org_123"
   }
   @jwk %{
     "kty" => "RSA",
@@ -76,6 +83,28 @@ defmodule Assent.Strategy.AppleTest do
                {:error, "Failed to read \"tmp/missing.pem\", got; :enoent"}
     end
 
+    test "callback/2 with invalid is_private_email claim", %{
+      config: config,
+      callback_params: params
+    } do
+      claims = Map.put(@id_token_claims, "is_private_email", "invalid")
+
+      expect_oidc_access_token_request(
+        id_token_opts: [claims: claims, kid: @jwk["kid"]],
+        uri: "/auth/token"
+      )
+
+      expect_oidc_jwks_uri_request(uri: "/auth/keys", keys: [@jwk])
+
+      assert {:error, %Assent.CastClaimsError{} = error} = Apple.callback(config, params)
+
+      assert Exception.message(error) == """
+             The following claims couldn't be cast:
+
+             - "is_private_email" to :boolean
+             """
+    end
+
     test "callback/2", %{config: config, callback_params: params} do
       url = TestServer.url()
 
@@ -106,17 +135,12 @@ defmodule Assent.Strategy.AppleTest do
       assert user == @user
     end
 
-    test "callback/2 with user param", %{config: config, callback_params: params} do
-      encoded_user =
-        @json_library.encode!(%{
-          email: "user@example.com",
-          name: %{
-            firstName: "John",
-            lastName: "Doe"
-          }
-        })
-
-      params = Map.put(params, "user", encoded_user)
+    test "callback/2 without include_unverified_name: true with user param", %{
+      config: config,
+      callback_params: params
+    } do
+      # This would trigger an error if `include_unverified_name: true`
+      params = Map.put(params, "user", "invalid")
 
       expect_oidc_access_token_request(
         id_token_opts: [claims: @id_token_claims, kid: @jwk["kid"]],
@@ -129,7 +153,64 @@ defmodule Assent.Strategy.AppleTest do
       assert user == @user
     end
 
-    test "callback/2 with user param with include_unverified_name: true", %{
+    test "callback/2 with include_unverified_name: true with invalid JSON user param", %{
+      config: config,
+      callback_params: params
+    } do
+      config = Keyword.put(config, :include_unverified_name, true)
+      params = Map.put(params, "user", "invalid")
+
+      assert_raise ArgumentError, "invalid user param, expected valid JSON", fn ->
+        Apple.callback(config, params)
+      end
+    end
+
+    test "callback/2 with include_unverified_name: true with user param with encoded invalid value",
+         %{
+           config: config,
+           callback_params: params
+         } do
+      config = Keyword.put(config, :include_unverified_name, true)
+      params = Map.put(params, "user", @json_library.encode!("invalid"))
+
+      assert_raise ArgumentError, "invalid user param, expected a JSON object", fn ->
+        Apple.callback(config, params)
+      end
+    end
+
+    test "callback/2 with include_unverified_name: true with user param with invalid name value",
+         %{
+           config: config,
+           callback_params: params
+         } do
+      config = Keyword.put(config, :include_unverified_name, true)
+      encoded_user = @json_library.encode!(%{name: "invalid"})
+      params = Map.put(params, "user", encoded_user)
+
+      assert_raise ArgumentError, "invalid user param, expected name to be a JSON object", fn ->
+        Apple.callback(config, params)
+      end
+    end
+
+    test "callback/2 with include_unverified_name: true with user param with invalid name claims",
+         %{
+           config: config,
+           callback_params: params
+         } do
+      config = Keyword.put(config, :include_unverified_name, true)
+      encoded_user = @json_library.encode!(%{name: %{firstName: true}})
+      params = Map.put(params, "user", encoded_user)
+
+      assert {:error, %Assent.CastClaimsError{} = error} = Apple.callback(config, params)
+
+      assert Exception.message(error) == """
+             The following claims couldn't be cast:
+
+             - "given_name" to :binary
+             """
+    end
+
+    test "callback/2 with include_unverified_name: true with user param", %{
       config: config,
       callback_params: params
     } do
@@ -155,6 +236,41 @@ defmodule Assent.Strategy.AppleTest do
 
       assert {:ok, %{user: user}} = Apple.callback(config, params)
       assert user == Map.merge(@user, %{"given_name" => "John", "family_name" => "Doe"})
+    end
+
+    test "callback/2 with include_unverified_name: true with user param with no name field", %{
+      config: config,
+      callback_params: params
+    } do
+      config = Keyword.put(config, :include_unverified_name, true)
+      params = Map.put(params, "user", @json_library.encode!(%{email: "john.doe@example.com"}))
+
+      expect_oidc_access_token_request(
+        id_token_opts: [claims: @id_token_claims, kid: @jwk["kid"]],
+        uri: "/auth/token"
+      )
+
+      expect_oidc_jwks_uri_request(uri: "/auth/keys", keys: [@jwk])
+
+      assert {:ok, %{user: user}} = Apple.callback(config, params)
+      assert user == @user
+    end
+
+    test "callback/2 with include_unverified_name: true with no user param", %{
+      config: config,
+      callback_params: params
+    } do
+      config = Keyword.put(config, :include_unverified_name, true)
+
+      expect_oidc_access_token_request(
+        id_token_opts: [claims: @id_token_claims, kid: @jwk["kid"]],
+        uri: "/auth/token"
+      )
+
+      expect_oidc_jwks_uri_request(uri: "/auth/keys", keys: [@jwk])
+
+      assert {:ok, %{user: user}} = Apple.callback(config, params)
+      assert user == @user
     end
   else
     IO.warn("No support curve algorithms, can't test #{__MODULE__}")

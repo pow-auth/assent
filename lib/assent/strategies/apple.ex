@@ -47,6 +47,17 @@ defmodule Assent.Strategy.Apple do
   documentation](https://developer.apple.com/documentation/signinwithapplejs/configuring_your_webpage_for_sign_in_with_apple)
   for more.
 
+  ## User info
+
+  The user info may include these claims specific to Apple:
+
+    * `is_private_email` - indicates whether the email that the user shares is
+      a proxy address;
+    * `real_user_status` - indicates whether the user appears to be a real
+      person;
+    * `org_id`           - indicates the organization ID associated with the
+      user;
+
   ## Names
 
   For privacy, Apple [doesn't include](https://developer.apple.com/documentation/signinwithapplerestapi/request-an-authorization-to-the-sign-in-with-apple-server.#Get-the-user-information-and-tokens)
@@ -62,7 +73,7 @@ defmodule Assent.Strategy.Apple do
   """
   use Assent.Strategy.OIDC.Base
 
-  alias Assent.{JWTAdapter, Strategy.OIDC.Base}
+  alias Assent.{JWTAdapter, Strategy.OIDC, Strategy.OIDC.Base}
 
   @impl true
   def default_config(config) do
@@ -87,11 +98,10 @@ defmodule Assent.Strategy.Apple do
   @impl true
   def callback(config, params) do
     with {:ok, client_secret} <- gen_client_secret(config),
-         {:ok, apple_user_params} <- decode_apple_user_params(config, params) do
-      config
-      |> Keyword.put(:client_secret, client_secret)
-      |> Base.callback(params, __MODULE__)
-      |> put_apple_user_params(config, apple_user_params)
+         {:ok, claims} <- fetch_apple_user_claims(config, params),
+         config <- Keyword.put(config, :client_secret, client_secret),
+         {:ok, response} <- Base.callback(config, params, __MODULE__) do
+      {:ok, %{response | user: Map.merge(claims, response.user)}}
     end
   end
 
@@ -128,44 +138,52 @@ defmodule Assent.Strategy.Apple do
     end
   end
 
-  defp decode_apple_user_params(config, %{"user" => user}), do: Helpers.decode_json(user, config)
-  defp decode_apple_user_params(_config, %{}), do: {:ok, %{}}
-
-  defp put_apple_user_params({:ok, response}, config, apple_user_params) do
+  defp fetch_apple_user_claims(config, %{"user" => encoded_user}) do
     case Keyword.get(config, :include_unverified_name, false) do
-      true ->
-        user =
-          apple_user_params
-          |> get_name()
-          |> Map.merge(response.user)
-
-        {:ok, %{response | user: user}}
-
-      false ->
-        {:ok, response}
+      true -> decode_apple_user_params(config, encoded_user)
+      false -> {:ok, %{}}
     end
   end
 
-  defp put_apple_user_params({:error, error}, _config, _apple_user_params), do: {:error, error}
+  defp fetch_apple_user_claims(_config, _params), do: {:ok, %{}}
 
-  defp get_name(%{"name" => name}) when is_map(name) do
-    [
-      {"given_name", name["firstName"]},
-      {"family_name", name["lastName"]}
-    ]
-    |> Enum.filter(fn {_key, value} -> is_binary(value) end)
-    |> Map.new()
+  @name_claim_types %{
+    "given_name" => :binary,
+    "family_name" => :binary
+  }
+
+  defp decode_apple_user_params(config, encoded_user) do
+    case Helpers.decode_json(encoded_user, config) do
+      {:ok, %{"name" => name}} when is_map(name) ->
+        Helpers.cast_claims(
+          %{
+            "given_name" => Map.get(name, "firstName"),
+            "family_name" => Map.get(name, "lastName")
+          },
+          @name_claim_types
+        )
+
+      {:ok, %{"name" => _invalid}} ->
+        raise ArgumentError, "invalid user param, expected name to be a JSON object"
+
+      {:ok, user} when is_map(user) ->
+        {:ok, %{}}
+
+      {:ok, _user} ->
+        raise ArgumentError, "invalid user param, expected a JSON object"
+
+      {:error, _error} ->
+        raise ArgumentError, "invalid user param, expected valid JSON"
+    end
   end
 
-  defp get_name(_params), do: %{}
+  @claim_types %{"is_private_email" => :boolean}
 
   @impl true
-  def normalize(_config, user) do
-    {:ok,
-     %{
-       "sub" => user["sub"],
-       "email" => user["email"],
-       "email_verified" => true
-     }}
+  def fetch_user(config, token) do
+    with {:ok, user} <- OIDC.fetch_user(config, token),
+         {:ok, extra} <- Helpers.cast_claims(user, @claim_types) do
+      {:ok, Map.merge(user, extra)}
+    end
   end
 end

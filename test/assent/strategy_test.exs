@@ -68,6 +68,17 @@ defmodule Assent.StrategyTest do
       "updated_at" => 1_516_239_022
     }
 
+    @extra %{
+      "a" => 1,
+      "b" => nil,
+      "sub" => "other-sub",
+      "address" => %{
+        "formatted" => "other-formatted",
+        "a" => nil,
+        "b" => 2
+      }
+    }
+
     @invalid_user %{
       "sub" => true,
       "address" => %{
@@ -75,96 +86,87 @@ defmodule Assent.StrategyTest do
       }
     }
 
-    @expected_user %{
-      "sub" => "123",
-      "email" => "foo@example.com",
-      "email_verified" => true,
-      "address" => %{
-        "formatted" => "456"
-      },
-      "updated_at" => 1_516_239_022
-    }
+    test "with invalid claims" do
+      assert {:error, %Assent.CastClaimsError{}} =
+               Strategy.normalize_userinfo(@invalid_user, @extra)
+    end
 
-    test "with incorrect claim type" do
+    test "with valid claims" do
+      expected_user =
+        @valid_user
+        |> Map.put("a", 1)
+        |> Map.put("address", Map.put(@valid_user["address"], "b", 2))
+
+      assert Strategy.normalize_userinfo(@valid_user, @extra) == {:ok, expected_user}
+    end
+  end
+
+  describe "cast_claims/2" do
+    test "with invalid claims" do
+      claims = %{
+        "binary" => :invalid,
+        "integer" => "invalid",
+        "boolean" => "invalid",
+        "map" => "invalid",
+        "nested" => %{"binary" => :invalid}
+      }
+
+      claim_types = %{
+        "binary" => :binary,
+        "integer" => :integer,
+        "boolean" => :boolean,
+        "map" => %{"binary" => :binary},
+        "nested" => %{"binary" => :binary}
+      }
+
       assert {:error, %Assent.CastClaimsError{} = error} =
-               Strategy.normalize_userinfo(@invalid_user, %{})
+               Strategy.cast_claims(claims, claim_types)
 
       assert Exception.message(error) == """
              The following claims couldn't be cast:
 
-             - "address" -> "formatted" to :binary
-             - "sub" to :binary
+             - "binary" to :binary
+             - "boolean" to :boolean
+             - "integer" to :integer
+             - "map" to :map
+             - "nested" -> "binary" to :binary
              """
     end
 
-    test "with atom value claim" do
-      user = %{"sub" => :invalid}
+    test "with unrelated claims" do
+      assert Strategy.cast_claims(%{}, %{"boolean" => :boolean}) == {:ok, %{}}
 
-      assert {:error, %Assent.CastClaimsError{} = error} = Strategy.normalize_userinfo(user, %{})
-      assert error.invalid_types == %{"sub" => :binary}
+      assert Strategy.cast_claims(%{"other" => "value"}, %{"key" => :boolean}) ==
+               {:ok, %{}}
     end
 
-    test "with binary type claim with integer value" do
-      user = %{"sub" => 123}
+    test "with valid claims" do
+      claims = %{
+        "binary" => 123,
+        "integer" => "456",
+        "boolean_true" => "true",
+        "boolean_false" => "false",
+        "nested" => %{"binary" => 789, "unknown" => "value"},
+        "unknown" => "value"
+      }
 
-      assert {:ok, %{"sub" => "123"}} = Strategy.normalize_userinfo(user, %{})
-    end
+      claim_types = %{
+        "binary" => :binary,
+        "integer" => :integer,
+        "boolean_true" => :boolean,
+        "boolean_false" => :boolean,
+        "nested" => %{"binary" => :binary}
+      }
 
-    test "with integer type claim with invalid binary value" do
-      user = %{"updated_at" => "123a1"}
-
-      assert {:error, %Assent.CastClaimsError{} = error} = Strategy.normalize_userinfo(user, %{})
-      assert error.invalid_types == %{"updated_at" => :integer}
-    end
-
-    test "with integer type claim with valid binary value" do
-      user = %{"updated_at" => "123"}
-
-      assert {:ok, %{"updated_at" => 123}} = Strategy.normalize_userinfo(user, %{})
-    end
-
-    test "with boolean type claim with string binary value" do
-      user = %{"email_verified" => "true"}
-
-      assert {:ok, %{"email_verified" => true}} = Strategy.normalize_userinfo(user, %{})
-
-      user = %{"email_verified" => "false"}
-
-      assert {:ok, %{"email_verified" => false}} = Strategy.normalize_userinfo(user, %{})
-    end
-
-    test "casts" do
-      assert Strategy.normalize_userinfo(@valid_user) == {:ok, @expected_user}
-    end
-
-    test "with unknown claims" do
-      user =
-        @valid_user
-        |> Map.put("foo", "bar")
-        |> Map.put("address", Map.put(@valid_user["address"], "foo", "bar"))
-
-      assert Strategy.normalize_userinfo(user) == {:ok, @expected_user}
-    end
-
-    test "with extra" do
-      extra =
-        %{
-          "a" => 1,
-          "b" => nil,
-          "sub" => "other-sub",
-          "address" => %{
-            "formatted" => "other-foramtted",
-            "a" => nil,
-            "b" => 2
-          }
-        }
-
-      expected_user =
-        @expected_user
-        |> Map.put("a", 1)
-        |> Map.put("address", Map.put(@expected_user["address"], "b", 2))
-
-      assert Strategy.normalize_userinfo(@valid_user, extra) == {:ok, expected_user}
+      assert Strategy.cast_claims(claims, claim_types) ==
+               {:ok,
+                %{
+                  "binary" => "123",
+                  "integer" => 456,
+                  "boolean_true" => true,
+                  "boolean_false" => false,
+                  "nested" => %{"binary" => "789"}
+                }}
     end
   end
 end

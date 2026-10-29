@@ -19,6 +19,8 @@ Now requires Elixir 1.15 / OTP 26.
 * Strategies now accept a `:prepare_http_request` configuration option for rewriting HTTP requests
 * `Assent.HTTPAdapter.request/5` is deprecated in favor of `Assent.HTTPAdapter.request/2`
 * `Assent.Strategy.Apple` no longer allows unverified `user` callback parameters to override identity claims
+* `Assent.Strategy.Apple` now returns `is_private_email`, `real_user_status`, and `org_id` in the user info
+* `Assent.Strategy.cast_claims/2` added to support casting provider-specific claims
 
 ### Bug fixes
 
