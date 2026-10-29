@@ -35,6 +35,9 @@ defmodule Assent.Strategy do
   @callback callback(Keyword.t(), map()) ::
               {:ok, %{:user => map(), optional(atom()) => any()}} | {:error, term()}
 
+  @type claim_type :: :binary | :integer | :boolean | claim_types()
+  @type claim_types :: %{optional(binary()) => claim_type()}
+
   @doc """
   Makes an HTTP request.
 
@@ -192,11 +195,41 @@ defmodule Assent.Strategy do
   Based on the [OpenID Connect Core 1.0 standard
   claims](https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.5.1).
   """
-  @spec normalize_userinfo(map(), map()) :: {:ok, map()} | {:error, term()}
+  @spec normalize_userinfo(map(), map()) :: {:ok, map()} | {:error, CastClaimsError.t()}
   def normalize_userinfo(claims, extra \\ %{}) do
-    case cast_claims(@registered_claim_member_types, claims) do
+    case cast_claims(claims, @registered_claim_member_types) do
+      {:ok, casted_claims} -> {:ok, deep_merge_claims(casted_claims, extra)}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  @doc """
+  Casts the given claims according to the provided claim types.
+
+  The supported types are defined by `t:claim_type/0`. Integers can be cast to
+  binaries, integer strings can be cast to integers, and `"true"` and `"false"`
+  can be cast to booleans.
+
+  Claims that are not present in the claim types or have `nil` values are
+  discarded. An `Assent.CastClaimsError` is returned if a claim cannot be cast.
+
+  ## Examples
+
+      iex> claims = %{"sub" => "123", "email_verified" => "invalid"}
+      iex> claim_types = %{"sub" => :binary, "email_verified" => :boolean}
+      iex> Assent.Strategy.cast_claims(claims, claim_types)
+      {:error, %Assent.CastClaimsError{claims: claims, invalid_types: %{"email_verified" => :boolean}}}
+
+      iex> claims = %{"sub" => "123", "email_verified" => "true"}
+      iex> claim_types = %{"sub" => :binary, "email_verified" => :boolean}
+      iex> Assent.Strategy.cast_claims(claims, claim_types)
+      {:ok, %{"sub" => "123", "email_verified" => true}}
+  """
+  @spec cast_claims(map(), claim_types()) :: {:ok, map()} | {:error, CastClaimsError.t()}
+  def cast_claims(claims, claim_types) do
+    case do_cast_claims(claims, claim_types) do
       {casted_claims, nil} ->
-        {:ok, deep_merge_claims(casted_claims, extra)}
+        {:ok, casted_claims || %{}}
 
       {_claims, invalid_claims} ->
         {:error,
@@ -204,7 +237,7 @@ defmodule Assent.Strategy do
     end
   end
 
-  defp cast_claims(claim_types, claims) do
+  defp do_cast_claims(claims, claim_types) do
     {casted_claims, invalid_claims} =
       Enum.reduce(claim_types, {[], []}, fn {key, type}, acc ->
         cast_claim(key, type, Map.get(claims, key), acc)
@@ -219,7 +252,7 @@ defmodule Assent.Strategy do
   defp cast_claim(_key, _type, nil, acc), do: acc
 
   defp cast_claim(key, %{} = claim_types, %{} = claims, {casted_claims, invalid_claims}) do
-    {casted_sub_claims, invalid_sub_claims} = cast_claims(claim_types, claims)
+    {casted_sub_claims, invalid_sub_claims} = do_cast_claims(claims, claim_types)
 
     {
       (casted_sub_claims && [{key, casted_sub_claims} | casted_claims]) || casted_claims,
