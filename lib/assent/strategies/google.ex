@@ -33,7 +33,7 @@ defmodule Assent.Strategy.Google do
   @impl true
   def default_config(_config) do
     [
-      base_url: "https://accounts.google.com/",
+      base_url: "https://accounts.google.com",
       authorization_params: [scope: "email profile"],
       client_authentication_method: "client_secret_post"
     ]
