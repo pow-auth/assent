@@ -87,7 +87,7 @@ defmodule Assent.Strategy.OAuth2Test do
                |> Keyword.put(:client_id, @client_id)
                |> OAuth2.authorize_url()
 
-      assert session_params.state
+      assert String.length(session_params.state) == 32
       assert url =~ TestServer.url("/oauth/authorize?")
 
       query_params = url |> URI.parse() |> Map.fetch!(:query) |> URI.decode_query()

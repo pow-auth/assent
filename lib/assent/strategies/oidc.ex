@@ -185,7 +185,7 @@ defmodule Assent.Strategy.OIDC do
       |> Keyword.put(:authorization_params, params)
       |> Keyword.put(:authorize_url, authorize_url)
       |> OAuth2.authorize_url()
-      |> add_nonce_to_session_params(config)
+      |> add_nonce_to_session_params(params)
     end
   end
 
@@ -244,9 +244,23 @@ defmodule Assent.Strategy.OIDC do
       config
       |> Keyword.get(:authorization_params, [])
       |> add_default_scope_param(config)
-      |> add_nonce_param(config)
+      |> Keyword.merge(nonce_params(config))
 
     {:ok, new_params}
+  end
+
+  defp nonce_params(config) do
+    case Keyword.get(config, :nonce, false) do
+      nonce when is_binary(nonce) -> [nonce: nonce]
+      true -> [nonce: gen_nonce()]
+      false -> []
+    end
+  end
+
+  defp gen_nonce do
+    16
+    |> :crypto.strong_rand_bytes()
+    |> Base.encode64(padding: false)
   end
 
   defp add_default_scope_param(params, config) do
@@ -258,18 +272,8 @@ defmodule Assent.Strategy.OIDC do
     end
   end
 
-  defp add_nonce_param(params, config) do
-    case Keyword.fetch(config, :nonce) do
-      :error -> params
-      {:ok, nonce} -> Keyword.put(params, :nonce, nonce)
-    end
-  end
-
-  defp add_nonce_to_session_params({:ok, resp}, config) do
-    case Keyword.fetch(config, :nonce) do
-      :error ->
-        {:ok, resp}
-
+  defp add_nonce_to_session_params({:ok, resp}, params) do
+    case Keyword.fetch(params, :nonce) do
       {:ok, nonce} ->
         session_params =
           resp
@@ -277,10 +281,13 @@ defmodule Assent.Strategy.OIDC do
           |> Map.put(:nonce, nonce)
 
         {:ok, Map.put(resp, :session_params, session_params)}
+
+      :error ->
+        {:ok, resp}
     end
   end
 
-  defp add_nonce_to_session_params({:error, error}, _config),
+  defp add_nonce_to_session_params({:error, error}, _params),
     do: {:error, error}
 
   @doc """

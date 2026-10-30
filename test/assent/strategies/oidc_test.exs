@@ -35,6 +35,19 @@ defmodule Assent.Strategy.OIDCTest do
                  "/oauth/authorize?client_id=id&nonce=n-0S6_WzA2Mj&redirect_uri=http%3A%2F%2Flocalhost%3A4000%2Fauth%2Fcallback&response_type=code&scope=openid&state=#{state}"
                )
     end
+
+    test "with `nonce: true` config", %{config: config} do
+      assert {:ok, %{url: url, session_params: session_params}} =
+               config
+               |> Keyword.put(:nonce, true)
+               |> OIDC.authorize_url()
+
+      assert String.length(session_params.nonce) == 22
+
+      query_params = url |> URI.parse() |> Map.fetch!(:query) |> URI.decode_query()
+
+      assert query_params["nonce"] == session_params.nonce
+    end
   end
 
   describe "callback/2 with static OpenID configuration" do
