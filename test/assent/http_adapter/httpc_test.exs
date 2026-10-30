@@ -4,15 +4,17 @@ defmodule Assent.HTTPAdapter.HttpcTest do
 
   alias Assent.HTTPAdapter.{Httpc, HTTPResponse}
 
-  describe "request/4" do
+  @httpc_opts []
+
+  describe "request/5" do
     test "with HTTPS request" do
       TestServer.start(scheme: :https)
       TestServer.add("/", via: :get)
 
+      httpc_opts = Keyword.put(@httpc_opts, :ssl, cacerts: TestServer.x509_suite().cacerts)
+
       assert {:ok, %HTTPResponse{status: 200, body: "HTTP/1.1"}} =
-               Httpc.request(:get, TestServer.url(), nil, [],
-                 ssl: [cacerts: TestServer.x509_suite().cacerts]
-               )
+               Httpc.request(:get, TestServer.url(), nil, [], httpc_opts)
 
       File.mkdir_p!("tmp")
 
@@ -25,17 +27,17 @@ defmodule Assent.HTTPAdapter.HttpcTest do
 
       TestServer.add("/", via: :get)
 
+      httpc_opts = Keyword.put(@httpc_opts, :ssl, cacertfile: ~c"tmp/cacerts.pem")
+
       assert {:ok, %HTTPResponse{status: 200, body: "HTTP/1.1"}} =
-               Httpc.request(:get, TestServer.url(), nil, [],
-                 ssl: [cacertfile: ~c"tmp/cacerts.pem"]
-               )
+               Httpc.request(:get, TestServer.url(), nil, [], httpc_opts)
     end
 
     test "with HTTPS request with bad certificate" do
       TestServer.start(scheme: :https)
 
       bad_host_url = TestServer.url(host: "bad-host.localhost")
-      httpc_opts = [ssl: [cacerts: TestServer.x509_suite().cacerts]]
+      httpc_opts = Keyword.put(@httpc_opts, :ssl, cacerts: TestServer.x509_suite().cacerts)
 
       assert {:error, {:failed_connect, error}} =
                Httpc.request(:get, bad_host_url, nil, [], httpc_opts)
@@ -49,13 +51,12 @@ defmodule Assent.HTTPAdapter.HttpcTest do
 
       bad_host_url = TestServer.url(host: "bad-host.localhost")
 
-      httpc_opts = [
-        ssl: [
+      httpc_opts =
+        Keyword.put(@httpc_opts, :ssl,
           cacerts: TestServer.x509_suite().cacerts,
           verify: :verify_none,
           verify_fun: {fn _cert, _event, state -> {:valid, state} end, nil}
-        ]
-      ]
+        )
 
       assert {:ok, %HTTPResponse{status: 200}} =
                Httpc.request(:get, bad_host_url, nil, [], httpc_opts)
@@ -84,7 +85,7 @@ defmodule Assent.HTTPAdapter.HttpcTest do
       url = TestServer.url()
       TestServer.stop()
 
-      assert {:error, {:failed_connect, error}} = Httpc.request(:get, url, nil, [])
+      assert {:error, {:failed_connect, error}} = Httpc.request(:get, url, nil, [], @httpc_opts)
       assert inet_error(error) == :econnrefused
     end
 
@@ -99,7 +100,7 @@ defmodule Assent.HTTPAdapter.HttpcTest do
       )
 
       assert {:ok, %HTTPResponse{status: 200}} =
-               Httpc.request(:get, TestServer.url("/get?a=1"), nil, [])
+               Httpc.request(:get, TestServer.url("/get?a=1"), nil, [], @httpc_opts)
     end
 
     test "with response headers" do
@@ -113,7 +114,7 @@ defmodule Assent.HTTPAdapter.HttpcTest do
       )
 
       assert {:ok, %HTTPResponse{headers: headers}} =
-               Httpc.request(:get, TestServer.url(), nil, [])
+               Httpc.request(:get, TestServer.url(), nil, [], @httpc_opts)
 
       assert {"x-header", "value"} in headers
     end
@@ -139,9 +140,15 @@ defmodule Assent.HTTPAdapter.HttpcTest do
       )
 
       assert {:ok, %HTTPResponse{status: 200}} =
-               Httpc.request(:post, TestServer.url("/post"), "a=1&b=2", [
-                 {"content-type", "application/x-www-form-urlencoded"}
-               ])
+               Httpc.request(
+                 :post,
+                 TestServer.url("/post"),
+                 "a=1&b=2",
+                 [
+                   {"content-type", "application/x-www-form-urlencoded"}
+                 ],
+                 @httpc_opts
+               )
     end
   end
 
@@ -175,7 +182,11 @@ defmodule Assent.HTTPAdapter.HttpcTest do
       {stdout, 1} =
         System.cmd(
           "mix",
-          ["run", "-e", "Assent.HTTPAdapter.Httpc.request(:get, \"https://localhost\", nil, [])"],
+          [
+            "run",
+            "-e",
+            "Assent.HTTPAdapter.Httpc.request(:get, \"https://localhost\", nil, [], [])"
+          ],
           stderr_to_stdout: true
         )
 

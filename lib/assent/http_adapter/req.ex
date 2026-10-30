@@ -14,9 +14,8 @@ if Code.ensure_loaded?(Req) do
     @behaviour HTTPAdapter
 
     @impl HTTPAdapter
-    def request(method, url, body, headers, req_opts \\ nil) do
+    def request(method, url, body, headers, opts) do
       headers = headers ++ [HTTPAdapter.user_agent_header()]
-      opts = req_opts || []
 
       opts =
         Keyword.merge(

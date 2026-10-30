@@ -20,7 +20,7 @@ defmodule Assent.HTTPAdapter.ReqTest do
     :ok
   end
 
-  describe "request/4" do
+  describe "request/5" do
     test "with network error" do
       TestServer.start()
       url = TestServer.url()

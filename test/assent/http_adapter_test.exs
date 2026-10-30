@@ -10,7 +10,7 @@ defmodule Assent.HTTPAdapterTest do
   }
 
   defmodule HTTPMock do
-    def request(:get, "http-adapter", nil, [], nil) do
+    def request(:get, "http-adapter", nil, [], []) do
       {:ok, %HTTPResponse{status: 200, headers: [], body: nil}}
     end
 
@@ -18,7 +18,7 @@ defmodule Assent.HTTPAdapterTest do
       {:ok, %HTTPResponse{status: 200, headers: [], body: opts}}
     end
 
-    def request(:get, "json-encoded-body", nil, [], nil) do
+    def request(:get, "json-encoded-body", nil, [], _opts) do
       {:ok,
        %HTTPResponse{
          status: 200,
@@ -27,7 +27,7 @@ defmodule Assent.HTTPAdapterTest do
        }}
     end
 
-    def request(:get, "json-encoded-body-already-decoded", nil, [], nil) do
+    def request(:get, "json-encoded-body-already-decoded", nil, [], _opts) do
       {:ok,
        %HTTPResponse{
          status: 200,
@@ -36,7 +36,7 @@ defmodule Assent.HTTPAdapterTest do
        }}
     end
 
-    def request(:get, "json-encoded-body-text/javascript-header", nil, [], nil) do
+    def request(:get, "json-encoded-body-text/javascript-header", nil, [], _opts) do
       {:ok,
        %HTTPResponse{
          status: 200,
@@ -45,16 +45,16 @@ defmodule Assent.HTTPAdapterTest do
        }}
     end
 
-    def request(:get, "invalid-json-body", nil, [], nil) do
+    def request(:get, "invalid-json-body", nil, [], _opts) do
       {:ok,
        %HTTPResponse{status: 200, headers: [{"content-type", "application/json"}], body: "%"}}
     end
 
-    def request(:get, "json-no-headers", nil, [], nil) do
+    def request(:get, "json-no-headers", nil, [], _opts) do
       {:ok, %HTTPResponse{status: 200, headers: [], body: JSON.encode!(%{"a" => 1})}}
     end
 
-    def request(:get, "uppercase-header-names", nil, [], nil) do
+    def request(:get, "uppercase-header-names", nil, [], _opts) do
       {:ok,
        %HTTPResponse{
          status: 200,
@@ -63,7 +63,7 @@ defmodule Assent.HTTPAdapterTest do
        }}
     end
 
-    def request(:get, "form-data-body", nil, [], nil) do
+    def request(:get, "form-data-body", nil, [], _opts) do
       {:ok,
        %HTTPResponse{
          status: 200,
@@ -72,7 +72,7 @@ defmodule Assent.HTTPAdapterTest do
        }}
     end
 
-    def request(:get, "form-data-body-already-decoded", nil, [], nil) do
+    def request(:get, "form-data-body-already-decoded", nil, [], _opts) do
       {:ok,
        %HTTPResponse{
          status: 200,

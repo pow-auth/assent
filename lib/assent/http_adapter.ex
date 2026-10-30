@@ -153,7 +153,7 @@ defmodule Assent.HTTPAdapter do
            Application.get_env(:assent, :http_adapter) || default_http_adapter()
          end) do
       {mod, server_options} when is_atom(mod) and is_list(server_options) -> {mod, server_options}
-      mod when is_atom(mod) -> {mod, nil}
+      mod when is_atom(mod) -> {mod, []}
       other -> raise("Invalid http_adapter, got: #{inspect(other)}")
     end
   end

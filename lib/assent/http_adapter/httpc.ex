@@ -31,10 +31,10 @@ if Code.ensure_loaded?(:httpc) do
     @behaviour HTTPAdapter
 
     @impl HTTPAdapter
-    def request(method, url, body, headers, httpc_opts \\ nil) do
+    def request(method, url, body, headers, opts) do
       headers = headers ++ [HTTPAdapter.user_agent_header()]
       request = httpc_request(url, body, headers)
-      opts = parse_httpc_ssl_opts(httpc_opts, url)
+      opts = parse_httpc_ssl_opts(opts, url)
 
       method
       |> :httpc.request(request, opts, [])
@@ -86,8 +86,6 @@ if Code.ensure_loaded?(:httpc) do
     end
 
     defp format_response({:error, error}), do: {:error, error}
-
-    defp parse_httpc_ssl_opts(nil, url), do: parse_httpc_ssl_opts([], url)
 
     defp parse_httpc_ssl_opts(opts, url) do
       uri = URI.parse(url)
