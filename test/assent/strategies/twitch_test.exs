@@ -35,7 +35,7 @@ defmodule Assent.Strategy.TwitchTest do
 
     assert scope =~ "user:read:email"
 
-    assert @json_library.decode!(claims)["id_token"] == %{
+    assert JSON.decode!(claims)["id_token"] == %{
              "email" => nil,
              "email_verified" => nil,
              "picture" => nil,

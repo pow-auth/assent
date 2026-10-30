@@ -1,5 +1,5 @@
 defmodule Assent.HTTPAdapterTest do
-  use Assent.TestCase
+  use ExUnit.Case
   doctest Assent.Strategy
 
   alias Assent.{
@@ -10,8 +10,6 @@ defmodule Assent.HTTPAdapterTest do
   }
 
   defmodule HTTPMock do
-    @json_library (Code.ensure_loaded?(JSON) && JSON) || Jason
-
     def request(:get, "http-adapter", nil, [], nil) do
       {:ok, %HTTPResponse{status: 200, headers: [], body: nil}}
     end
@@ -25,7 +23,7 @@ defmodule Assent.HTTPAdapterTest do
        %HTTPResponse{
          status: 200,
          headers: [{"content-type", "application/json"}],
-         body: @json_library.encode!(%{"a" => 1})
+         body: JSON.encode!(%{"a" => 1})
        }}
     end
 
@@ -43,7 +41,7 @@ defmodule Assent.HTTPAdapterTest do
        %HTTPResponse{
          status: 200,
          headers: [{"content-type", "text/javascript"}],
-         body: @json_library.encode!(%{"a" => 1})
+         body: JSON.encode!(%{"a" => 1})
        }}
     end
 
@@ -53,7 +51,7 @@ defmodule Assent.HTTPAdapterTest do
     end
 
     def request(:get, "json-no-headers", nil, [], nil) do
-      {:ok, %HTTPResponse{status: 200, headers: [], body: @json_library.encode!(%{"a" => 1})}}
+      {:ok, %HTTPResponse{status: 200, headers: [], body: JSON.encode!(%{"a" => 1})}}
     end
 
     def request(:get, "uppercase-header-names", nil, [], nil) do
@@ -61,7 +59,7 @@ defmodule Assent.HTTPAdapterTest do
        %HTTPResponse{
          status: 200,
          headers: [{"Content-Type", "application/json"}],
-         body: @json_library.encode!(%{"a" => 1})
+         body: JSON.encode!(%{"a" => 1})
        }}
     end
 
@@ -148,7 +146,7 @@ defmodule Assent.HTTPAdapterTest do
               %HTTPResponse{
                 status: 200,
                 headers: [],
-                body: @json_library.encode!(%{"a" => 1}),
+                body: JSON.encode!(%{"a" => 1}),
                 http_adapter: HTTPMock,
                 request_url: "json-no-headers"
               }}
@@ -202,7 +200,7 @@ defmodule Assent.HTTPAdapterTest do
 
   @body %{"a" => "1", "b" => "2"}
   @headers [{"content-type", "application/json"}]
-  @json_encoded_body @json_library.encode!(@body)
+  @json_encoded_body JSON.encode!(@body)
   @uri_encoded_body URI.encode_query(@body)
 
   test "decode_response/2" do

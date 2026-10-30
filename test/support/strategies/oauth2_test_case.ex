@@ -2,8 +2,6 @@ defmodule Assent.Test.OAuth2TestCase do
   @moduledoc false
   use ExUnit.CaseTemplate
 
-  @json_library (Code.ensure_loaded?(JSON) && JSON) || Jason
-
   setup _tags do
     TestServer.start()
 
@@ -22,7 +20,7 @@ defmodule Assent.Test.OAuth2TestCase do
 
   using do
     quote do
-      use Assent.TestCase
+      use ExUnit.Case
 
       import unquote(__MODULE__)
     end
@@ -92,6 +90,6 @@ defmodule Assent.Test.OAuth2TestCase do
   defp send_json_resp(conn, body, status_code) do
     conn
     |> Conn.put_resp_content_type("application/json")
-    |> Conn.send_resp(status_code, @json_library.encode!(body))
+    |> Conn.send_resp(status_code, JSON.encode!(body))
   end
 end
