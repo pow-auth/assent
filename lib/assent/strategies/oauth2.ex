@@ -250,8 +250,8 @@ defmodule Assent.Strategy.OAuth2 do
   @spec callback(Keyword.t(), map(), atom()) :: on_callback()
   def callback(config, params, strategy \\ __MODULE__) do
     with {:ok, session_params} <- Assent.fetch_config(config, :session_params),
-         :ok <- check_error_params(params),
          :ok <- verify_state(config, session_params, params),
+         :ok <- check_error_params(params),
          {:ok, grant_params} <- fetch_grant_access_token_params(config, params, session_params),
          {:ok, token} <- grant_access_token(config, "authorization_code", grant_params) do
       fetch_user_with_strategy(config, token, strategy)

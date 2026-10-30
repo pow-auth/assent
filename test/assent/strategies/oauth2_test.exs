@@ -160,19 +160,6 @@ defmodule Assent.Strategy.OAuth2Test do
       assert error.key == :session_params
     end
 
-    test "with `error` in params", %{config: config, callback_params: %{"state" => state}} do
-      params = %{
-        "error" => "access_denied",
-        "error_description" => "The user denied the request",
-        "state" => state
-      }
-
-      assert {:error, %CallbackError{} = error} = OAuth2.callback(config, params)
-      assert error.message == "The user denied the request"
-      assert error.error == "access_denied"
-      refute error.error_uri
-    end
-
     test "with missing `state` in session_params", %{
       config: config,
       callback_params: params
@@ -199,20 +186,6 @@ defmodule Assent.Strategy.OAuth2Test do
       assert error.key == "state"
     end
 
-    test "with `state: false`", %{config: config, callback_params: params} do
-      config =
-        config
-        |> Keyword.put(:session_params, %{})
-        |> Keyword.put(:state, false)
-
-      params = Map.delete(params, "state")
-
-      expect_oauth2_access_token_request([])
-      expect_oauth2_user_request(%{})
-
-      assert {:ok, _any} = OAuth2.callback(config, params)
-    end
-
     test "with `state: binary`", %{config: config, callback_params: params} do
       session_params = Map.put(config[:session_params], :state, "custom_state")
 
@@ -227,6 +200,45 @@ defmodule Assent.Strategy.OAuth2Test do
       expect_oauth2_user_request(%{})
 
       assert {:ok, _any} = OAuth2.callback(config, params)
+    end
+
+    test "with `state: false`", %{config: config, callback_params: params} do
+      config =
+        config
+        |> Keyword.put(:session_params, %{})
+        |> Keyword.put(:state, false)
+
+      params = Map.delete(params, "state")
+
+      expect_oauth2_access_token_request([])
+      expect_oauth2_user_request(%{})
+
+      assert {:ok, _any} = OAuth2.callback(config, params)
+    end
+
+    test "with `error` in params with invalid `state` param", %{config: config} do
+      params = %{
+        "error" => "access_denied",
+        "error_description" => "The user denied the request",
+        "state" => "invalid"
+      }
+
+      assert {:error, %CallbackCSRFError{} = error} = OAuth2.callback(config, params)
+      assert Exception.message(error) == "CSRF detected with param key \"state\""
+      assert error.key == "state"
+    end
+
+    test "with `error` in params", %{config: config, callback_params: %{"state" => state}} do
+      params = %{
+        "error" => "access_denied",
+        "error_description" => "The user denied the request",
+        "state" => state
+      }
+
+      assert {:error, %CallbackError{} = error} = OAuth2.callback(config, params)
+      assert error.message == "The user denied the request"
+      assert error.error == "access_denied"
+      refute error.error_uri
     end
 
     test "with missing `code` param", %{config: config, callback_params: params} do

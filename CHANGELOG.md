@@ -28,6 +28,7 @@ Now requires Elixir 1.18 / OTP 26.
 * `Assent.Strategy.OAuth` no longer lowercases the request path for signature base string, per RFC 5849 3.4.1.2
 * `Assent.HTTPAdapter.Req` now returns the response headers instead of the request headers
 * `Assent.Strategy.OIDC` now rejects dynamically fetched OpenID configuration when issuer does not match the issuer URL
+* `Assent.Strategy.OAuth2.callback/2` now validates the `state` parameter before handling error responses
 
 ## v0.3
 
