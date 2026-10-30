@@ -196,19 +196,16 @@ defmodule Assent do
     end
   end
 
-  @default_json_library (Code.ensure_loaded?(JSON) && JSON) || Jason
-
   @doc """
   Fetches the JSON library in config.
 
   If not found in provided config, this will attempt to load the JSON library
-  from global application environment for `:assent`. Defaults to
-  `#{inspect(@default_json_library)}`.
+  from global application environment for `:assent`. Defaults to `JSON`.
   """
   @spec json_library(Keyword.t()) :: module()
   def json_library(config) do
     case Keyword.fetch(config, :json_library) do
-      :error -> Application.get_env(:assent, :json_library, @default_json_library)
+      :error -> Application.get_env(:assent, :json_library, JSON)
       {:ok, json_library} -> json_library
     end
   end

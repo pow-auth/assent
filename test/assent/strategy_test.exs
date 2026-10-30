@@ -1,5 +1,5 @@
 defmodule Assent.StrategyTest do
-  use Assent.TestCase
+  use ExUnit.Case
   doctest Assent.Strategy
 
   alias Assent.Strategy

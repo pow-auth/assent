@@ -112,10 +112,8 @@ defmodule Assent.Strategy.AppleTest do
         [id_token_opts: [claims: @id_token_claims], uri: "/auth/token"],
         fn _conn, params ->
           assert {:ok, jwt} =
-                   AssentJWT.verify(
-                     params["client_secret"],
-                     @public_key,
-                     json_library: @json_library
+                   AssentJWT.verify(params["client_secret"], @public_key,
+                     json_library: Assent.json_library([])
                    )
 
           assert jwt.verified?
@@ -171,7 +169,7 @@ defmodule Assent.Strategy.AppleTest do
            callback_params: params
          } do
       config = Keyword.put(config, :include_unverified_name, true)
-      params = Map.put(params, "user", @json_library.encode!("invalid"))
+      params = Map.put(params, "user", JSON.encode!("invalid"))
 
       assert_raise ArgumentError, "invalid user param, expected a JSON object", fn ->
         Apple.callback(config, params)
@@ -184,7 +182,7 @@ defmodule Assent.Strategy.AppleTest do
            callback_params: params
          } do
       config = Keyword.put(config, :include_unverified_name, true)
-      encoded_user = @json_library.encode!(%{name: "invalid"})
+      encoded_user = JSON.encode!(%{name: "invalid"})
       params = Map.put(params, "user", encoded_user)
 
       assert_raise ArgumentError, "invalid user param, expected name to be a JSON object", fn ->
@@ -198,7 +196,7 @@ defmodule Assent.Strategy.AppleTest do
            callback_params: params
          } do
       config = Keyword.put(config, :include_unverified_name, true)
-      encoded_user = @json_library.encode!(%{name: %{firstName: true}})
+      encoded_user = JSON.encode!(%{name: %{firstName: true}})
       params = Map.put(params, "user", encoded_user)
 
       assert {:error, %Assent.CastClaimsError{} = error} = Apple.callback(config, params)
@@ -217,7 +215,7 @@ defmodule Assent.Strategy.AppleTest do
       config = Keyword.put(config, :include_unverified_name, true)
 
       encoded_user =
-        @json_library.encode!(%{
+        JSON.encode!(%{
           email: "user@example.com",
           name: %{
             firstName: "John",
@@ -243,7 +241,7 @@ defmodule Assent.Strategy.AppleTest do
       callback_params: params
     } do
       config = Keyword.put(config, :include_unverified_name, true)
-      params = Map.put(params, "user", @json_library.encode!(%{email: "john.doe@example.com"}))
+      params = Map.put(params, "user", JSON.encode!(%{email: "john.doe@example.com"}))
 
       expect_oidc_access_token_request(
         id_token_opts: [claims: @id_token_claims, kid: @jwk["kid"]],

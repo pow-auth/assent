@@ -185,7 +185,7 @@ defmodule Assent.Strategy.OIDCTest do
         fn _conn, params ->
           assert {:ok, jwt} =
                    AssentJWT.verify(params["client_assertion"], @public_rsa_key,
-                     json_library: Jason
+                     json_library: Assent.json_library([])
                    )
 
           assert jwt.header["alg"] == "RS256"

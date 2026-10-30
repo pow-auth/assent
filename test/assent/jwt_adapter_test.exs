@@ -1,5 +1,5 @@
 defmodule Assent.JWTAdapterTest do
-  use Assent.TestCase
+  use ExUnit.Case
   doctest Assent.Strategy
 
   alias Assent.JWTAdapter

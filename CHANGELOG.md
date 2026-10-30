@@ -2,11 +2,12 @@
 
 ## v0.4.0 (TBA)
 
-Now requires Elixir 1.15 / OTP 26.
+Now requires Elixir 1.18 / OTP 26.
 
 ### Breaking changes
 
 * `Assent.HTTPAdapter.Finch` removed
+* `JSON` is now the default JSON library
 
 ### Changes
 

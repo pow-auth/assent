@@ -1,5 +1,5 @@
 defmodule AssentTest do
-  use Assent.TestCase
+  use ExUnit.Case
   doctest Assent
 
   test "fetch_config/2" do
