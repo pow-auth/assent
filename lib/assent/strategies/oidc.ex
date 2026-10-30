@@ -9,7 +9,8 @@ defmodule Assent.Strategy.OIDC do
 
     * `:client_id` - the client ID, required
 
-    * `:base_url` - the OIDC issuer, required
+    * `:base_url` - the OIDC issuer, required, must exactly match the
+      discovered `issuer`
 
     * `:openid_configuration_uri` - the URI for OpenID Provider, optional,
       defaults to `/.well-known/openid-configuration`
@@ -204,7 +205,7 @@ defmodule Assent.Strategy.OIDC do
 
       case Helpers.http_request(:get, url, nil, [], config) do
         {:ok, %HTTPResponse{status: 200, body: configuration}} ->
-          {:ok, configuration}
+          validate_provider_configuration_issuer(configuration, base_url)
 
         {:ok, %HTTPResponse{} = response} ->
           {:error, UnexpectedResponseError.exception(response: response)}
@@ -216,6 +217,19 @@ defmodule Assent.Strategy.OIDC do
           {:error, error}
       end
     end
+  end
+
+  defp validate_provider_configuration_issuer(configuration, base_url) do
+    with {:ok, issuer} <- fetch_from_openid_config(configuration, "issuer"),
+         :ok <- do_validate_provider_configuration_issuer(issuer, base_url) do
+      {:ok, configuration}
+    end
+  end
+
+  defp do_validate_provider_configuration_issuer(issuer, issuer), do: :ok
+
+  defp do_validate_provider_configuration_issuer(_issuer, base_url) do
+    {:error, "`issuer` does not match Issuer URL #{inspect(base_url)}"}
   end
 
   defp fetch_from_openid_config(config, key) do

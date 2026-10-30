@@ -251,6 +251,28 @@ defmodule Assent.Strategy.OIDCTest do
       assert error.response.status == 404
     end
 
+    test "with missing `issuer`", %{
+      config: config,
+      openid_config: openid_config,
+      callback_params: params
+    } do
+      expect_openid_config_request(Map.delete(openid_config, "issuer"))
+
+      assert OIDC.callback(config, params) ==
+               {:error, "`issuer` not found in OpenID configuration"}
+    end
+
+    test "with different `issuer`", %{
+      config: config,
+      openid_config: openid_config,
+      callback_params: params
+    } do
+      expect_openid_config_request(Map.put(openid_config, "issuer", "https://other.example.com"))
+
+      assert OIDC.callback(config, params) ==
+               {:error, "`issuer` does not match Issuer URL #{inspect(config[:base_url])}"}
+    end
+
     test "with invalid id_token", %{
       config: config,
       openid_config: openid_config,
