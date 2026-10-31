@@ -32,6 +32,7 @@ Now requires Elixir 1.18 / OTP 26.
 * `Assent.Strategy.OIDC.authorize_url/1` now generates a random nonce when `:nonce` is set to `true`
 * `Assent.Strategy.OAuth.authorize_url/1` now validates `oauth_callback_confirmed` in request token responses
 * `Assent.Strategy.OAuth.callback/2` now validates the `oauth_token` parameter
+* `Assent.Strategy.Telegram.callback/2` now verifies `hash` before verifying `auth_date`
 
 ## v0.3
 

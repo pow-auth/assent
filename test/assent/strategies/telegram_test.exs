@@ -38,8 +38,21 @@ defmodule Assent.Strategy.TelegramTest do
         return_to: "http://localhost:4000/auth/callback"
       ]
 
-    auth_date = DateTime.utc_now() |> DateTime.to_unix() |> Integer.to_string()
-    default_params = Map.put(@callback_params, "auth_date", auth_date)
+    now = DateTime.to_unix(DateTime.utc_now())
+
+    default_params =
+      case Map.get(context, :auth_date, {:utc_now, 0}) do
+        {:utc_now, offset} ->
+          auth_date = Integer.to_string(now + offset)
+
+          Map.put(@callback_params, "auth_date", auth_date)
+
+        nil ->
+          @callback_params
+
+        auth_date ->
+          Map.put(@callback_params, "auth_date", auth_date)
+      end
 
     {config, params} =
       case Map.get(context, :authorization_channel, :login_widget) do
@@ -134,27 +147,6 @@ defmodule Assent.Strategy.TelegramTest do
       assert error.key == "init_data"
     end
 
-    test "with missing auth_date param", %{config: config, callback_params: callback_params} do
-      callback_params = Map.delete(callback_params, "auth_date")
-
-      assert {:error, %Assent.MissingParamError{} = error} =
-               Telegram.callback(config, callback_params)
-
-      assert error.key == "auth_date"
-    end
-
-    test "with expired auth_date param", %{config: config, callback_params: callback_params} do
-      expired_auth_date =
-        DateTime.utc_now() |> DateTime.to_unix() |> Kernel.-(61) |> Integer.to_string()
-
-      callback_params = Map.put(callback_params, "auth_date", expired_auth_date)
-
-      assert {:error, %Assent.CallbackError{} = error} =
-               Telegram.callback(config, callback_params)
-
-      assert error.message == "Authorization request has expired"
-    end
-
     test "with missing bot_token config", %{config: config, callback_params: callback_params} do
       config = Keyword.delete(config, :bot_token)
 
@@ -173,6 +165,16 @@ defmodule Assent.Strategy.TelegramTest do
       assert error.message == "Authorization request has an invalid hash"
     end
 
+    @tag auth_date: "invalid"
+    test "with invalid hash with invalid auth_date param", %{
+      config: config,
+      callback_params: callback_params
+    } do
+      assert_raise ArgumentError, ~r/not a textual representation of an integer/, fn ->
+        Telegram.callback(config, callback_params)
+      end
+    end
+
     @tag authorization_channel: :web_mini_app
     test "with web mini app with invalid hash", %{
       config: config,
@@ -184,6 +186,29 @@ defmodule Assent.Strategy.TelegramTest do
                Telegram.callback(config, callback_params)
 
       assert error.message == "Authorization request has an invalid hash"
+    end
+
+    @tag auth_date: nil
+    test "with missing auth_date param", %{config: config, callback_params: callback_params} do
+      assert {:error, %Assent.MissingParamError{} = error} =
+               Telegram.callback(config, callback_params)
+
+      assert error.key == "auth_date"
+    end
+
+    @tag auth_date: "invalid"
+    test "with invalid auth_date param", %{config: config, callback_params: callback_params} do
+      assert_raise ArgumentError, ~r/not a textual representation of an integer/, fn ->
+        Telegram.callback(config, callback_params)
+      end
+    end
+
+    @tag auth_date: {:utc_now, -61}
+    test "with expired auth_date param", %{config: config, callback_params: callback_params} do
+      assert {:error, %Assent.CallbackError{} = error} =
+               Telegram.callback(config, callback_params)
+
+      assert error.message == "Authorization request has expired"
     end
 
     test "returns user", %{config: config, callback_params: callback_params} do

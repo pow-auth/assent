@@ -121,9 +121,9 @@ defmodule Assent.Strategy.Telegram do
   def callback(config, params) do
     with {:ok, authorization_channel} <- fetch_authorization_channel(config),
          {:ok, {hash, params}} <- split_hash_params(config, params, authorization_channel),
-         :ok <- verify_ttl(config, params),
          {:ok, secret} <- generate_token_signature(config, authorization_channel),
          :ok <- verify_hash(secret, hash, params),
+         :ok <- verify_ttl(config, params),
          {:ok, user} <- normalize(params, config) do
       {:ok, %{user: user}}
     end
@@ -171,21 +171,6 @@ defmodule Assent.Strategy.Telegram do
     end
   end
 
-  defp verify_ttl(_config, params) do
-    with {:ok, auth_date} <- Assent.fetch_param(params, "auth_date") do
-      auth_timestamp = (is_binary(auth_date) && String.to_integer(auth_date)) || auth_date
-
-      DateTime.utc_now()
-      |> DateTime.to_unix(:second)
-      |> Kernel.-(auth_timestamp)
-      |> Kernel.<=(@auth_ttl_seconds)
-      |> case do
-        true -> :ok
-        false -> {:error, CallbackError.exception(message: "Authorization request has expired")}
-      end
-    end
-  end
-
   defp verify_hash(secret, hash, params) do
     data =
       params
@@ -204,6 +189,21 @@ defmodule Assent.Strategy.Telegram do
 
       false ->
         {:error, CallbackError.exception(message: "Authorization request has an invalid hash")}
+    end
+  end
+
+  defp verify_ttl(_config, params) do
+    with {:ok, auth_date} <- Assent.fetch_param(params, "auth_date") do
+      auth_timestamp = (is_binary(auth_date) && String.to_integer(auth_date)) || auth_date
+
+      DateTime.utc_now()
+      |> DateTime.to_unix(:second)
+      |> Kernel.-(auth_timestamp)
+      |> Kernel.<=(@auth_ttl_seconds)
+      |> case do
+        true -> :ok
+        false -> {:error, CallbackError.exception(message: "Authorization request has expired")}
+      end
     end
   end
 
