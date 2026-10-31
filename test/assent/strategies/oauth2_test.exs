@@ -370,9 +370,12 @@ defmodule Assent.Strategy.OAuth2Test do
       assert {:ok, _any} = OAuth2.callback(config, params)
     end
 
-    test "with `auth_method: :client_secret_jwt`", %{config: config, callback_params: params} do
+    test "with `auth_method: :client_secret_jwt`", %{
+      config: config,
+      callback_params: params
+    } do
       config = Keyword.put(config, :auth_method, :client_secret_jwt)
-      url = TestServer.url()
+      token_url = TestServer.url("/oauth/token")
 
       expect_oauth2_access_token_request([], fn _conn, params ->
         assert params["grant_type"] == "authorization_code"
@@ -392,8 +395,34 @@ defmodule Assent.Strategy.OAuth2Test do
         assert jwt.header["typ"] == "JWT"
         assert jwt.claims["iss"] == @client_id
         assert jwt.claims["sub"] == @client_id
-        assert jwt.claims["aud"] == url
+        assert jwt.claims["aud"] == token_url
         assert jwt.claims["exp"] > DateTime.to_unix(DateTime.utc_now())
+      end)
+
+      expect_oauth2_user_request(@user_api_params)
+
+      assert {:ok, _any} = OAuth2.callback(config, params)
+    end
+
+    test "with `auth_method: :client_secret_jwt` with `:jwt_audience` config", %{
+      config: config,
+      callback_params: params
+    } do
+      audience = "https://auth.example.com/oauth/token"
+
+      config =
+        config
+        |> Keyword.put(:auth_method, :client_secret_jwt)
+        |> Keyword.put(:jwt_audience, audience)
+
+      expect_oauth2_access_token_request([], fn _conn, params ->
+        assert {:ok, jwt} =
+                 AssentJWT.verify(params["client_assertion"], @client_secret,
+                   json_library: Assent.json_library([])
+                 )
+
+        assert jwt.verified?
+        assert jwt.claims["aud"] == audience
       end)
 
       expect_oauth2_user_request(@user_api_params)
@@ -409,7 +438,7 @@ defmodule Assent.Strategy.OAuth2Test do
         |> Keyword.put(:private_key, @private_key)
         |> Keyword.put(:private_key_id, @private_key_id)
 
-      url = TestServer.url()
+      token_url = TestServer.url("/oauth/token")
 
       expect_oauth2_access_token_request([], fn _conn, params ->
         assert params["grant_type"] == "authorization_code"
@@ -430,7 +459,7 @@ defmodule Assent.Strategy.OAuth2Test do
         assert jwt.header["kid"] == @private_key_id
         assert jwt.claims["iss"] == @client_id
         assert jwt.claims["sub"] == @client_id
-        assert jwt.claims["aud"] == url
+        assert jwt.claims["aud"] == token_url
         assert jwt.claims["exp"] > DateTime.to_unix(DateTime.utc_now())
       end)
 

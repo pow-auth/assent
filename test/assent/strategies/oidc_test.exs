@@ -185,16 +185,25 @@ defmodule Assent.Strategy.OIDCTest do
       config: config,
       callback_params: params
     } do
+      openid_config =
+        config
+        |> Keyword.get(:openid_configuration)
+        |> Map.put("token_endpoint", TestServer.url("/oidc/token"))
+
       config =
         config
         |> Keyword.put(:client_authentication_method, "private_key_jwt")
         |> Keyword.put(:private_key, @private_rsa_key)
         |> Keyword.put(:private_key_id, "key_id")
+        |> Keyword.put(:openid_configuration, openid_config)
 
-      url = TestServer.url()
+      token_url = TestServer.url("/oidc/token")
 
       expect_oidc_access_token_request(
-        [id_token_opts: [claims: @user_claims, iss: "http://localhost"]],
+        [
+          uri: "/oidc/token",
+          id_token_opts: [claims: @user_claims, iss: "http://localhost"]
+        ],
         fn _conn, params ->
           assert {:ok, jwt} =
                    AssentJWT.verify(params["client_assertion"], @public_rsa_key,
@@ -206,7 +215,7 @@ defmodule Assent.Strategy.OIDCTest do
           assert jwt.header["kid"] == "key_id"
           assert jwt.claims["iss"] == "id"
           assert jwt.claims["sub"] == "id"
-          assert jwt.claims["aud"] == url
+          assert jwt.claims["aud"] == token_url
           assert jwt.claims["exp"] > DateTime.to_unix(DateTime.utc_now())
         end
       )
