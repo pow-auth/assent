@@ -397,12 +397,14 @@ defmodule Assent.Strategy.OAuth2 do
          {:ok, token_url} <- Assent.fetch_config(config, :token_url),
          {:ok, client_id} <- Assent.fetch_config(config, :client_id) do
       audience = Keyword.get(config, :jwt_audience, Helpers.to_url(base_url, token_url))
+      jti = gen_url_encoded_base64(32)
 
       {:ok,
        %{
          "iss" => client_id,
          "sub" => client_id,
          "aud" => audience,
+         "jti" => jti,
          "iat" => timestamp,
          "exp" => timestamp + 60
        }}

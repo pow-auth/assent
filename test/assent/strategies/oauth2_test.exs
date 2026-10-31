@@ -396,6 +396,7 @@ defmodule Assent.Strategy.OAuth2Test do
         assert jwt.claims["iss"] == @client_id
         assert jwt.claims["sub"] == @client_id
         assert jwt.claims["aud"] == token_url
+        assert String.length(jwt.claims["jti"]) == 32
         assert jwt.claims["exp"] > DateTime.to_unix(DateTime.utc_now())
       end)
 
@@ -460,6 +461,7 @@ defmodule Assent.Strategy.OAuth2Test do
         assert jwt.claims["iss"] == @client_id
         assert jwt.claims["sub"] == @client_id
         assert jwt.claims["aud"] == token_url
+        assert String.length(jwt.claims["jti"]) == 32
         assert jwt.claims["exp"] > DateTime.to_unix(DateTime.utc_now())
       end)
 

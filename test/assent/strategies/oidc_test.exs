@@ -216,6 +216,7 @@ defmodule Assent.Strategy.OIDCTest do
           assert jwt.claims["iss"] == "id"
           assert jwt.claims["sub"] == "id"
           assert jwt.claims["aud"] == token_url
+          assert String.length(jwt.claims["jti"]) == 32
           assert jwt.claims["exp"] > DateTime.to_unix(DateTime.utc_now())
         end
       )

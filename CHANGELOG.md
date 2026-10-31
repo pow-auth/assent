@@ -36,6 +36,7 @@ Now requires Elixir 1.18 / OTP 26.
 * `Assent.Strategy.Telegram.callback/2` now verifies `hash` before verifying `auth_date`
 * `Assent.Strategy.OAuth2.grant_access_token/3` now encodes `client_secret_basic` credentials as `x-www-form-urlencoded`
 * `Assent.Strategy.OAuth2.grant_access_token/3` now uses the token endpoint URL as the default `aud` for JWT client authentication
+* `Assent.Strategy.OAuth2.grant_access_token/3` now includes a unique `jti` in JWT client authentication
 
 ## v0.3
 
