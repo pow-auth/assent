@@ -13,7 +13,7 @@ defmodule Assent.Strategy.VKTest do
   ]
   @token_response %{
     "access_token" => "access_token",
-    "id" => 66_748,
+    "user_id" => 66_748,
     "email" => "lindsay.stirling@example.com"
   }
   @user %{
@@ -54,9 +54,8 @@ defmodule Assent.Strategy.VKTest do
           conn = Plug.Conn.fetch_query_params(conn)
 
           assert conn.params["access_token"] == "access_token"
-          assert conn.params["fields"] == "uid,first_name,last_name,photo_200,screen_name"
-          assert conn.params["v"] == "5.69"
-          assert conn.params["access_token"] == "access_token"
+          assert conn.params["fields"] == "photo_200,screen_name"
+          assert conn.params["v"] == "5.199"
         end
       )
 

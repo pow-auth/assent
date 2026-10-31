@@ -24,8 +24,8 @@ defmodule Assent.Strategy.VK do
 
   alias Assent.Strategy.OAuth2
 
-  @profile_fields ["uid", "first_name", "last_name", "photo_200", "screen_name"]
-  @url_params [fields: Enum.join(@profile_fields, ","), v: "5.69", https: "1"]
+  @profile_fields ["photo_200", "screen_name"]
+  @url_params [fields: Enum.join(@profile_fields, ","), v: "5.199"]
 
   @impl true
   def default_config(config) do
