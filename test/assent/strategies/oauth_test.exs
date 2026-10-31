@@ -4,6 +4,7 @@ defmodule Assent.Strategy.OAuthTest do
   alias Assent.UnexpectedResponseError
 
   alias Assent.{
+    CallbackCSRFError,
     InvalidResponseError,
     MissingConfigError,
     MissingParamError,
@@ -129,19 +130,71 @@ defmodule Assent.Strategy.OAuthTest do
     end
 
     test "with `:request_token_url` returning missing `oauth_token`", %{config: config} do
-      expect_oauth_request_token_request(params: %{oauth_token_secret: "hdhd0244k9j7ao03"})
+      expect_oauth_request_token_request(
+        params: %{oauth_token_secret: "hdhd0244k9j7ao03", oauth_callback_confirmed: true}
+      )
 
       assert {:error, %UnexpectedResponseError{} = error} = OAuth.authorize_url(config)
       assert Exception.message(error) =~ "An unexpected response was received."
-      assert error.response.body == %{"oauth_token_secret" => "hdhd0244k9j7ao03"}
+
+      assert error.response.body == %{
+               "oauth_token_secret" => "hdhd0244k9j7ao03",
+               "oauth_callback_confirmed" => "true"
+             }
     end
 
     test "with `:request_token_url` returning missing `oauth_token_secret`", %{config: config} do
-      expect_oauth_request_token_request(params: %{oauth_token: "hh5s93j4hdidpola"})
+      expect_oauth_request_token_request(
+        params: %{oauth_token: "hh5s93j4hdidpola", oauth_callback_confirmed: true}
+      )
 
       assert {:error, %UnexpectedResponseError{} = error} = OAuth.authorize_url(config)
       assert Exception.message(error) =~ "An unexpected response was received."
-      assert error.response.body == %{"oauth_token" => "hh5s93j4hdidpola"}
+
+      assert error.response.body == %{
+               "oauth_token" => "hh5s93j4hdidpola",
+               "oauth_callback_confirmed" => "true"
+             }
+    end
+
+    test "with `:request_token_url` returning missing `oauth_callback_confirmed`", %{
+      config: config
+    } do
+      expect_oauth_request_token_request(
+        params: %{
+          oauth_token: "hh5s93j4hdidpola",
+          oauth_token_secret: "hdhd0244k9j7ao03"
+        }
+      )
+
+      assert {:error, %UnexpectedResponseError{} = error} = OAuth.authorize_url(config)
+      assert Exception.message(error) =~ "An unexpected response was received."
+
+      assert error.response.body == %{
+               "oauth_token" => "hh5s93j4hdidpola",
+               "oauth_token_secret" => "hdhd0244k9j7ao03"
+             }
+    end
+
+    test "with `:request_token_url` returning invalid `oauth_callback_confirmed`", %{
+      config: config
+    } do
+      expect_oauth_request_token_request(
+        params: %{
+          oauth_token: "hh5s93j4hdidpola",
+          oauth_token_secret: "hdhd0244k9j7ao03",
+          oauth_callback_confirmed: "false"
+        }
+      )
+
+      assert {:error, %UnexpectedResponseError{} = error} = OAuth.authorize_url(config)
+      assert Exception.message(error) =~ "An unexpected response was received."
+
+      assert error.response.body == %{
+               "oauth_token" => "hh5s93j4hdidpola",
+               "oauth_token_secret" => "hdhd0244k9j7ao03",
+               "oauth_callback_confirmed" => "false"
+             }
     end
 
     test "returns url", %{config: config} do
@@ -170,8 +223,12 @@ defmodule Assent.Strategy.OAuthTest do
         assert String.to_integer(timestamp) <= DateTime.to_unix(DateTime.utc_now())
       end)
 
-      assert {:ok, %{url: url, session_params: %{oauth_token_secret: "hdhd0244k9j7ao03"}}} =
-               OAuth.authorize_url(config)
+      assert {:ok, %{url: url, session_params: session_params}} = OAuth.authorize_url(config)
+
+      assert session_params == %{
+               oauth_token: "hh5s93j4hdidpola",
+               oauth_token_secret: "hdhd0244k9j7ao03"
+             }
 
       assert url == TestServer.url("/authorize?oauth_token=hh5s93j4hdidpola")
     end
@@ -219,7 +276,8 @@ defmodule Assent.Strategy.OAuthTest do
         params:
           URI.encode_query(%{
             oauth_token: "encoded_uri_request_token",
-            oauth_token_secret: "encoded_uri_token_secret"
+            oauth_token_secret: "encoded_uri_token_secret",
+            oauth_callback_confirmed: true
           })
       )
 
@@ -363,12 +421,27 @@ defmodule Assent.Strategy.OAuthTest do
       {:ok, config: config}
     end
 
+    test "with missing `:session_params` config", %{config: config, callback_params: params} do
+      config = Keyword.delete(config, :session_params)
+
+      assert {:error, %MissingConfigError{} = error} = OAuth.callback(config, params)
+      assert error.key == :session_params
+    end
+
     test "with missing `oauth_token` param", %{config: config, callback_params: params} do
       params = Map.delete(params, "oauth_token")
 
       assert {:error, %MissingParamError{} = error} = OAuth.callback(config, params)
       assert error.key == "oauth_token"
       assert error.params == %{"oauth_verifier" => "hfdp7dh39dks9884"}
+    end
+
+    test "with invalid `oauth_token` param", %{config: config, callback_params: params} do
+      params = Map.put(params, "oauth_token", "other")
+
+      assert {:error, %CallbackCSRFError{} = error} = OAuth.callback(config, params)
+      assert Exception.message(error) == "CSRF detected with param key \"oauth_token\""
+      assert error.key == "oauth_token"
     end
 
     test "with missing `oauth_verifier` param", %{config: config, callback_params: params} do

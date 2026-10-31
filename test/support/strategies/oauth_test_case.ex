@@ -12,7 +12,10 @@ defmodule Assent.Test.OAuthTestCase do
       consumer_secret: "kd94hf93k423kf44",
       base_url: TestServer.url(),
       redirect_uri: "http://localhost:4000/auth/callback",
-      session_params: %{oauth_token_secret: "request_token_secret"}
+      session_params: %{
+        oauth_token: "hh5s93j4hdidpola",
+        oauth_token_secret: "request_token_secret"
+      }
     ]
 
     {:ok, callback_params: params, config: config}
@@ -33,7 +36,8 @@ defmodule Assent.Test.OAuthTestCase do
     response =
       Keyword.get(opts, :params, %{
         oauth_token: "hh5s93j4hdidpola",
-        oauth_token_secret: "hdhd0244k9j7ao03"
+        oauth_token_secret: "hdhd0244k9j7ao03",
+        oauth_callback_confirmed: true
       })
 
     uri = Keyword.get(opts, :uri, "/request_token")

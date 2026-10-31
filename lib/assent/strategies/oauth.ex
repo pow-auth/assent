@@ -3,7 +3,8 @@ defmodule Assent.Strategy.OAuth do
   OAuth 1.0a strategy.
 
   `authorize_url/1` returns a map with a `:session_params` and `:url` key. The
-  `:session_params` key carries a `:oauth_token_secret` value for the request.
+  `:session_params` key carries the `:oauth_token` and `:oauth_token_secret`
+  values for the request.
 
   ## Configuration
 
@@ -90,6 +91,7 @@ defmodule Assent.Strategy.OAuth do
   alias Assent.Strategy, as: Helpers
 
   alias Assent.{
+    CallbackCSRFError,
     HTTPAdapter.HTTPResponse,
     InvalidResponseError,
     JWTAdapter,
@@ -102,6 +104,7 @@ defmodule Assent.Strategy.OAuth do
   passed back into `callback/3`.
   """
   @type session_params :: %{
+          oauth_token: binary(),
           oauth_token_secret: binary()
         }
 
@@ -133,8 +136,8 @@ defmodule Assent.Strategy.OAuth do
   def authorize_url(config) do
     with {:ok, redirect_uri} <- Assent.fetch_config(config, :redirect_uri),
          {:ok, token} <- fetch_request_token(config, [{"oauth_callback", redirect_uri}]),
-         {:ok, url, oauth_token_secret} <- gen_authorize_url(config, token) do
-      {:ok, %{url: url, session_params: %{oauth_token_secret: oauth_token_secret}}}
+         {:ok, url, session_params} <- gen_authorize_url(config, token) do
+      {:ok, %{url: url, session_params: session_params}}
     end
   end
 
@@ -145,7 +148,7 @@ defmodule Assent.Strategy.OAuth do
 
       config
       |> do_request(:post, base_url, url, [], oauth_params)
-      |> process_token_response()
+      |> process_request_token_response()
     end
   end
 
@@ -326,12 +329,34 @@ defmodule Assent.Strategy.OAuth do
   defp url_params(:post, _params), do: []
   defp url_params(_method, params), do: params
 
-  defp process_token_response({:ok, %HTTPResponse{status: 200, body: body} = response})
+  defp process_request_token_response({:ok, %HTTPResponse{status: 200, body: body} = response})
        when is_binary(body) do
-    process_token_response({:ok, %{response | body: URI.decode_query(body)}})
+    process_request_token_response({:ok, %{response | body: URI.decode_query(body)}})
   end
 
-  defp process_token_response(
+  defp process_request_token_response(
+         {:ok,
+          %HTTPResponse{
+            status: 200,
+            body:
+              %{
+                "oauth_token" => _,
+                "oauth_token_secret" => _,
+                "oauth_callback_confirmed" => "true"
+              } = token
+          }}
+       ) do
+    {:ok, token}
+  end
+
+  defp process_request_token_response(any), do: process_response(any)
+
+  defp process_access_token_response({:ok, %HTTPResponse{status: 200, body: body} = response})
+       when is_binary(body) do
+    process_access_token_response({:ok, %{response | body: URI.decode_query(body)}})
+  end
+
+  defp process_access_token_response(
          {:ok,
           %HTTPResponse{
             status: 200,
@@ -341,7 +366,7 @@ defmodule Assent.Strategy.OAuth do
     {:ok, token}
   end
 
-  defp process_token_response(any), do: process_response(any)
+  defp process_access_token_response(any), do: process_response(any)
 
   defp process_response({:ok, %HTTPResponse{} = response}),
     do: {:error, UnexpectedResponseError.exception(response: response)}
@@ -358,8 +383,9 @@ defmodule Assent.Strategy.OAuth do
       authorization_url = Keyword.get(config, :authorize_url, "/authorize")
       params = authorization_params(config, oauth_token: oauth_token)
       url = Helpers.to_url(base_url, authorization_url, params)
+      session_params = %{oauth_token: oauth_token, oauth_token_secret: oauth_token_secret}
 
-      {:ok, url, oauth_token_secret}
+      {:ok, url, session_params}
     end
   end
 
@@ -388,24 +414,32 @@ defmodule Assent.Strategy.OAuth do
     * `:user_url` - the path or URL to fetch user data, required
 
     * `:session_params` - the session parameters that were returned from
-      `authorize_url/1`, optional
+      `authorize_url/1`, required
   """
   @impl true
   @spec callback(Keyword.t(), map(), atom()) :: on_callback()
   def callback(config, params, strategy \\ __MODULE__) do
-    with {:ok, oauth_token} <- Assent.fetch_param(params, "oauth_token"),
+    with {:ok, session_params} <- Assent.fetch_config(config, :session_params),
+         {:ok, oauth_token} <- Assent.fetch_param(params, "oauth_token"),
+         :ok <- verify_oauth_token(session_params, oauth_token),
          {:ok, oauth_verifier} <- Assent.fetch_param(params, "oauth_verifier"),
-         {:ok, token} <- fetch_access_token(config, oauth_token, oauth_verifier),
+         {:ok, token} <- fetch_access_token(config, session_params, oauth_token, oauth_verifier),
          {:ok, user} <- strategy.fetch_user(config, token) do
       {:ok, %{user: user, token: token}}
     end
   end
 
-  defp fetch_access_token(config, oauth_token, oauth_verifier) do
+  defp verify_oauth_token(session_params, oauth_token) do
+    case Assent.constant_time_compare(session_params.oauth_token, oauth_token) do
+      true -> :ok
+      false -> {:error, CallbackCSRFError.exception(key: "oauth_token")}
+    end
+  end
+
+  defp fetch_access_token(config, session_params, oauth_token, oauth_verifier) do
     with {:ok, base_url} <- Assent.fetch_config(config, :base_url) do
       access_token_url = Keyword.get(config, :access_token_url, "/access_token")
       url = process_url(base_url, access_token_url)
-      oauth_token_secret = Kernel.get_in(config, [:session_params, :oauth_token_secret])
 
       config
       |> do_request(
@@ -415,9 +449,9 @@ defmodule Assent.Strategy.OAuth do
         [],
         [{"oauth_token", oauth_token}, {"oauth_verifier", oauth_verifier}],
         [],
-        oauth_token_secret
+        session_params.oauth_token_secret
       )
-      |> process_token_response()
+      |> process_access_token_response()
     end
   end
 
