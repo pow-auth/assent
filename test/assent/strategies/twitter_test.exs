@@ -129,11 +129,18 @@ defmodule Assent.Strategy.TwitterTest do
   }
 
   setup %{config: config, callback_params: callback_params} do
-    config = Keyword.merge(config, consumer_key: "cChZNFj6T5R0TigYB9yd1w")
+    oauth_token = "NPcudxy0yU5T3tBzho7iCotZ3cnetKwcTIRlX0iwRl0"
+    session_params = Map.put(config[:session_params], :oauth_token, oauth_token)
+
+    config =
+      Keyword.merge(config,
+        consumer_key: "cChZNFj6T5R0TigYB9yd1w",
+        session_params: session_params
+      )
 
     callback_params =
       Map.merge(callback_params, %{
-        "oauth_token" => "NPcudxy0yU5T3tBzho7iCotZ3cnetKwcTIRlX0iwRl0",
+        "oauth_token" => oauth_token,
         "oauth_verifier" => "uw7NjWHT6OJ1MpJOXsHfNxoAhPKpgI8BlYDhxEjIBY"
       })
 
