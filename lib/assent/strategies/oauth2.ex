@@ -332,6 +332,8 @@ defmodule Assent.Strategy.OAuth2 do
   defp authentication_params(:client_secret_basic, config) do
     with {:ok, client_id} <- Assent.fetch_config(config, :client_id),
          {:ok, client_secret} <- Assent.fetch_config(config, :client_secret) do
+      client_id = URI.encode_www_form(client_id)
+      client_secret = URI.encode_www_form(client_secret)
       auth = Base.encode64("#{client_id}:#{client_secret}")
       headers = [{"authorization", "Basic #{auth}"}]
       body = []

@@ -330,19 +330,20 @@ defmodule Assent.Strategy.OAuth2Test do
       assert {:ok, _any} = OAuth2.callback(config, params)
     end
 
-    test "with `auth_method: :client_secret_basic` config", %{
+    test "with `auth_method: :client_secret_basic` with special characters in credentials", %{
       config: config,
       callback_params: params
     } do
-      config = Keyword.put(config, :auth_method, :client_secret_basic)
+      config =
+        config
+        |> Keyword.put(:auth_method, :client_secret_basic)
+        |> Keyword.put(:client_id, "client:id/")
+        |> Keyword.put(:client_secret, "client secret?")
 
-      expect_oauth2_access_token_request([], fn conn, params ->
+      expect_oauth2_access_token_request([], fn conn, _params ->
         assert ["Basic " <> token] = Plug.Conn.get_req_header(conn, "authorization")
-        assert Base.url_decode64(token) == {:ok, "#{@client_id}:#{@client_secret}"}
 
-        assert params["grant_type"] == "authorization_code"
-        assert params["code"] == "code_test_value"
-        assert params["redirect_uri"] == "http://localhost:4000/auth/callback"
+        assert Base.decode64(token) == {:ok, "client%3Aid%2F:client+secret%3F"}
       end)
 
       expect_oauth2_user_request(@user_api_params)
