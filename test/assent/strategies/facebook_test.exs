@@ -3,7 +3,7 @@ defmodule Assent.Strategy.FacebookTest do
 
   alias Assent.Strategy.Facebook
 
-  # From https://developers.facebook.com/tools/explorer/?method=GET&path=me%3Ffields%3Demail%2Cfirst_name%2Clast_name%2Cmiddle_name%2Cpicture%2Cgender%2Clink%2Cname%2Cname_format%2Cbirthday%2Cshort_name%2Cdomains%2Cwebsite&version=v4.0
+  # From https://developers.facebook.com/tools/explorer/?method=GET&path=me%3Ffields%3Demail%2Cfirst_name%2Clast_name%2Cmiddle_name%2Cpicture%2Cgender%2Clink%2Cname%2Cname_format%2Cbirthday%2Cshort_name%2Cdomains%2Cwebsite&version=v26.0
   @user_response %{
     "name" => "Dan Schultzer",
     "first_name" => "Dan",
@@ -24,7 +24,7 @@ defmodule Assent.Strategy.FacebookTest do
 
   test "authorize_url/1", %{config: config} do
     assert {:ok, %{url: url}} = Facebook.authorize_url(config)
-    assert url =~ "https://www.facebook.com/v4.0/dialog/oauth?client_id="
+    assert url =~ "https://www.facebook.com/v26.0/dialog/oauth?client_id="
   end
 
   describe "callback/2" do

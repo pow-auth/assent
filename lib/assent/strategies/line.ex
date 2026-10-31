@@ -20,7 +20,8 @@ defmodule Assent.Strategy.LINE do
     [
       base_url: "https://access.line.me",
       authorization_params: [scope: "email profile", response_type: "code"],
-      id_token_signed_response_alg: "HS256"
+      id_token_signed_response_alg: "HS256",
+      client_authentication_method: "client_secret_post"
     ]
   end
 end

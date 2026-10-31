@@ -48,7 +48,9 @@ defmodule Assent.Strategy.LINETest do
         session_params: session_params
       )
 
-    expect_oidc_access_token_request(id_token: @id_token)
+    expect_oidc_access_token_request([id_token: @id_token], fn _conn, params ->
+      assert params["client_secret"] == config[:client_secret]
+    end)
 
     assert {:ok, %{user: user}} = LINE.callback(config, params)
     assert user == @user

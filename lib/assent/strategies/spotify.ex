@@ -22,7 +22,7 @@ defmodule Assent.Strategy.Spotify do
       token_url: "https://accounts.spotify.com/api/token",
       user_url: "/me",
       authorization_params: [scope: "user-read-email"],
-      auth_method: :client_secret_post
+      auth_method: :client_secret_basic
     ]
   end
 
