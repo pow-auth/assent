@@ -22,6 +22,7 @@ Now requires Elixir 1.18 / OTP 26.
 * `Assent.Strategy.Apple` no longer allows unverified `user` callback parameters to override identity claims
 * `Assent.Strategy.Apple` now returns `is_private_email`, `real_user_status`, and `org_id` in the user info
 * `Assent.Strategy.cast_claims/2` added to support casting provider-specific claims
+* `Assent.Strategy.OAuth2.grant_access_token/3` accepts `:jwt_audience` for JWT client authentication
 
 ### Bug fixes
 
@@ -33,6 +34,9 @@ Now requires Elixir 1.18 / OTP 26.
 * `Assent.Strategy.OAuth.authorize_url/1` now validates `oauth_callback_confirmed` in request token responses
 * `Assent.Strategy.OAuth.callback/2` now validates the `oauth_token` parameter
 * `Assent.Strategy.Telegram.callback/2` now verifies `hash` before verifying `auth_date`
+* `Assent.Strategy.OAuth2.grant_access_token/3` now encodes `client_secret_basic` credentials as `x-www-form-urlencoded`
+* `Assent.Strategy.OAuth2.grant_access_token/3` now uses the token endpoint URL as the default `aud` for JWT client authentication
+* `Assent.Strategy.OAuth2.grant_access_token/3` now includes a unique `jti` in JWT client authentication
 
 ## v0.3
 

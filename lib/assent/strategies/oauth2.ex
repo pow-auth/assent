@@ -54,6 +54,9 @@ defmodule Assent.Strategy.OAuth2 do
       defaults to `HS256` for `:client_secret_jwt` and `RS256` for
       `:private_key_jwt`
 
+    * `:jwt_audience` - the audience for JWT client authentication, optional,
+      defaults to the token endpoint URL
+
     * `:state` - a boolean or a string with the value of the state, optional,
       defaults to `true`. When set to `true` a random 32 byte long URL-safe
       string is generated. When set to `false` state will not be verified.
@@ -305,13 +308,13 @@ defmodule Assent.Strategy.OAuth2 do
   @spec grant_access_token(Keyword.t(), binary(), Keyword.t()) :: {:ok, map()} | {:error, term()}
   def grant_access_token(config, grant_type, params) do
     auth_method = Keyword.get(config, :auth_method)
-    token_url = Keyword.get(config, :token_url, "/oauth/token")
+    config = Keyword.put_new(config, :token_url, "/oauth/token")
 
     with {:ok, base_url} <- Assent.fetch_config(config, :base_url),
          {:ok, auth_headers, auth_body} <- authentication_params(auth_method, config) do
       headers = [{"content-type", "application/x-www-form-urlencoded"}] ++ auth_headers
       params = Keyword.merge(params, Keyword.put(auth_body, :grant_type, grant_type))
-      url = Helpers.to_url(base_url, token_url)
+      url = Helpers.to_url(base_url, Keyword.fetch!(config, :token_url))
       body = URI.encode_query(params)
 
       :post
@@ -332,6 +335,8 @@ defmodule Assent.Strategy.OAuth2 do
   defp authentication_params(:client_secret_basic, config) do
     with {:ok, client_id} <- Assent.fetch_config(config, :client_id),
          {:ok, client_secret} <- Assent.fetch_config(config, :client_secret) do
+      client_id = URI.encode_www_form(client_id)
+      client_secret = URI.encode_www_form(client_secret)
       auth = Base.encode64("#{client_id}:#{client_secret}")
       headers = [{"authorization", "Basic #{auth}"}]
       body = []
@@ -389,12 +394,17 @@ defmodule Assent.Strategy.OAuth2 do
     timestamp = :os.system_time(:second)
 
     with {:ok, base_url} <- Assent.fetch_config(config, :base_url),
+         {:ok, token_url} <- Assent.fetch_config(config, :token_url),
          {:ok, client_id} <- Assent.fetch_config(config, :client_id) do
+      audience = Keyword.get(config, :jwt_audience, Helpers.to_url(base_url, token_url))
+      jti = gen_url_encoded_base64(32)
+
       {:ok,
        %{
          "iss" => client_id,
          "sub" => client_id,
-         "aud" => base_url,
+         "aud" => audience,
+         "jti" => jti,
          "iat" => timestamp,
          "exp" => timestamp + 60
        }}
