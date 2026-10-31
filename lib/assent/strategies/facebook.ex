@@ -48,7 +48,7 @@ defmodule Assent.Strategy.Facebook do
           FB.init({
             appId   : '[CLIENT_ID]',
             cookie  : true, // required for server to pick up session
-            version : 'v6.0',
+            version : 'v26.0',
             xfbml   : true
           });
         };
@@ -69,7 +69,7 @@ defmodule Assent.Strategy.Facebook do
 
   alias Assent.Strategy.OAuth2
 
-  @api_version "4.0"
+  @api_version "26.0"
 
   @impl true
   def default_config(_config) do
