@@ -8,6 +8,7 @@ Now requires Elixir 1.18 / OTP 26.
 
 * `Assent.HTTPAdapter.Finch` removed
 * `JSON` is now the default JSON library
+* `Assent.Strategy.Instagram` removed because the Instagram Basic Display API has been discontinued
 
 ### Changes
 

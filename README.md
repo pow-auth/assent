@@ -26,7 +26,6 @@ Multi-provider authentication framework.
   * GitHub - `Assent.Strategy.Github`
   * GitLab - `Assent.Strategy.Gitlab`
   * Google - `Assent.Strategy.Google`
-  * Instagram - `Assent.Strategy.Instagram`
   * LINE Login - `Assent.Strategy.LINE`
   * LinkedIn - `Assent.Strategy.Linkedin`
   * Slack - `Assent.Strategy.Slack`
