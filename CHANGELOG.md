@@ -40,6 +40,9 @@ Now requires Elixir 1.18 / OTP 26.
 * `Assent.Strategy.OAuth2.grant_access_token/3` now includes a unique `jti` in JWT client authentication
 * `Assent.Strategy.Facebook` now uses Graph API v26.0
 * `Assent.Strategy.VK` now uses API v5.199 and only requests supported user fields
+* `Assent.Strategy.Discord` now uses the API v10 endpoints
+* `Assent.Strategy.Bitbucket` and `Assent.Strategy.Spotify` now use `client_secret_basic` authentication
+* `Assent.Strategy.LINE` now uses `client_secret_post` authentication
 
 ## v0.3
 

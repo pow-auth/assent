@@ -17,8 +17,8 @@ defmodule Assent.Strategy.Discord do
   @impl true
   def default_config(_config) do
     [
-      base_url: "https://discordapp.com/api",
-      authorize_url: "/oauth2/authorize",
+      base_url: "https://discord.com/api/v10",
+      authorize_url: "https://discord.com/oauth2/authorize",
       token_url: "/oauth2/token",
       user_url: "/users/@me",
       authorization_params: [scope: "identify email"],
