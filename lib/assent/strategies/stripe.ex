@@ -37,7 +37,7 @@ defmodule Assent.Strategy.Stripe do
       authorize_url: "https://connect.stripe.com/oauth/authorize",
       token_url: "https://connect.stripe.com/oauth/token",
       user_url: "/v1/account",
-      auth_method: :client_secret_post
+      client_authentication_method: :client_secret_post
     ]
   end
 

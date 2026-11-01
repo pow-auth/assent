@@ -43,6 +43,7 @@ Now requires Elixir 1.18 / OTP 26.
 * `Assent.Strategy.Apple` now returns `is_private_email`, `real_user_status`, and `org_id` in the user info
 * `Assent.Strategy.cast_claims/2` was added to support casting provider-specific claims
 * `Assent.Strategy.OAuth2.grant_access_token/3` accepts `:jwt_audience` for JWT client authentication
+* `Assent.Strategy.OAuth2` deprecates the `:auth_method` configuration option in favor of `:client_authentication_method`
 
 ### Bug fixes
 

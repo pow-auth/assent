@@ -22,9 +22,10 @@ defmodule Assent.Strategy.OAuth2 do
 
     * `:base_url` - the base URL of the OAuth2 server, required
 
-    * `:auth_method` - the authentication strategy used, optional. If not set,
-      no authentication will be used during the access token request (e.g.
-      public clients). The value may be one of the following:
+    * `:client_authentication_method` - the authentication strategy used,
+      optional. If not set, no authentication will be used during the
+      access token request (e.g. public clients). The value may be one of the
+      following:
 
       * `:client_secret_basic` - authenticate with basic authorization header
 
@@ -36,18 +37,19 @@ defmodule Assent.Strategy.OAuth2 do
       * `:private_key_jwt` - authenticate with JWT using `:private_key_path` or
         `:private_key` as secret
 
-    * `:client_secret` - the OAuth2 client secret, required if `:auth_method`
-      is `:client_secret_basic`, `:client_secret_post`, or
-      `:client_secret_jwt`
+    * `:client_secret` - the OAuth2 client secret, required if
+      `:client_authentication_method` is `:client_secret_basic`,
+      `:client_secret_post`, or `:client_secret_jwt`
 
-    * `:private_key_id` - the private key ID, required if `:auth_method` is
-      `:private_key_jwt`
+    * `:private_key_id` - the private key ID, required if
+      `:client_authentication_method` is `:private_key_jwt`
 
     * `:private_key_path` - the path for the private key, required if
-      `:auth_method` is `:private_key_jwt` and `:private_key` hasn't been set
+      `:client_authentication_method` is `:private_key_jwt` and `:private_key`
+      hasn't been set
 
     * `:private_key` - the private key content that can be defined instead of
-      `:private_key_path`, required if `:auth_method` is `:private_key_jwt` and
+      `:client_authentication_method` is `:private_key_jwt` and
       `:private_key_path` hasn't been set
 
     * `:jwt_algorithm` - the algorithm to use for JWT signing, optional,
@@ -77,7 +79,7 @@ defmodule Assent.Strategy.OAuth2 do
           [
             client_id: Application.fetch_env!(:my_app, :oidc, :client_id),
             client_secret: Application.fetch_env!(:my_app, :oidc, :client_secret),
-            auth_method: :client_secret_post,
+            client_authentication_method: :client_secret_post,
             base_url: "https://auth.example.com",
             authorization_params: [scope: "user:read user:write"],
             user_url: "https://example.com/api/user",
@@ -324,7 +326,22 @@ defmodule Assent.Strategy.OAuth2 do
   """
   @spec grant_access_token(Keyword.t(), binary(), Keyword.t()) :: {:ok, map()} | {:error, term()}
   def grant_access_token(config, grant_type, params) do
-    auth_method = Keyword.get(config, :auth_method)
+    # NOTE: Accept :auth_method as a deprecated option. Remove in next major version.
+    config =
+      case Keyword.has_key?(config, :auth_method) do
+        true ->
+          IO.warn(
+            "The :auth_method option is deprecated, use :client_authentication_method instead."
+          )
+
+          Keyword.put(config, :client_authentication_method, Keyword.get(config, :auth_method))
+
+        false ->
+          config
+      end
+
+    auth_method = Keyword.get(config, :client_authentication_method)
+
     config = Keyword.put_new(config, :token_url, "/oauth/token")
 
     with {:ok, base_url} <- Assent.fetch_config(config, :base_url),
@@ -390,7 +407,8 @@ defmodule Assent.Strategy.OAuth2 do
   end
 
   defp authentication_params(method, _config) do
-    {:error, ArgumentError.exception("invalid `:auth_method`, got: #{inspect(method)}")}
+    {:error,
+     ArgumentError.exception("invalid `:client_authentication_method`, got: #{inspect(method)}")}
   end
 
   defp jwt_authentication_params(alg, secret, config) do

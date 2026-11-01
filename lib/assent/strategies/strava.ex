@@ -25,7 +25,7 @@ defmodule Assent.Strategy.Strava do
       token_url: "/oauth/token",
       user_url: "/athlete",
       authorization_params: [scope: "read_all,profile:read_all"],
-      auth_method: :client_secret_post
+      client_authentication_method: :client_secret_post
     ]
   end
 

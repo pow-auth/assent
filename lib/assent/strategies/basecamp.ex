@@ -28,7 +28,7 @@ defmodule Assent.Strategy.Basecamp do
       token_url: "/authorization/token",
       user_url: "/authorization.json",
       authorization_params: [type: "web_server"],
-      auth_method: :client_secret_post
+      client_authentication_method: :client_secret_post
     ]
   end
 

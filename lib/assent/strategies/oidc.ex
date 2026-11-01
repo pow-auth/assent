@@ -406,7 +406,7 @@ defmodule Assent.Strategy.OIDC do
          {:ok, token_url} <- fetch_from_openid_config(openid_config, "token_endpoint") do
       config
       |> Keyword.put(:openid_configuration, openid_config)
-      |> Keyword.put(:auth_method, method)
+      |> Keyword.put(:client_authentication_method, method)
       |> Keyword.put(:token_url, token_url)
       |> OAuth2.callback(params, strategy)
     end

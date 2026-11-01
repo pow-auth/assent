@@ -30,7 +30,7 @@ defmodule Assent.Strategy.Bitbucket do
       user_url: "/user",
       user_emails_url: "/user/emails",
       authorization_params: [scope: "account email"],
-      auth_method: :client_secret_basic
+      client_authentication_method: :client_secret_basic
     ]
   end
 
