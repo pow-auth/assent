@@ -82,9 +82,10 @@ defmodule Assent.MixProject do
           Assent.Strategy.OAuth2.Base,
           Assent.Strategy.OIDC.Base
         ],
-        Strategies: ~r/^Assent\.Strategy\./,
+        Strategies: ~r/^Assent\.Strategy\.(?!.*Error$)/,
         HTTP: ~r/^Assent\.HTTPAdapter.*(?<!Error)$/,
-        JWT: ~r/^Assent\.JWTAdapter.*(?<!Error)$/
+        JWT: ~r/^Assent\.JWTAdapter.*(?<!Error)$/,
+        Errors: ~r/Error$/
       ]
     ]
   end

@@ -9,6 +9,21 @@ defmodule Assent do
              |> then(&Regex.replace(~r/\[(`[^`]+`)\]\([^)]+\)/, &1, "\\1"))
 
   defmodule MissingConfigError do
+    @moduledoc """
+    An exception for when a required configuration key is missing.
+
+    ## Fields
+
+      * `:key` - the missing configuration key
+      * `:config` - the configuration passed to `Assent.fetch_config/2`
+
+    ## Examples
+
+        iex> {:error, error} = Assent.fetch_config([], :client_id)
+        iex> Exception.message(error)
+        "expected :client_id in config, got: []"
+    """
+
     defexception [:key, :config]
 
     @type t :: %__MODULE__{
@@ -20,11 +35,21 @@ defmodule Assent do
       key = inspect(exception.key)
       config_keys = inspect(Keyword.keys(exception.config))
 
-      "Expected #{key} in config, got: #{config_keys}"
+      "expected #{key} in config, got: #{config_keys}"
     end
   end
 
   defmodule CallbackError do
+    @moduledoc """
+    An exception for when an authorization provider reports a callback error.
+
+    ## Fields
+
+      * `:message` - a description of the error
+      * `:error` - the provider's error code, if present
+      * `:error_uri` - a URI with further information, if present
+    """
+
     defexception [:message, :error, :error_uri]
 
     @type t :: %__MODULE__{
@@ -35,6 +60,20 @@ defmodule Assent do
   end
 
   defmodule CallbackCSRFError do
+    @moduledoc """
+    An exception for when callback CSRF validation fails.
+
+    ## Fields
+
+      * `:key` - the callback parameter that failed validation
+
+    ## Examples
+
+        iex> error = Assent.CallbackCSRFError.exception(key: "state")
+        iex> Exception.message(error)
+        "expected callback parameter `state` to match its value in session params"
+    """
+
     defexception [:key]
 
     @type t :: %__MODULE__{
@@ -42,82 +81,157 @@ defmodule Assent do
           }
 
     def message(exception) do
-      "CSRF detected with param key #{inspect(exception.key)}"
+      "expected callback parameter `#{exception.key}` to match its value in session params"
     end
   end
 
   defmodule MissingParamError do
-    defexception [:key, :params]
+    @moduledoc """
+    An exception for when a required parameter is missing.
+
+    ## Fields
+
+      * `:key` - the missing parameter name
+      * `:params` - the original parameters
+      * `:context` - whether the parameters came from regular params or a token
+
+    ## Examples
+
+        iex> {:error, error} = Assent.fetch_token_param(%{"access_token" => "secret"}, "refresh_token")
+        iex> Exception.message(error)
+        "expected \\\"refresh_token\\\" in token, got: [\\\"access_token\\\"]"
+    """
+
+    defexception [:key, :params, context: :params]
 
     @type t :: %__MODULE__{
             key: binary(),
-            params: map()
+            params: map(),
+            context: :params | :token
           }
 
     def message(exception) do
       key = inspect(exception.key)
       param_keys = exception.params |> Map.keys() |> Enum.sort() |> inspect()
 
-      "Expected #{key} in params, got: #{param_keys}"
+      "expected #{key} in #{exception.context}, got: #{param_keys}"
     end
   end
 
   defmodule RequestError do
+    @moduledoc """
+    An exception for when a provider rejects an HTTP request.
+
+    ## Fields
+
+      * `:message` - a description of the error
+      * `:response` - the normalized HTTP response
+
+    ## Examples
+
+        iex> response = %Assent.HTTPAdapter.HTTPResponse{
+        ...>   http_adapter: Assent.HTTPAdapter.Httpc,
+        ...>   request_url: "https://example.com/user?access_token=secret",
+        ...>   status: 401,
+        ...>   body: %{"error" => "invalid_token"}
+        ...> }
+        iex> error = Assent.RequestError.exception(message: "unauthorized token", response: response)
+        iex> Exception.message(error)
+        "unauthorized token\\n\\n" <>
+          "HTTP Adapter: Assent.HTTPAdapter.Httpc\\n" <>
+          "Request URL: https://example.com/user\\n\\n" <>
+          "Response status: 401\\n\\n" <>
+          "Response headers:\\n\\n\\n" <>
+          "Response body:\\n%{\\\"error\\\" => \\\"invalid_token\\\"}\\n\\n"
+    """
+
     defexception [:message, :response]
 
-    alias Assent.HTTPAdapter.HTTPResponse
+    alias Assent.HTTPAdapter
 
     @type t :: %__MODULE__{
             message: binary(),
-            response: HTTPResponse.t()
+            response: HTTPAdapter.HTTPResponse.t()
           }
 
     def message(exception) do
       """
       #{exception.message}
 
-      #{HTTPResponse.format(exception.response)}
+      #{HTTPAdapter.format_http_response(exception.response)}
       """
     end
   end
 
   defmodule InvalidResponseError do
+    @moduledoc """
+    An exception for when an HTTP response is invalid.
+
+    ## Fields
+
+      * `:response` - the normalized HTTP response
+    """
+
     defexception [:response]
 
-    alias Assent.HTTPAdapter.HTTPResponse
+    alias Assent.HTTPAdapter
 
-    @type t :: %__MODULE__{
-            response: HTTPResponse.t()
-          }
+    @type t :: %__MODULE__{response: HTTPAdapter.HTTPResponse.t()}
 
     def message(exception) do
       """
-      An invalid response was received.
+      invalid response
 
-      #{HTTPResponse.format(exception.response)}
+      #{HTTPAdapter.format_http_response(exception.response)}
       """
     end
   end
 
   defmodule UnexpectedResponseError do
+    @moduledoc """
+    An exception for when an HTTP response is unexpected.
+
+    ## Fields
+
+      * `:response` - the normalized HTTP response
+    """
+
     defexception [:response]
 
-    alias Assent.HTTPAdapter.HTTPResponse
+    alias Assent.HTTPAdapter
 
-    @type t :: %__MODULE__{
-            response: HTTPResponse.t()
-          }
+    @type t :: %__MODULE__{response: HTTPAdapter.HTTPResponse.t()}
 
     def message(exception) do
       """
-      An unexpected response was received.
+      unexpected response
 
-      #{HTTPResponse.format(exception.response)}
+      #{HTTPAdapter.format_http_response(exception.response)}
       """
     end
   end
 
   defmodule ServerUnreachableError do
+    @moduledoc """
+    An exception for when a server is unreachable.
+
+    ## Fields
+
+      * `:http_adapter` - the HTTP adapter module
+      * `:request_url` - the request URL
+      * `:reason` - the underlying failure reason returned by the HTTP adapter
+
+    ## Examples
+
+        iex> error = Assent.ServerUnreachableError.exception(http_adapter: Assent.HTTPAdapter.Httpc, request_url: "https://example.com/user?access_token=secret", reason: :econnrefused)
+        iex> Exception.message(error)
+        "server is unreachable\\n\\n" <>
+          "HTTP Adapter: Assent.HTTPAdapter.Httpc\\n" <>
+          "Request URL: https://example.com/user\\n\\n" <>
+          "Reason:\\n" <>
+          ":econnrefused\\n"
+    """
+
     defexception [:http_adapter, :request_url, :reason]
 
     @type t :: %__MODULE__{
@@ -130,7 +244,7 @@ defmodule Assent do
       [url | _rest] = String.split(exception.request_url, "?", parts: 2)
 
       """
-      The server was unreachable.
+      server is unreachable
 
       HTTP Adapter: #{inspect(exception.http_adapter)}
       Request URL: #{url}
@@ -142,6 +256,23 @@ defmodule Assent do
   end
 
   defmodule CastClaimsError do
+    @moduledoc """
+    An exception for when claims cannot be cast to the requested types.
+
+    ## Fields
+
+      * `:claims` - the original claims
+      * `:invalid_types` - the claim types for the claims that couldn't be cast
+
+    ## Examples
+
+        iex> {:error, error} = Assent.Strategy.cast_claims(%{"email_verified" => "sometimes"}, %{"email_verified" => :boolean})
+        iex> Exception.message(error)
+        "claims can't be cast\\n\\n" <>
+          "The following claims did not match the expected types:\\n\\n" <>
+          "- \\\"email_verified\\\" to :boolean\\n"
+    """
+
     defexception [:claims, :invalid_types]
 
     @type t :: %__MODULE__{
@@ -151,7 +282,9 @@ defmodule Assent do
 
     def message(exception) do
       """
-      The following claims couldn't be cast:
+      claims can't be cast
+
+      The following claims did not match the expected types:
 
       #{exception.invalid_types |> to_lines() |> Enum.join("\n")}
       """
@@ -189,12 +322,25 @@ defmodule Assent do
   Returns an `Assent.MissingParamError` if the key is not found.
   """
   @spec fetch_param(map(), binary()) :: {:ok, any()} | {:error, MissingParamError.t()}
-  def fetch_param(params, key) when is_map(params) and is_binary(key) do
+  def fetch_param(params, key), do: do_fetch_param(params, key, :params)
+
+  defp do_fetch_param(params, key, context) do
     case Map.fetch(params, key) do
-      {:ok, value} -> {:ok, value}
-      :error -> {:error, MissingParamError.exception(key: key, params: params)}
+      {:ok, value} ->
+        {:ok, value}
+
+      :error ->
+        {:error, MissingParamError.exception(key: key, params: params, context: context)}
     end
   end
+
+  @doc """
+  Fetches the key value from the token.
+
+  Returns an `Assent.MissingParamError` if the key is not found.
+  """
+  @spec fetch_token_param(map(), binary()) :: {:ok, any()} | {:error, MissingParamError.t()}
+  def fetch_token_param(token, key), do: do_fetch_param(token, key, :token)
 
   @doc """
   Fetches the JSON library in config.

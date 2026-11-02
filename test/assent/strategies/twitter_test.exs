@@ -172,7 +172,7 @@ defmodule Assent.Strategy.TwitterTest do
     assert {:error, %CallbackError{} = error} =
              Twitter.callback(config, %{"denied" => params["oauth_token"]})
 
-    assert error.message == "The user denied the authorization request"
+    assert error.message == "user denied the authorization request"
     refute error.error
     refute error.error_uri
   end

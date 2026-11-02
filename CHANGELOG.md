@@ -9,6 +9,9 @@ Now requires Elixir 1.18 / OTP 26.
 * `Assent.HTTPAdapter.Finch` removed
 * `JSON` is now the default JSON library
 * `Assent.Strategy.Instagram` removed because the Instagram Basic Display API has been discontinued
+* `Assent.Strategy.OAuth` now returns `Assent.MissingParamError` for missing callback parameters and token fields
+* `Assent.Strategy.OAuth2` now returns `Assent.MissingParamError` for missing parameters, `ArgumentError` for invalid authentication methods, and `Assent.Strategy.OAuth2.UnsupportedTokenTypeError` for unsupported token types
+* `Assent.Strategy.OIDC` now returns `Assent.Strategy.OIDC.InvalidIDTokenError` for invalid ID Tokens and `Assent.Strategy.OIDC.InvalidOpenIDConfigurationError` for invalid provider configuration
 
 ### Changes
 

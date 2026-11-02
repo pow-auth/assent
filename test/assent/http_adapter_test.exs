@@ -1,6 +1,7 @@
 defmodule Assent.HTTPAdapterTest do
   use ExUnit.Case
-  doctest Assent.Strategy
+  doctest Assent.HTTPAdapter
+  doctest Assent.HTTPAdapter.HTTPResponse
 
   alias Assent.{
     HTTPAdapter,
@@ -138,8 +139,17 @@ defmodule Assent.HTTPAdapterTest do
                 request_url: "json-encoded-body-text/javascript-header"
               }}
 
-    assert {:error, %InvalidResponseError{}} =
-             HTTPAdapter.request(%{request | url: "invalid-json-body"}, opts)
+    assert HTTPAdapter.request(%{request | url: "invalid-json-body"}, opts) ==
+             {:error,
+              %Assent.InvalidResponseError{
+                response: %Assent.HTTPAdapter.HTTPResponse{
+                  http_adapter: Assent.HTTPAdapterTest.HTTPMock,
+                  request_url: "invalid-json-body",
+                  status: 200,
+                  headers: [{"content-type", "application/json"}],
+                  body: "%"
+                }
+              }}
 
     assert HTTPAdapter.request(%{request | url: "json-no-headers"}, opts) ==
              {:ok,
@@ -254,5 +264,22 @@ defmodule Assent.HTTPAdapterTest do
              HTTPAdapter.decode_response(%HTTPResponse{body: "%", headers: @headers}, [])
 
     assert error.response.body == "%"
+  end
+
+  test "format_http_response/1" do
+    response = %HTTPResponse{
+      body: "Hello",
+      headers: [{"content-type", "text/plain"}],
+      http_adapter: HTTPMock,
+      request_url: "http://example.com/path?a=1",
+      status: 200
+    }
+
+    formatted = HTTPAdapter.format_http_response(response)
+    assert formatted =~ "HTTP Adapter: #{inspect(HTTPMock)}"
+    assert formatted =~ "Request URL: http://example.com/path"
+    assert formatted =~ "Response status: 200"
+    assert formatted =~ "Response headers:\ncontent-type: text/plain"
+    assert formatted =~ "Response body:\n\"Hello\""
   end
 end

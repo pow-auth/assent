@@ -13,6 +13,17 @@ defmodule Assent.JWTAdapter.AssentJWT do
   @behaviour Assent.JWTAdapter
 
   defmodule Error do
+    @moduledoc """
+    An exception for JWT encoding, decoding, signing, or verification errors.
+
+    ## Fields
+
+      * `:message` - a description of the error
+      * `:reason` - the underlying failure reason
+      * `:data` - the input associated with the error, review before logging as
+        it may contain claims or token parts
+    """
+
     defexception [:message, :reason, data: nil]
   end
 
@@ -36,7 +47,7 @@ defmodule Assent.JWTAdapter.AssentJWT do
         {:ok, encoded_header}
 
       {:error, error} ->
-        {:error, Error.exception(message: "Failed to encode header", reason: error, data: header)}
+        {:error, Error.exception(message: "could not encode header", reason: error, data: header)}
     end
   end
 
@@ -59,7 +70,7 @@ defmodule Assent.JWTAdapter.AssentJWT do
         {:ok, encoded_claims}
 
       {:error, error} ->
-        {:error, Error.exception(message: "Failed to encode claims", reason: error, data: claims)}
+        {:error, Error.exception(message: "could not encode claims", reason: error, data: claims)}
     end
   end
 
@@ -72,7 +83,7 @@ defmodule Assent.JWTAdapter.AssentJWT do
 
       {:error, error} ->
         {:error,
-         Error.exception(message: "Failed to sign JWT", reason: error, data: {message, alg})}
+         Error.exception(message: "could not sign JWT", reason: error, data: {message, alg})}
     end
   end
 
@@ -86,7 +97,7 @@ defmodule Assent.JWTAdapter.AssentJWT do
     # Per https://tools.ietf.org/html/rfc7515#appendix-A.3.1
 
     with {:ok, sha_alg} <- sha2_alg(sha_bit_size),
-         {:ok, key} <- decode_pem(private_key) do
+         {:ok, key} <- JWTAdapter.decode_pem(private_key) do
       der_signature = :public_key.sign(message, sha_alg, key)
       {:"ECDSA-Sig-Value", r, s} = :public_key.der_decode(:"ECDSA-Sig-Value", der_signature)
 
@@ -99,32 +110,24 @@ defmodule Assent.JWTAdapter.AssentJWT do
 
   defp sign_message(message, <<_, "S", sha_bit_size::binary>>, private_key) do
     with {:ok, sha_alg} <- sha2_alg(sha_bit_size),
-         {:ok, key} <- decode_pem(private_key) do
+         {:ok, key} <- JWTAdapter.decode_pem(private_key) do
       {:ok, :public_key.sign(message, sha_alg, key)}
     end
   end
 
   defp sign_message(message, "EdDSA", private_key) do
-    with {:ok, key} <- decode_pem(private_key) do
+    with {:ok, key} <- JWTAdapter.decode_pem(private_key) do
       {:ok, :public_key.sign(message, :none, key)}
     end
   end
 
   defp sign_message(_message, alg, _secret_or_private_key),
-    do: {:error, "Unsupported JWT alg: #{inspect(alg)}"}
+    do: {:error, "unsupported JWT alg, got: #{inspect(alg)}"}
 
   defp sha2_alg("256"), do: {:ok, :sha256}
   defp sha2_alg("384"), do: {:ok, :sha384}
   defp sha2_alg("512"), do: {:ok, :sha512}
-  defp sha2_alg(bit_size), do: {:error, "Invalid SHA-2 algorithm bit size: #{bit_size}"}
-
-  defp decode_pem(pem) do
-    case :public_key.pem_decode(pem) do
-      [] -> {:error, "Invalid private key"}
-      [entry] -> {:ok, :public_key.pem_entry_decode(entry)}
-      _any -> {:error, "Private key should only have one entry"}
-    end
-  end
+  defp sha2_alg(bit_size), do: {:error, "invalid SHA-2 algorithm bit size, got: #{bit_size}"}
 
   # From erlang crypto lib
   defp sha_bit_pad(binary, "256"), do: lpad_binary(binary, 32)
@@ -169,7 +172,7 @@ defmodule Assent.JWTAdapter.AssentJWT do
       parts ->
         {:error,
          Error.exception(
-           message: "JWT must have exactly three parts",
+           message: "expected JWT to have three parts, got: #{length(parts)}",
            reason: :invalid_format,
            data: parts
          )}
@@ -184,14 +187,14 @@ defmodule Assent.JWTAdapter.AssentJWT do
       {:ok, alg, header}
     else
       {:error, error} ->
-        {:error, Error.exception(message: "Failed to decode header", reason: error, data: header)}
+        {:error, Error.exception(message: "could not decode header", reason: error, data: header)}
     end
   end
 
   defp decode_base64_url(encoded) do
     case Base.url_decode64(encoded, padding: false) do
       {:ok, decoded} -> {:ok, decoded}
-      :error -> {:error, "Invalid Base64URL"}
+      :error -> {:error, "could not decode url encoded base64 string"}
     end
   end
 
@@ -203,7 +206,12 @@ defmodule Assent.JWTAdapter.AssentJWT do
   end
 
   defp fetch_alg(%{"alg" => alg}), do: {:ok, alg}
-  defp fetch_alg(_header), do: {:error, "No \"alg\" found in header"}
+
+  defp fetch_alg(header) do
+    header_keys = header |> Map.keys() |> Enum.sort() |> inspect()
+
+    {:error, "expected header to contain `alg`, got: #{header_keys}"}
+  end
 
   defp decode_claims(claims, opts) do
     with {:ok, json_library} <- Assent.fetch_config(opts, :json_library),
@@ -212,7 +220,7 @@ defmodule Assent.JWTAdapter.AssentJWT do
       {:ok, claims}
     else
       {:error, error} ->
-        {:error, Error.exception(message: "Failed to decode claims", reason: error, data: claims)}
+        {:error, Error.exception(message: "could not decode claims", reason: error, data: claims)}
     end
   end
 
@@ -223,7 +231,7 @@ defmodule Assent.JWTAdapter.AssentJWT do
 
       {:error, error} ->
         {:error,
-         Error.exception(message: "Failed to decode signature", reason: error, data: signature)}
+         Error.exception(message: "could not decode signature", reason: error, data: signature)}
     end
   end
 
@@ -237,7 +245,7 @@ defmodule Assent.JWTAdapter.AssentJWT do
       {:error, error} ->
         {:error,
          Error.exception(
-           message: "Failed to verify signature",
+           message: "could not verify signature",
            reason: error,
            data: {message, signature, alg}
          )}
@@ -283,9 +291,9 @@ defmodule Assent.JWTAdapter.AssentJWT do
   end
 
   defp verify_message(_message, _signature, alg, _secret_or_public_key),
-    do: {:error, "Unsupported JWT alg: #{inspect(alg)}"}
+    do: {:error, "unsupported JWT alg, got: #{inspect(alg)}"}
 
-  defp decode_key(pem) when is_binary(pem), do: decode_pem(pem)
+  defp decode_key(pem) when is_binary(pem), do: JWTAdapter.decode_pem(pem)
 
   defp decode_key(%{"kty" => "RSA", "n" => n, "e" => e}) do
     with {:ok, n} <- decode_base64_url(n),
@@ -309,12 +317,12 @@ defmodule Assent.JWTAdapter.AssentJWT do
     end
   end
 
-  defp decode_key(jwk) when is_map(jwk), do: {:error, "Unable to decode the JWK"}
+  defp decode_key(jwk) when is_map(jwk), do: {:error, "could not decode JWK"}
 
   defp jwk_curve("P-256"), do: {:ok, :secp256r1}
   defp jwk_curve("P-384"), do: {:ok, :secp384r1}
   defp jwk_curve("P-521"), do: {:ok, :secp521r1}
   defp jwk_curve("Ed25519"), do: {:ok, {1, 3, 101, 112}}
   defp jwk_curve("Ed448"), do: {:ok, {1, 3, 101, 113}}
-  defp jwk_curve(crv), do: {:error, "Unsupported JWK crv: #{inspect(crv)}"}
+  defp jwk_curve(crv), do: {:error, "unsupported JWK curve, got: #{inspect(crv)}"}
 end

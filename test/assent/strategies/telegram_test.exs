@@ -122,7 +122,7 @@ defmodule Assent.Strategy.TelegramTest do
       assert {:error, %Assent.CallbackError{} = error} =
                Telegram.callback(config, callback_params)
 
-      assert error.message == "Invalid `:authorization_channel` value: :invalid"
+      assert error.message == "invalid `:authorization_channel` value, got: :invalid"
     end
 
     test "with missing hash param", %{config: config, callback_params: callback_params} do
@@ -162,7 +162,7 @@ defmodule Assent.Strategy.TelegramTest do
       assert {:error, %Assent.CallbackError{} = error} =
                Telegram.callback(config, callback_params)
 
-      assert error.message == "Authorization request has an invalid hash"
+      assert error.message == "authorization request has an invalid hash"
     end
 
     @tag auth_date: "invalid"
@@ -185,7 +185,7 @@ defmodule Assent.Strategy.TelegramTest do
       assert {:error, %Assent.CallbackError{} = error} =
                Telegram.callback(config, callback_params)
 
-      assert error.message == "Authorization request has an invalid hash"
+      assert error.message == "authorization request has an invalid hash"
     end
 
     @tag auth_date: nil
@@ -208,7 +208,7 @@ defmodule Assent.Strategy.TelegramTest do
       assert {:error, %Assent.CallbackError{} = error} =
                Telegram.callback(config, callback_params)
 
-      assert error.message == "Authorization request has expired"
+      assert error.message == "authorization request has expired"
     end
 
     test "returns user", %{config: config, callback_params: callback_params} do

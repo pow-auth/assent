@@ -1,6 +1,6 @@
 defmodule Assent.JWTAdapterTest do
   use ExUnit.Case
-  doctest Assent.Strategy
+  doctest Assent.JWTAdapter
 
   alias Assent.JWTAdapter
 
@@ -45,19 +45,39 @@ defmodule Assent.JWTAdapterTest do
              JWTAdapter.verify(@token, @secret, json_library: CustomJSONLibrary)
   end
 
-  test "load_private_key/1" do
+  test "decode_pem/1" do
+    key = :public_key.generate_key({:rsa, 1024, 65_537})
+    entry = :public_key.pem_entry_encode(elem(key, 0), key)
+    pem = :public_key.pem_encode([entry])
+
+    assert {:ok, decoded_key} = JWTAdapter.decode_pem(pem)
+    assert decoded_key == :public_key.pem_entry_decode(entry)
+
+    assert {:error, %ArgumentError{message: "expected one PEM entry, got none"}} =
+             JWTAdapter.decode_pem("invalid")
+
+    assert {:error, %ArgumentError{message: "expected one PEM entry, got 2"}} =
+             JWTAdapter.decode_pem(pem <> pem)
+  end
+
+  @tag :tmp_dir
+  test "load_private_key/1", %{tmp_dir: tmp_dir} do
+    missing_private_key_path = Path.join(tmp_dir, "missing.pem")
+    private_key_path = Path.join(tmp_dir, "private-key.pem")
+    :ok = File.write!(private_key_path, "private_key")
+
     assert {:error, %Assent.MissingConfigError{} = error} = JWTAdapter.load_private_key([])
     assert error.key == :private_key
 
     assert JWTAdapter.load_private_key(private_key: "private_key") == {:ok, "private_key"}
 
-    assert JWTAdapter.load_private_key(private_key_path: "tmp/invalid.pem") ==
-             {:error, "Failed to read \"tmp/invalid.pem\", got; :enoent"}
+    assert {:error, %File.Error{} = error} =
+             JWTAdapter.load_private_key(private_key_path: missing_private_key_path)
 
-    File.mkdir_p!("tmp/")
-    File.write!("tmp/private-key.pem", "private_key")
+    assert error.path == missing_private_key_path
+    assert error.reason == :enoent
 
-    assert JWTAdapter.load_private_key(private_key_path: "tmp/private-key.pem") ==
+    assert JWTAdapter.load_private_key(private_key_path: private_key_path) ==
              {:ok, "private_key"}
   end
 end

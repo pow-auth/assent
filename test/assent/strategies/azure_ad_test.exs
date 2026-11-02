@@ -142,7 +142,12 @@ defmodule Assent.Strategy.AzureADTest do
       id_token_opts: [claims: claims]
     )
 
-    assert AzureAD.callback(config, params) == {:error, "Missing `tid` in ID Token claims"}
+    assert {:error,
+            %Assent.Strategy.OIDC.InvalidIDTokenError{
+              message:
+                "expected `tid` claim in ID Token, got: [\"aio\", \"aud\", \"exp\", \"iat\", \"iss\", \"name\", \"nbf\", \"nonce\", \"oid\", \"preferred_username\", \"sub\", \"ver\"]"
+            }} =
+             AzureAD.callback(config, params)
   end
 
   test "callback/2 with `tenant_id: domain` with claim with invalid `tid`", %{
@@ -157,7 +162,9 @@ defmodule Assent.Strategy.AzureADTest do
       id_token_opts: [claims: claims]
     )
 
-    assert AzureAD.callback(config, params) == {:error, "Invalid `tid` in ID Token claims"}
+    assert {:error,
+            %Assent.Strategy.OIDC.InvalidIDTokenError{message: "invalid `tid` claim in ID Token"}} =
+             AzureAD.callback(config, params)
   end
 
   test "callback/2 with `tenant_id: domain` with claim with UUID `tid` with invalid characters",
@@ -173,7 +180,9 @@ defmodule Assent.Strategy.AzureADTest do
       id_token_opts: [claims: claims]
     )
 
-    assert AzureAD.callback(config, params) == {:error, "Invalid `tid` in ID Token claims"}
+    assert {:error,
+            %Assent.Strategy.OIDC.InvalidIDTokenError{message: "invalid `tid` claim in ID Token"}} =
+             AzureAD.callback(config, params)
   end
 
   defp tenant_config(config, tenant, openid_configuration \\ %{}) do
