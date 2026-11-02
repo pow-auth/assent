@@ -27,55 +27,224 @@ defmodule Assent.HTTPAdapter do
         end
       end
   """
-  alias Assent.{InvalidResponseError, ServerUnreachableError}
-
   defmodule HTTPRequest do
     @moduledoc """
     Struct used by HTTP adapters to normalize HTTP requests.
+
+    `Inspect` output includes only `:method`. Request URL, headers, and bodies
+    remain available as fields but are omitted because they may contain sensitive data.
+
+    ## Examples
+
+        iex> request = %Assent.HTTPAdapter.HTTPRequest{method: :get, url: "https://example.com", body: nil, headers: []}
+        iex> inspect(request)
+        "#Assent.HTTPAdapter.HTTPRequest<method: :get, ...>"
     """
 
-    @type header :: {binary(), binary()}
     @type t :: %__MODULE__{
-            method: atom(),
+            method: :get | :post,
             url: binary(),
             body: binary() | nil,
-            headers: [header()]
+            headers: [{binary(), binary()}]
           }
 
+    @derive {Inspect, only: [:method]}
     defstruct [:method, :url, :body, headers: []]
   end
 
   defmodule HTTPResponse do
     @moduledoc """
     Struct used by HTTP adapters to normalize HTTP responses.
+
+    `Inspect` output includes only `:http_adapter` and `:status`. Request
+    struct, headers, and bodies remain available as fields but are omitted
+    because they may contain sensitive data.
+
+    ## Examples
+
+        iex> response = %Assent.HTTPAdapter.HTTPResponse{
+        ...>   request: %Assent.HTTPAdapter.HTTPRequest{method: :get, url: "https://example.com", body: nil, headers: []},
+        ...>   http_adapter: Assent.HTTPAdapter.Httpc,
+        ...>   status: 200,
+        ...>   headers: [],
+        ...>   body: "OK"
+        ...> }
+        iex> inspect(response)
+        "#Assent.HTTPAdapter.HTTPResponse<http_adapter: Assent.HTTPAdapter.Httpc, status: 200, ...>"
     """
 
     @type header :: {binary(), binary()}
     @type t :: %__MODULE__{
-            http_adapter: atom(),
-            request_url: binary(),
+            request: Assent.HTTPAdapter.HTTPRequest.t(),
+            http_adapter: module(),
             status: integer(),
             headers: [header()],
             body: binary() | term()
           }
 
-    defstruct http_adapter: nil, request_url: nil, status: 200, headers: [], body: ""
+    @derive {Inspect, only: [:http_adapter, :status]}
+    defstruct [:request, :http_adapter, status: 200, headers: [], body: ""]
+  end
 
-    def format(response) do
-      [request_url | _rest] = String.split(response.request_url, "?", parts: 2)
+  defmodule RequestError do
+    @moduledoc """
+    An exception for when a provider rejects an HTTP request.
 
-      """
-      HTTP Adapter: #{inspect(response.http_adapter)}
-      Request URL: #{request_url}
+    The `:response` field is omitted from `Inspect` output as it may contain
+    sensitive data.
 
-      Response status: #{response.status}
+    ## Fields
 
-      Response headers:
-      #{Enum.reduce(response.headers, "", fn {k, v}, acc -> acc <> "\n#{k}: #{v}" end)}
+      * `:message` - a description of the error
+      * `:response` - the normalized HTTP response
 
-      Response body:
-      #{inspect(response.body)}
-      """
+    ## Examples
+
+        iex> error = %Assent.HTTPAdapter.RequestError{
+        ...>   message: "Request failed",
+        ...>   response: %Assent.HTTPAdapter.HTTPResponse{
+        ...>     request: %Assent.HTTPAdapter.HTTPRequest{method: :get, url: "https://example.com", body: nil, headers: []},
+        ...>     http_adapter: Assent.HTTPAdapter.Httpc,
+        ...>     status: 500,
+        ...>     headers: [],
+        ...>     body: "Internal Server Error"
+        ...>   }
+        ...> }
+        iex> Exception.message(error)
+        "Request failed\\n\\nHTTP adapter: Assent.HTTPAdapter.Httpc\\nRequest: GET https://example.com\\nResponse status: 500\\n"
+        iex> inspect(error)
+        "#Assent.HTTPAdapter.RequestError<message: \\"Request failed\\", ...>"
+    """
+
+    @type t :: %__MODULE__{
+            message: binary(),
+            response: Assent.HTTPAdapter.HTTPResponse.t()
+          }
+    @derive {Inspect, only: [:message]}
+
+    defexception [:message, :response]
+
+    def message(exception) do
+      "#{exception.message}\n\n#{Assent.HTTPAdapter.format_http_response(exception.response)}"
+    end
+  end
+
+  defmodule InvalidResponseError do
+    @moduledoc """
+    An exception for when an HTTP response is invalid.
+
+    The `:response` field is omitted from `Inspect` output as it may contain
+    sensitive data.
+
+    ## Fields
+
+      * `:response` - the normalized HTTP response
+
+    ## Examples
+
+        iex> error = %Assent.HTTPAdapter.InvalidResponseError{
+        ...>   response: %Assent.HTTPAdapter.HTTPResponse{
+        ...>     request: %Assent.HTTPAdapter.HTTPRequest{method: :get, url: "https://example.com", body: nil, headers: []},
+        ...>     http_adapter: Assent.HTTPAdapter.Httpc,
+        ...>     status: 500,
+        ...>     headers: [],
+        ...>     body: "Internal Server Error"
+        ...>   }
+        ...> }
+        iex> Exception.message(error)
+        "invalid response\\n\\nHTTP adapter: Assent.HTTPAdapter.Httpc\\nRequest: GET https://example.com\\nResponse status: 500\\n"
+        iex> inspect(error)
+        "#Assent.HTTPAdapter.InvalidResponseError<...>"
+    """
+
+    @type t :: %__MODULE__{response: Assent.HTTPAdapter.HTTPResponse.t()}
+    @derive {Inspect, only: []}
+
+    defexception [:response]
+
+    def message(exception) do
+      "invalid response\n\n#{Assent.HTTPAdapter.format_http_response(exception.response)}"
+    end
+  end
+
+  defmodule UnexpectedResponseError do
+    @moduledoc """
+    An exception for when an HTTP response is unexpected.
+
+    The `:response` field is omitted from `Inspect` output as it may contain
+    sensitive data.
+
+    ## Fields
+
+      * `:response` - the normalized HTTP response
+
+    ## Examples
+
+        iex> error = %Assent.HTTPAdapter.UnexpectedResponseError{
+        ...>   response: %Assent.HTTPAdapter.HTTPResponse{
+        ...>     request: %Assent.HTTPAdapter.HTTPRequest{method: :get, url: "https://example.com", body: nil, headers: []},
+        ...>     http_adapter: Assent.HTTPAdapter.Httpc,
+        ...>     status: 500,
+        ...>     headers: [],
+        ...>     body: "Internal Server Error"
+        ...>   }
+        ...> }
+        iex> Exception.message(error)
+        "unexpected response\\n\\nHTTP adapter: Assent.HTTPAdapter.Httpc\\nRequest: GET https://example.com\\nResponse status: 500\\n"
+        iex> inspect(error)
+        "#Assent.HTTPAdapter.UnexpectedResponseError<...>"
+    """
+
+    @type t :: %__MODULE__{response: Assent.HTTPAdapter.HTTPResponse.t()}
+    @derive {Inspect, only: []}
+
+    defexception [:response]
+
+    def message(exception) do
+      "unexpected response\n\n#{Assent.HTTPAdapter.format_http_response(exception.response)}"
+    end
+  end
+
+  defmodule ServerUnreachableError do
+    @moduledoc """
+    An exception for when a server is unreachable.
+
+    The `:request` and `:reason` fields are omitted from `Inspect` output as
+    they may contain sensitive data.
+
+    ## Fields
+
+      * `:http_adapter` - the HTTP adapter module
+      * `:request` - the HTTP request
+      * `:reason` - the underlying failure reason
+
+    ## Examples
+
+        iex> error = %Assent.HTTPAdapter.ServerUnreachableError{
+        ...>   http_adapter: Assent.HTTPAdapter.Httpc,
+        ...>   request: %Assent.HTTPAdapter.HTTPRequest{method: :get, url: "https://example.com", body: nil, headers: []},
+        ...>   reason: :timeout
+        ...> }
+        iex> Exception.message(error)
+        "server is unreachable\\n\\nHTTP adapter: Assent.HTTPAdapter.Httpc\\nRequest: GET https://example.com\\n"
+        iex> inspect(error)
+        "#Assent.HTTPAdapter.ServerUnreachableError<http_adapter: Assent.HTTPAdapter.Httpc, ...>"
+    """
+
+    @type t :: %__MODULE__{
+            http_adapter: module(),
+            request: Assent.HTTPAdapter.HTTPRequest.t(),
+            reason: term()
+          }
+
+    @derive {Inspect, only: [:http_adapter]}
+
+    defexception [:http_adapter, :request, :reason]
+
+    def message(exception) do
+      "server is unreachable\n\n" <>
+        "HTTP adapter: #{inspect(exception.http_adapter)}\n" <>
+        Assent.HTTPAdapter.format_http_request(exception.request)
     end
   end
 
@@ -83,8 +252,11 @@ defmodule Assent.HTTPAdapter do
   @type body :: binary() | nil
   @type headers :: [{binary(), binary()}]
 
+  @doc """
+  Sends an HTTP request using the adapter's client.
+  """
   @callback request(method(), binary(), body(), headers(), Keyword.t()) ::
-              {:ok, map()} | {:error, any()}
+              {:ok, HTTPResponse.t()} | {:error, term()}
 
   @doc """
   Sets a user agent header.
@@ -119,24 +291,24 @@ defmodule Assent.HTTPAdapter do
     |> http_adapter.request(request.url, request.body, request.headers, http_adapter_opts)
     |> case do
       {:ok, response} ->
-        response
+        %{response | request: request, http_adapter: http_adapter}
         |> normalize_headers()
         |> decode_response(opts)
 
       {:error, error} ->
         {:error,
          ServerUnreachableError.exception(
-           reason: error,
            http_adapter: http_adapter,
-           request_url: request.url
+           request: request,
+           reason: error
          )}
     end
     |> case do
-      {:ok, %{status: status} = resp} when status in 200..399 ->
-        {:ok, %{resp | http_adapter: http_adapter, request_url: request.url}}
+      {:ok, %{status: status} = response} when status in 200..399 ->
+        {:ok, response}
 
-      {:ok, %{status: status} = resp} when status in 400..599 ->
-        {:error, %{resp | http_adapter: http_adapter, request_url: request.url}}
+      {:ok, %{status: status} = response} when status in 400..599 ->
+        {:error, response}
 
       {:error, error} ->
         {:error, error}
@@ -202,4 +374,27 @@ defmodule Assent.HTTPAdapter do
   end
 
   defp decode(_headers, body, _opts), do: {:ok, body}
+
+  @doc """
+  Formats an HTTP request for an error message.
+  """
+  @spec format_http_request(HTTPRequest.t()) :: binary()
+  def format_http_request(request) do
+    uri = URI.parse(request.url)
+    url = URI.to_string(%{uri | fragment: nil, query: nil, userinfo: nil})
+
+    "Request: #{String.upcase(to_string(request.method))} #{url}\n"
+  end
+
+  @doc """
+  Formats an HTTP response for an error message.
+  """
+  @spec format_http_response(HTTPResponse.t()) :: binary()
+  def format_http_response(response) do
+    """
+    HTTP adapter: #{inspect(response.http_adapter)}
+    #{format_http_request(response.request)}\
+    Response status: #{response.status}
+    """
+  end
 end

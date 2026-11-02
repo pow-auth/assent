@@ -40,8 +40,9 @@ defmodule Assent.Strategy.VKTest do
       expect_oauth2_user_request(%{"a" => 1}, uri: "/method/users.get")
 
       assert {:error, %RuntimeError{} = error} = VK.callback(config, params)
-      assert error.message =~ "Retrieved an invalid response fetching VK user"
-      assert error.message =~ "%{\"a\" => 1}"
+
+      assert Exception.message(error) =~ "Retrieved an invalid response fetching VK user"
+      assert Exception.message(error) =~ "%{\"a\" => 1}"
     end
 
     test "normalizes data", %{config: config, callback_params: params} do

@@ -24,14 +24,19 @@ defmodule IntegrationServer.Router do
 
   @path_modules modules
                 |> Enum.map(&{Module.split(&1), &1})
+                |> Enum.filter(fn
+                  {["Assent", "Strategy", strategy], _module} ->
+                    not String.ends_with?(strategy, "Error")
+
+                  _ ->
+                    false
+                end)
                 |> Enum.map(fn
                   {["Assent", "Strategy", uri], module} ->
                     path = Macro.underscore(uri)
                     fun_name = String.to_atom(path)
-                    {path, module, fun_name}
 
-                  _any ->
-                    nil
+                    {path, module, fun_name}
                 end)
                 |> Enum.reject(&is_nil/1)
 

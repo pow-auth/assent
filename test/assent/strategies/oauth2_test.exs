@@ -1,19 +1,24 @@
 defmodule Assent.Strategy.OAuth2Test do
   use Assent.Test.OAuth2TestCase
 
-  alias Assent.InvalidResponseError
-  alias Assent.ServerUnreachableError
-  alias Assent.UnexpectedResponseError
+  doctest Assent.Strategy.OAuth2
+  doctest Assent.Strategy.OAuth2.UnsupportedTokenTypeError
 
   alias Assent.{
-    CallbackCSRFError,
-    CallbackError,
     JWTAdapter.AssentJWT,
     MissingConfigError,
     MissingParamError,
-    RequestError,
     Strategy.OAuth2
   }
+
+  alias Assent.HTTPAdapter.{
+    InvalidResponseError,
+    RequestError,
+    ServerUnreachableError,
+    UnexpectedResponseError
+  }
+
+  alias Assent.Strategy.{CallbackCSRFError, CallbackError}
 
   @client_id "s6BhdRkqt3"
   @client_secret "7Fjfp0ZBr1KtDRbnfVdmIw"
@@ -64,6 +69,7 @@ defmodule Assent.Strategy.OAuth2Test do
       config = Keyword.delete(config, :redirect_uri)
 
       assert {:error, %MissingConfigError{} = error} = OAuth2.authorize_url(config)
+
       assert error.key == :redirect_uri
     end
 
@@ -71,6 +77,7 @@ defmodule Assent.Strategy.OAuth2Test do
       config = Keyword.delete(config, :base_url)
 
       assert {:error, %MissingConfigError{} = error} = OAuth2.authorize_url(config)
+
       assert error.key == :base_url
     end
 
@@ -78,6 +85,7 @@ defmodule Assent.Strategy.OAuth2Test do
       config = Keyword.delete(config, :client_id)
 
       assert {:error, %MissingConfigError{} = error} = OAuth2.authorize_url(config)
+
       assert error.key == :client_id
     end
 
@@ -157,6 +165,7 @@ defmodule Assent.Strategy.OAuth2Test do
       config = Keyword.delete(config, :session_params)
 
       assert {:error, %MissingConfigError{} = error} = OAuth2.callback(config, params)
+
       assert error.key == :session_params
     end
 
@@ -175,6 +184,7 @@ defmodule Assent.Strategy.OAuth2Test do
       params = Map.delete(params, "state")
 
       assert {:error, %MissingParamError{} = error} = OAuth2.callback(config, params)
+
       assert error.key == "state"
     end
 
@@ -182,7 +192,7 @@ defmodule Assent.Strategy.OAuth2Test do
       params = Map.put(params, "state", "invalid")
 
       assert {:error, %CallbackCSRFError{} = error} = OAuth2.callback(config, params)
-      assert Exception.message(error) == "CSRF detected with param key \"state\""
+
       assert error.key == "state"
     end
 
@@ -224,7 +234,7 @@ defmodule Assent.Strategy.OAuth2Test do
       }
 
       assert {:error, %CallbackCSRFError{} = error} = OAuth2.callback(config, params)
-      assert Exception.message(error) == "CSRF detected with param key \"state\""
+
       assert error.key == "state"
     end
 
@@ -236,15 +246,20 @@ defmodule Assent.Strategy.OAuth2Test do
       }
 
       assert {:error, %CallbackError{} = error} = OAuth2.callback(config, params)
-      assert error.message == "The user denied the request"
-      assert error.error == "access_denied"
-      refute error.error_uri
+
+      assert Exception.message(error) == "The user denied the request"
+
+      assert error.params == %{
+               "error" => "access_denied",
+               "error_description" => "The user denied the request"
+             }
     end
 
     test "with missing `code` param", %{config: config, callback_params: params} do
       params = Map.delete(params, "code")
 
       assert {:error, %MissingParamError{} = error} = OAuth2.callback(config, params)
+
       assert error.key == "code"
     end
 
@@ -281,7 +296,9 @@ defmodule Assent.Strategy.OAuth2Test do
     test "with invalid `:auth_method`", %{config: config, callback_params: params} do
       config = Keyword.put(config, :auth_method, :invalid)
 
-      assert {:error, "Invalid `:auth_method` invalid"} = OAuth2.callback(config, params)
+      assert {:error, %ArgumentError{} = error} = OAuth2.callback(config, params)
+
+      assert Exception.message(error) == "invalid `:auth_method`, got: :invalid"
     end
 
     test "with `:token_url` being unreachable", %{config: config, callback_params: params} do
@@ -289,9 +306,9 @@ defmodule Assent.Strategy.OAuth2Test do
       TestServer.stop()
 
       assert {:error, %ServerUnreachableError{} = error} = OAuth2.callback(config, params)
-      assert Exception.message(error) =~ "The server was unreachable."
+
       assert error.http_adapter == Assent.HTTPAdapter.Httpc
-      assert error.request_url == oauth_token_url
+      assert error.request.url == oauth_token_url
       assert {:failed_connect, _} = error.reason
     end
 
@@ -302,7 +319,8 @@ defmodule Assent.Strategy.OAuth2Test do
       expect_oauth2_access_token_request(params: %{"a" => "1"})
 
       assert {:error, %UnexpectedResponseError{} = error} = OAuth2.callback(config, params)
-      assert Exception.message(error) =~ "An unexpected response was received."
+
+      assert error.response.status == 200
       assert error.response.body == %{"a" => "1"}
     end
 
@@ -310,6 +328,7 @@ defmodule Assent.Strategy.OAuth2Test do
       expect_oauth2_access_token_request(status_code: 500, params: %{error: "Error"})
 
       assert {:error, %InvalidResponseError{} = error} = OAuth2.callback(config, params)
+
       assert error.response.status == 500
       assert error.response.body == %{"error" => "Error"}
     end
@@ -470,18 +489,20 @@ defmodule Assent.Strategy.OAuth2Test do
       assert {:ok, _any} = OAuth2.callback(config, params)
     end
 
+    @tag :tmp_dir
     test "with `auth_method: :private_key_jwt` with private key as file", %{
       config: config,
-      callback_params: params
+      callback_params: params,
+      tmp_dir: tmp_dir
     } do
-      File.mkdir_p!("tmp/")
-      File.write!("tmp/private-key.pem", @private_key)
+      private_key_path = Path.join(tmp_dir, "private-key.pem")
+      :ok = File.write!(private_key_path, @private_key)
 
       config =
         config
         |> Keyword.delete(:client_secret)
         |> Keyword.put(:auth_method, :private_key_jwt)
-        |> Keyword.put(:private_key_path, "tmp/private-key.pem")
+        |> Keyword.put(:private_key_path, private_key_path)
         |> Keyword.put(:private_key_id, @private_key_id)
 
       expect_oauth2_access_token_request([], fn _conn, params ->
@@ -499,19 +520,22 @@ defmodule Assent.Strategy.OAuth2Test do
       assert {:ok, _any} = OAuth2.callback(config, params)
     end
 
+    @tag :tmp_dir
     test "with `auth_method: :private_key_jwt` with private key as missing file", %{
       config: config,
-      callback_params: params
+      callback_params: params,
+      tmp_dir: tmp_dir
     } do
+      private_key_path = Path.join(tmp_dir, "missing.pem")
+
       config =
         config
         |> Keyword.delete(:client_secret)
         |> Keyword.put(:auth_method, :private_key_jwt)
-        |> Keyword.put(:private_key_path, "tmp/missing.pem")
+        |> Keyword.put(:private_key_path, private_key_path)
         |> Keyword.put(:private_key_id, @private_key_id)
 
-      assert {:error, "Failed to read \"tmp/missing.pem\", got; :enoent"} =
-               OAuth2.callback(config, params)
+      assert {:error, %File.Error{}} = OAuth2.callback(config, params)
     end
 
     test "with missing `:user_url` config", %{config: config, callback_params: params} do
@@ -520,6 +544,7 @@ defmodule Assent.Strategy.OAuth2Test do
       expect_oauth2_access_token_request()
 
       assert {:error, %MissingConfigError{} = error} = OAuth2.callback(config, params)
+
       assert error.key == :user_url
     end
 
@@ -528,8 +553,10 @@ defmodule Assent.Strategy.OAuth2Test do
         params: %{access_token: "access_token", token_type: "invalid"}
       )
 
-      assert OAuth2.callback(config, params) ==
-               {:error, "Authorization with token type `invalid` not supported"}
+      assert {:error, %OAuth2.UnsupportedTokenTypeError{} = error} =
+               OAuth2.callback(config, params)
+
+      assert error.type == "invalid"
     end
 
     test "with `:user_url` being unreachable", %{config: config, callback_params: params} do
@@ -538,9 +565,9 @@ defmodule Assent.Strategy.OAuth2Test do
       expect_oauth2_access_token_request()
 
       assert {:error, %ServerUnreachableError{} = error} = OAuth2.callback(config, params)
-      assert Exception.message(error) =~ "The server was unreachable."
+
       assert error.http_adapter == Assent.HTTPAdapter.Httpc
-      assert error.request_url == config[:user_url]
+      assert error.request.url == config[:user_url]
       assert {:failed_connect, _} = error.reason
     end
 
@@ -549,7 +576,8 @@ defmodule Assent.Strategy.OAuth2Test do
       expect_oauth2_user_request(%{"error" => "Unauthorized"}, status_code: 401)
 
       assert {:error, %RequestError{} = error} = OAuth2.callback(config, params)
-      assert error.message == "Unauthorized token"
+
+      assert Exception.message(error) =~ "unauthorized token"
       assert error.response.status == 401
       assert error.response.body == %{"error" => "Unauthorized"}
     end
@@ -562,7 +590,7 @@ defmodule Assent.Strategy.OAuth2Test do
       expect_oauth2_user_request("%")
 
       assert {:error, %UnexpectedResponseError{} = error} = OAuth2.callback(config, params)
-      assert Exception.message(error) =~ "An unexpected response was received."
+
       assert error.response.body == "%"
     end
 
@@ -594,8 +622,10 @@ defmodule Assent.Strategy.OAuth2Test do
     end
 
     test "with missing `refresh_token` in token", %{config: config} do
-      assert OAuth2.refresh_access_token(config, %{}) ==
-               {:error, "No `refresh_token` in token map"}
+      assert {:error, %Assent.MissingParamError{} = error} =
+               OAuth2.refresh_access_token(config, %{})
+
+      assert error.key == "refresh_token"
     end
 
     test "with `:token_url` returning success without `access_token`", %{config: config} do
@@ -606,7 +636,7 @@ defmodule Assent.Strategy.OAuth2Test do
                  "refresh_token" => "refresh_token_test_value"
                })
 
-      assert Exception.message(error) =~ "An unexpected response was received."
+      assert error.response.status == 200
       assert error.response.body == %{"a" => "1"}
     end
 
@@ -618,7 +648,6 @@ defmodule Assent.Strategy.OAuth2Test do
                  "refresh_token" => "refresh_token_test_value"
                })
 
-      assert Exception.message(error) =~ "An invalid response was received."
       assert error.response.status == 500
       assert error.response.body == %{"error" => "Error"}
     end
@@ -672,16 +701,22 @@ defmodule Assent.Strategy.OAuth2Test do
     test "with missing `access_token` in token", %{config: config, token: token} do
       token = Map.delete(token, "access_token")
 
-      assert OAuth2.request(config, token, :get, "/info") ==
-               {:error, "No `access_token` in token map"}
+      assert {:error, %Assent.MissingParamError{} = error} =
+               OAuth2.request(config, token, :get, "/info")
 
-      assert OAuth2.request(config, Map.put(token, "token_type", "bearer"), :get, "/info") ==
-               {:error, "No `access_token` in token map"}
+      assert error.key == "access_token"
+
+      assert {:error, %Assent.MissingParamError{} = error} =
+               OAuth2.request(config, Map.put(token, "token_type", "bearer"), :get, "/info")
+
+      assert error.key == "access_token"
     end
 
     test "with invalid `token_type` in token", %{config: config, token: token} do
-      assert OAuth2.request(config, Map.put(token, "token_type", "invalid"), :get, "/info") ==
-               {:error, "Authorization with token type `invalid` not supported"}
+      assert {:error, %OAuth2.UnsupportedTokenTypeError{} = error} =
+               OAuth2.request(config, Map.put(token, "token_type", "invalid"), :get, "/info")
+
+      assert error.type == "invalid"
     end
 
     test "gets", %{config: config, token: token} do
