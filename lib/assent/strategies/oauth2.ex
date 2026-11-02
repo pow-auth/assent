@@ -122,19 +122,37 @@ defmodule Assent.Strategy.OAuth2 do
         end
       end
   """
+
+  defmodule UnsupportedTokenTypeError do
+    @moduledoc """
+    An exception for when an OAuth2 token type is unsupported.
+
+    ## Fields
+
+      * `:type` - the token type
+
+    ## Examples
+
+        iex> error = Assent.Strategy.OAuth2.UnsupportedTokenTypeError.exception(type: "mac")
+        iex> Exception.message(error)
+        "unsupported authorization token type, got: \\"mac\\""
+    """
+
+    defexception [:type]
+
+    @type t :: %__MODULE__{type: term()}
+
+    def message(exception),
+      do: "unsupported authorization token type, got: #{inspect(exception.type)}"
+  end
+
   @behaviour Assent.Strategy
 
+  alias Assent.{HTTPAdapter.HTTPResponse, JWTAdapter}
+  alias Assent.HTTPAdapter.{InvalidResponseError, RequestError, UnexpectedResponseError}
   alias Assent.Strategy, as: Helpers
-
-  alias Assent.{
-    CallbackCSRFError,
-    CallbackError,
-    HTTPAdapter.HTTPResponse,
-    InvalidResponseError,
-    JWTAdapter,
-    RequestError,
-    UnexpectedResponseError
-  }
+  alias Assent.Strategy.{CallbackCSRFError, CallbackError}
+  alias Assent.Strategy.OAuth2.UnsupportedTokenTypeError
 
   @typedoc """
   The session parameters returned from `authorize_url/1`, to be stored and
@@ -152,7 +170,7 @@ defmodule Assent.Strategy.OAuth2 do
           {:ok, %{session_params: session_params(), url: binary()}} | {:error, term()}
 
   @typedoc "Return value of `callback/3`."
-  @type on_callback :: {:ok, %{user: map(), token: map()}} | {:error, term()}
+  @type on_callback :: {:ok, %{token: map(), user: map()}} | {:error, term()}
 
   @doc """
   Generates an authorization URL for the request phase.
@@ -263,10 +281,9 @@ defmodule Assent.Strategy.OAuth2 do
 
   defp check_error_params(%{"error" => _} = params) do
     message = params["error_description"] || params["error_reason"] || params["error"]
-    error = params["error"]
-    error_uri = params["error_uri"]
+    error_params = Map.take(params, ~w(error error_description error_reason error_uri))
 
-    {:error, CallbackError.exception(message: message, error: error, error_uri: error_uri)}
+    {:error, CallbackError.exception(message: message, params: error_params)}
   end
 
   defp check_error_params(_params), do: :ok
@@ -373,7 +390,7 @@ defmodule Assent.Strategy.OAuth2 do
   end
 
   defp authentication_params(method, _config) do
-    {:error, "Invalid `:auth_method` #{method}"}
+    {:error, ArgumentError.exception("invalid `:auth_method`, got: #{inspect(method)}")}
   end
 
   defp jwt_authentication_params(alg, secret, config) do
@@ -442,7 +459,7 @@ defmodule Assent.Strategy.OAuth2 do
   """
   @spec refresh_access_token(Keyword.t(), map(), Keyword.t()) :: {:ok, map()} | {:error, term()}
   def refresh_access_token(config, token, params \\ []) do
-    with {:ok, refresh_token} <- fetch_from_token(token, "refresh_token") do
+    with {:ok, refresh_token} <- Assent.fetch_token_param(token, "refresh_token") do
       grant_access_token(
         config,
         "refresh_token",
@@ -476,20 +493,13 @@ defmodule Assent.Strategy.OAuth2 do
   end
 
   defp authorization_headers("bearer", token) do
-    with {:ok, access_token} <- fetch_from_token(token, "access_token") do
+    with {:ok, access_token} <- Assent.fetch_token_param(token, "access_token") do
       {:ok, [{"authorization", "Bearer #{access_token}"}]}
     end
   end
 
   defp authorization_headers(type, _token) do
-    {:error, "Authorization with token type `#{type}` not supported"}
-  end
-
-  defp fetch_from_token(token, key) do
-    case Map.fetch(token, key) do
-      {:ok, value} -> {:ok, value}
-      :error -> {:error, "No `#{key}` in token map"}
-    end
+    {:error, UnsupportedTokenTypeError.exception(type: type)}
   end
 
   defp request_headers(:post, headers),
@@ -517,7 +527,7 @@ defmodule Assent.Strategy.OAuth2 do
           {:ok, user}
 
         {:error, %HTTPResponse{status: 401} = response} ->
-          {:error, RequestError.exception(message: "Unauthorized token", response: response)}
+          {:error, RequestError.exception(message: "unauthorized token", response: response)}
 
         other ->
           process_response(other)

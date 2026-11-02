@@ -17,7 +17,7 @@ defmodule Assent.Strategy.Twitter do
   """
   use Assent.Strategy.OAuth.Base
 
-  alias Assent.{CallbackError, Strategy.OAuth.Base}
+  alias Assent.Strategy.{CallbackError, OAuth.Base}
 
   @impl true
   def default_config(_config) do
@@ -36,7 +36,8 @@ defmodule Assent.Strategy.Twitter do
   def callback(config, params) do
     case Map.has_key?(params, "denied") do
       true ->
-        {:error, CallbackError.exception(message: "The user denied the authorization request")}
+        {:error,
+         CallbackError.exception(message: "user denied the authorization request", params: params)}
 
       false ->
         Base.callback(config, params, __MODULE__)

@@ -28,7 +28,7 @@ defmodule Assent.Strategy.FacebookTest do
   end
 
   describe "callback/2" do
-    test "normalizes data", %{config: config, callback_params: params} do
+    test "with valid user response", %{config: config, callback_params: params} do
       expect_oauth2_access_token_request([uri: "/oauth/access_token"], fn _conn, params ->
         assert params["client_secret"] == config[:client_secret]
       end)
@@ -51,7 +51,7 @@ defmodule Assent.Strategy.FacebookTest do
       assert user == Map.put(@user, "picture", "https://example.com/picture.jpg")
     end
 
-    test "when missing `picture` field", %{
+    test "with missing `picture` field", %{
       config: config,
       callback_params: params
     } do

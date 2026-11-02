@@ -3,6 +3,8 @@ defmodule Assent.Strategy.TelegramTest do
 
   alias Assent.Strategy.Telegram
 
+  alias Assent.{MissingConfigError, MissingParamError, Strategy.CallbackError}
+
   @callback_params %{
     "first_name" => "Paul",
     "last_name" => "Duroff",
@@ -81,25 +83,28 @@ defmodule Assent.Strategy.TelegramTest do
     test "with missing `:bot_token` config", %{config: config} do
       config = Keyword.delete(config, :bot_token)
 
-      assert {:error, %Assent.MissingConfigError{} = error} = Telegram.authorize_url(config)
+      assert {:error, %MissingConfigError{} = error} = Telegram.authorize_url(config)
+
       assert error.key == :bot_token
     end
 
     test "with missing `:origin` config", %{config: config} do
       config = Keyword.delete(config, :origin)
 
-      assert {:error, %Assent.MissingConfigError{} = error} = Telegram.authorize_url(config)
+      assert {:error, %MissingConfigError{} = error} = Telegram.authorize_url(config)
+
       assert error.key == :origin
     end
 
     test "with missing `:return_to` config", %{config: config} do
       config = Keyword.delete(config, :return_to)
 
-      assert {:error, %Assent.MissingConfigError{} = error} = Telegram.authorize_url(config)
+      assert {:error, %MissingConfigError{} = error} = Telegram.authorize_url(config)
+
       assert error.key == :return_to
     end
 
-    test "returns", %{config: config} do
+    test "with valid config", %{config: config} do
       assert {:ok, %{url: url}} = Telegram.authorize_url(config)
 
       assert URI.decode_query(URI.parse(url).query) == %{
@@ -119,105 +124,108 @@ defmodule Assent.Strategy.TelegramTest do
     } do
       config = Keyword.put(config, :authorization_channel, :invalid)
 
-      assert {:error, %Assent.CallbackError{} = error} =
+      assert {:error, %ArgumentError{} = error} =
                Telegram.callback(config, callback_params)
 
-      assert error.message == "Invalid `:authorization_channel` value: :invalid"
+      assert Exception.message(error) == "invalid `:authorization_channel` value, got: :invalid"
     end
 
-    test "with missing hash param", %{config: config, callback_params: callback_params} do
+    test "with missing `hash` param", %{config: config, callback_params: callback_params} do
       callback_params = Map.delete(callback_params, "hash")
 
-      assert {:error, %Assent.MissingParamError{} = error} =
+      assert {:error, %MissingParamError{} = error} =
                Telegram.callback(config, callback_params)
 
       assert error.key == "hash"
     end
 
     @tag authorization_channel: :web_mini_app
-    test "with web mini app with missing init_data param", %{
+    test "with Web Mini App and missing `init_data` param", %{
       config: config,
       callback_params: callback_params
     } do
       callback_params = Map.delete(callback_params, "init_data")
 
-      assert {:error, %Assent.MissingParamError{} = error} =
+      assert {:error, %MissingParamError{} = error} =
                Telegram.callback(config, callback_params)
 
       assert error.key == "init_data"
     end
 
-    test "with missing bot_token config", %{config: config, callback_params: callback_params} do
+    test "with missing `:bot_token` config", %{config: config, callback_params: callback_params} do
       config = Keyword.delete(config, :bot_token)
 
-      assert {:error, %Assent.MissingConfigError{} = error} =
+      assert {:error, %MissingConfigError{} = error} =
                Telegram.callback(config, callback_params)
 
       assert error.key == :bot_token
     end
 
-    test "with invalid hash", %{config: config, callback_params: callback_params} do
+    test "with invalid `hash` param", %{config: config, callback_params: callback_params} do
       config = Keyword.put(config, :bot_token, "other-token")
 
-      assert {:error, %Assent.CallbackError{} = error} =
+      assert {:error, %CallbackError{} = error} =
                Telegram.callback(config, callback_params)
 
-      assert error.message == "Authorization request has an invalid hash"
+      assert Exception.message(error) == "authorization request has an invalid hash"
+      assert error.params == Map.delete(callback_params, "hash")
     end
 
     @tag auth_date: "invalid"
-    test "with invalid hash with invalid auth_date param", %{
+    test "with invalid `hash` and `auth_date` params", %{
       config: config,
       callback_params: callback_params
     } do
-      assert_raise ArgumentError, ~r/not a textual representation of an integer/, fn ->
-        Telegram.callback(config, callback_params)
-      end
+      callback_params = Map.put(callback_params, "hash", String.duplicate("0", 64))
+
+      assert {:error, %CallbackError{} = error} = Telegram.callback(config, callback_params)
+
+      assert Exception.message(error) == "authorization request has an invalid hash"
     end
 
     @tag authorization_channel: :web_mini_app
-    test "with web mini app with invalid hash", %{
+    test "with Web Mini App and invalid `hash` param", %{
       config: config,
       callback_params: callback_params
     } do
       config = Keyword.put(config, :bot_token, "other-token")
 
-      assert {:error, %Assent.CallbackError{} = error} =
-               Telegram.callback(config, callback_params)
+      assert {:error, %CallbackError{} = error} = Telegram.callback(config, callback_params)
 
-      assert error.message == "Authorization request has an invalid hash"
+      assert Exception.message(error) == "authorization request has an invalid hash"
+      assert error.params == Map.delete(URI.decode_query(callback_params["init_data"]), "hash")
     end
 
     @tag auth_date: nil
-    test "with missing auth_date param", %{config: config, callback_params: callback_params} do
-      assert {:error, %Assent.MissingParamError{} = error} =
-               Telegram.callback(config, callback_params)
+    test "with missing `auth_date` param", %{config: config, callback_params: callback_params} do
+      assert {:error, %MissingParamError{} = error} = Telegram.callback(config, callback_params)
 
       assert error.key == "auth_date"
     end
 
     @tag auth_date: "invalid"
-    test "with invalid auth_date param", %{config: config, callback_params: callback_params} do
+    test "with invalid `auth_date` param", %{config: config, callback_params: callback_params} do
       assert_raise ArgumentError, ~r/not a textual representation of an integer/, fn ->
         Telegram.callback(config, callback_params)
       end
     end
 
     @tag auth_date: {:utc_now, -61}
-    test "with expired auth_date param", %{config: config, callback_params: callback_params} do
-      assert {:error, %Assent.CallbackError{} = error} =
+    test "with expired `auth_date` param", %{config: config, callback_params: callback_params} do
+      assert {:error, %CallbackError{} = error} =
                Telegram.callback(config, callback_params)
 
-      assert error.message == "Authorization request has expired"
+      assert Exception.message(error) == "authorization request has expired"
+      assert error.params == Map.delete(callback_params, "hash")
     end
 
-    test "returns user", %{config: config, callback_params: callback_params} do
+    test "with valid params", %{config: config, callback_params: callback_params} do
       assert {:ok, %{user: user}} = Telegram.callback(config, callback_params)
       assert user == @user
     end
 
     @tag authorization_channel: :web_mini_app
-    test "with web mini app", %{config: config, callback_params: callback_params} do
+    test "with Web Mini App", %{config: config, callback_params: callback_params} do
       assert {:ok, %{user: user}} = Telegram.callback(config, callback_params)
       assert user == @user
     end

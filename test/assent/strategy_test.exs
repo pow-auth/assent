@@ -1,19 +1,19 @@
 defmodule Assent.StrategyTest do
   use ExUnit.Case
+
   doctest Assent.Strategy
+  doctest Assent.Strategy.CallbackError
+  doctest Assent.Strategy.CallbackCSRFError
+  doctest Assent.Strategy.CastError
 
-  alias Assent.Strategy
+  alias Assent.{Strategy, Strategy.CastError}
 
-  test "http_request/5 with `prepare_http_request: {module, function, arguments}` with invalid return" do
-    config = [
-      prepare_http_request: {__MODULE__, :invalid_prepare_http_request_return, []}
-    ]
+  test "http_request/5 with `prepare_http_request: {module, function, arguments}` and invalid return" do
+    config = [prepare_http_request: {__MODULE__, :invalid_prepare_http_request_return, []}]
 
     assert_raise ArgumentError,
-                 "expected #{inspect(__MODULE__)}.invalid_prepare_http_request_return/1 to return an Assent.HTTPAdapter.HTTPRequest struct",
-                 fn ->
-                   Strategy.http_request(:get, "http://example.com/", nil, [], config)
-                 end
+                 "expected #{inspect(__MODULE__)}.invalid_prepare_http_request_return/1 to return %Assent.HTTPAdapter.HTTPRequest{}",
+                 fn -> Strategy.http_request(:get, "http://example.com/", nil, [], config) end
   end
 
   def invalid_prepare_http_request_return(_request), do: :invalid
@@ -28,9 +28,7 @@ defmodule Assent.StrategyTest do
       end
     )
 
-    config = [
-      prepare_http_request: {__MODULE__, :put_header, ["x-api-version", "1"]}
-    ]
+    config = [prepare_http_request: {__MODULE__, :put_header, ["x-api-version", "1"]}]
 
     assert {:ok, _response} =
              Strategy.http_request(:get, TestServer.url("/path"), nil, [], config)
@@ -87,8 +85,7 @@ defmodule Assent.StrategyTest do
     }
 
     test "with invalid claims" do
-      assert {:error, %Assent.CastClaimsError{}} =
-               Strategy.normalize_userinfo(@invalid_user, @extra)
+      assert {:error, %CastError{}} = Strategy.normalize_userinfo(@invalid_user, @extra)
     end
 
     test "with valid claims" do
@@ -119,18 +116,10 @@ defmodule Assent.StrategyTest do
         "nested" => %{"binary" => :binary}
       }
 
-      assert {:error, %Assent.CastClaimsError{} = error} =
-               Strategy.cast_claims(claims, claim_types)
+      assert {:error, %CastError{} = error} = Strategy.cast_claims(claims, claim_types)
 
-      assert Exception.message(error) == """
-             The following claims couldn't be cast:
-
-             - "binary" to :binary
-             - "boolean" to :boolean
-             - "integer" to :integer
-             - "map" to :map
-             - "nested" -> "binary" to :binary
-             """
+      assert error.claims == claims
+      assert error.invalid_types == %{claim_types | "map" => :map}
     end
 
     test "with unrelated claims" do

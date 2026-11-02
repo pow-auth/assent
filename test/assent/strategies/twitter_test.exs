@@ -1,7 +1,7 @@
 defmodule Assent.Strategy.TwitterTest do
   use Assent.Test.OAuthTestCase
 
-  alias Assent.{CallbackError, Strategy.Twitter}
+  alias Assent.Strategy.{CallbackError, Twitter}
 
   # From https://developer.twitter.com/en/docs/accounts-and-users/manage-account-settings/api-reference/get-account-verify_credentials
   @user_response %{
@@ -172,9 +172,8 @@ defmodule Assent.Strategy.TwitterTest do
     assert {:error, %CallbackError{} = error} =
              Twitter.callback(config, %{"denied" => params["oauth_token"]})
 
-    assert error.message == "The user denied the authorization request"
-    refute error.error
-    refute error.error_uri
+    assert Exception.message(error) == "user denied the authorization request"
+    assert error.params == %{"denied" => params["oauth_token"]}
   end
 
   test "callback/2", %{config: config, callback_params: params} do

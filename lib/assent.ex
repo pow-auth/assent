@@ -9,6 +9,27 @@ defmodule Assent do
              |> then(&Regex.replace(~r/\[(`[^`]+`)\]\([^)]+\)/, &1, "\\1"))
 
   defmodule MissingConfigError do
+    @moduledoc """
+    An exception for when a required configuration key is missing.
+
+    The `:config` field is omitted from `Inspect` output as it may contain
+    sensitive data.
+
+    ## Fields
+
+      * `:key` - the missing configuration key
+      * `:config` - the original configuration
+
+    ## Examples
+
+        iex> {:error, error} = Assent.fetch_config([client_secret: "secret"], :client_id)
+        iex> Exception.message(error)
+        "expected :client_id in config, got: [:client_secret]"
+        iex> inspect(error)
+        "#Assent.MissingConfigError<key: :client_id, ...>"
+    """
+
+    @derive {Inspect, only: [:key]}
     defexception [:key, :config]
 
     @type t :: %__MODULE__{
@@ -20,153 +41,40 @@ defmodule Assent do
       key = inspect(exception.key)
       config_keys = inspect(Keyword.keys(exception.config))
 
-      "Expected #{key} in config, got: #{config_keys}"
-    end
-  end
-
-  defmodule CallbackError do
-    defexception [:message, :error, :error_uri]
-
-    @type t :: %__MODULE__{
-            message: binary(),
-            error: binary() | nil,
-            error_uri: binary() | nil
-          }
-  end
-
-  defmodule CallbackCSRFError do
-    defexception [:key]
-
-    @type t :: %__MODULE__{
-            key: binary()
-          }
-
-    def message(exception) do
-      "CSRF detected with param key #{inspect(exception.key)}"
+      "expected #{key} in config, got: #{config_keys}"
     end
   end
 
   defmodule MissingParamError do
-    defexception [:key, :params]
+    @moduledoc """
+    An exception for when a required parameter is missing.
 
-    @type t :: %__MODULE__{
-            key: binary(),
-            params: map()
-          }
+    The `:params` field is omitted from `Inspect` output as it may contain
+    sensitive data.
 
-    def message(exception) do
-      key = inspect(exception.key)
-      param_keys = exception.params |> Map.keys() |> Enum.sort() |> inspect()
+    ## Fields
 
-      "Expected #{key} in params, got: #{param_keys}"
-    end
-  end
+      * `:key` - the missing parameter name
+      * `:params` - the original parameters
+      * `:source` - whether the parameters came from regular params or a token
 
-  defmodule RequestError do
-    defexception [:message, :response]
+    ## Examples
 
-    alias Assent.HTTPAdapter.HTTPResponse
+        iex> {:error, error} = Assent.fetch_token_param(%{"access_token" => "secret"}, "refresh_token")
+        iex> Exception.message(error)
+        "expected \\\"refresh_token\\\" in token, got: [\\\"access_token\\\"]"
+        iex> inspect(error)
+        "#Assent.MissingParamError<key: \\"refresh_token\\", source: :token, ...>"
+    """
+    @type t :: %__MODULE__{key: binary(), params: map(), source: :params | :token}
+    @derive {Inspect, only: [:key, :source]}
 
-    @type t :: %__MODULE__{
-            message: binary(),
-            response: HTTPResponse.t()
-          }
-
-    def message(exception) do
-      """
-      #{exception.message}
-
-      #{HTTPResponse.format(exception.response)}
-      """
-    end
-  end
-
-  defmodule InvalidResponseError do
-    defexception [:response]
-
-    alias Assent.HTTPAdapter.HTTPResponse
-
-    @type t :: %__MODULE__{
-            response: HTTPResponse.t()
-          }
+    defexception [:key, :params, :source]
 
     def message(exception) do
-      """
-      An invalid response was received.
+      keys = exception.params |> Map.keys() |> Enum.sort()
 
-      #{HTTPResponse.format(exception.response)}
-      """
-    end
-  end
-
-  defmodule UnexpectedResponseError do
-    defexception [:response]
-
-    alias Assent.HTTPAdapter.HTTPResponse
-
-    @type t :: %__MODULE__{
-            response: HTTPResponse.t()
-          }
-
-    def message(exception) do
-      """
-      An unexpected response was received.
-
-      #{HTTPResponse.format(exception.response)}
-      """
-    end
-  end
-
-  defmodule ServerUnreachableError do
-    defexception [:http_adapter, :request_url, :reason]
-
-    @type t :: %__MODULE__{
-            http_adapter: module(),
-            request_url: binary(),
-            reason: term()
-          }
-
-    def message(exception) do
-      [url | _rest] = String.split(exception.request_url, "?", parts: 2)
-
-      """
-      The server was unreachable.
-
-      HTTP Adapter: #{inspect(exception.http_adapter)}
-      Request URL: #{url}
-
-      Reason:
-      #{inspect(exception.reason)}
-      """
-    end
-  end
-
-  defmodule CastClaimsError do
-    defexception [:claims, :invalid_types]
-
-    @type t :: %__MODULE__{
-            claims: map(),
-            invalid_types: map()
-          }
-
-    def message(exception) do
-      """
-      The following claims couldn't be cast:
-
-      #{exception.invalid_types |> to_lines() |> Enum.join("\n")}
-      """
-    end
-
-    defp to_lines(claim_types, prepend \\ "") do
-      claim_types
-      |> Enum.sort_by(&elem(&1, 0))
-      |> Enum.reduce([], fn
-        {key, %{} = claim_types}, acc ->
-          acc ++ to_lines(claim_types, prepend <> "#{inspect(key)} -> ")
-
-        {key, type}, acc ->
-          acc ++ ["- #{prepend}#{inspect(key)} to #{inspect(type)}"]
-      end)
+      "expected #{inspect(exception.key)} in #{exception.source}, got: #{inspect(keys)}"
     end
   end
 
@@ -189,12 +97,25 @@ defmodule Assent do
   Returns an `Assent.MissingParamError` if the key is not found.
   """
   @spec fetch_param(map(), binary()) :: {:ok, any()} | {:error, MissingParamError.t()}
-  def fetch_param(params, key) when is_map(params) and is_binary(key) do
+  def fetch_param(params, key), do: do_fetch_param(params, key, :params)
+
+  defp do_fetch_param(params, key, source) do
     case Map.fetch(params, key) do
-      {:ok, value} -> {:ok, value}
-      :error -> {:error, MissingParamError.exception(key: key, params: params)}
+      {:ok, value} ->
+        {:ok, value}
+
+      :error ->
+        {:error, MissingParamError.exception(key: key, params: params, source: source)}
     end
   end
+
+  @doc """
+  Fetches the key value from the token.
+
+  Returns an `Assent.MissingParamError` if the key is not found.
+  """
+  @spec fetch_token_param(map(), binary()) :: {:ok, any()} | {:error, MissingParamError.t()}
+  def fetch_token_param(token, key), do: do_fetch_param(token, key, :token)
 
   @doc """
   Fetches the JSON library in config.
