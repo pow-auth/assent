@@ -136,7 +136,7 @@ defmodule MultiProviderAuth do
   def authorize_url(provider) do
     config = config!(provider)
 
-    config[:strategy].authorize_url()
+    config[:strategy].authorize_url(config)
   end
 
   @spec callback(atom(), map(), map()) :: {:ok, map()} | {:error, term()}
@@ -222,9 +222,10 @@ defmodule TestProvider do
   def callback(config, params) do
     # Fetch user data
 
-    user = Helpers.normalize_userinfo(userinfo)
-
-    {:ok, %{user: user}}
+    case Helpers.normalize_userinfo(userinfo) do
+      {:ok, user} -> {:ok, %{user: user}}
+      {:error, reason} -> {:error, reason}
+    end
   end
 end
 ```

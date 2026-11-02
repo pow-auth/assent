@@ -73,14 +73,20 @@ defmodule Assent.Strategy.AppleTest do
   end
 
   if :crypto.supports()[:curves] do
-    test "callback/2 with missing private key file", %{config: config, callback_params: params} do
+    @tag :tmp_dir
+    test "callback/2 with missing private key file", %{
+      config: config,
+      callback_params: params,
+      tmp_dir: tmp_dir
+    } do
+      private_key_path = Path.join(tmp_dir, "missing.pem")
+
       config =
         config
         |> Keyword.delete(:private_key)
-        |> Keyword.put(:private_key_path, "tmp/missing.pem")
+        |> Keyword.put(:private_key_path, private_key_path)
 
-      assert Apple.callback(config, params) ==
-               {:error, "Failed to read \"tmp/missing.pem\", got; :enoent"}
+      assert {:error, %File.Error{}} = Apple.callback(config, params)
     end
 
     test "callback/2 with invalid is_private_email claim", %{
@@ -97,12 +103,8 @@ defmodule Assent.Strategy.AppleTest do
       expect_oidc_jwks_uri_request(uri: "/auth/keys", keys: [@jwk])
 
       assert {:error, %Assent.CastClaimsError{} = error} = Apple.callback(config, params)
-
-      assert Exception.message(error) == """
-             The following claims couldn't be cast:
-
-             - "is_private_email" to :boolean
-             """
+      assert error.claims == Map.drop(claims, ~w(aud iat iss exp))
+      assert error.invalid_types == %{"is_private_email" => :boolean}
     end
 
     test "callback/2", %{config: config, callback_params: params} do
@@ -200,12 +202,8 @@ defmodule Assent.Strategy.AppleTest do
       params = Map.put(params, "user", encoded_user)
 
       assert {:error, %Assent.CastClaimsError{} = error} = Apple.callback(config, params)
-
-      assert Exception.message(error) == """
-             The following claims couldn't be cast:
-
-             - "given_name" to :binary
-             """
+      assert error.claims == %{"family_name" => nil, "given_name" => true}
+      assert error.invalid_types == %{"given_name" => :binary}
     end
 
     test "callback/2 with include_unverified_name: true with user param", %{

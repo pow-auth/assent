@@ -122,9 +122,34 @@ defmodule Assent.Strategy.OAuth2 do
         end
       end
   """
+
+  defmodule UnsupportedTokenTypeError do
+    @moduledoc """
+    An exception for when an OAuth2 token type is unsupported.
+
+    ## Fields
+
+      * `:type` - the token type
+
+    ## Examples
+
+        iex> error = Assent.Strategy.OAuth2.UnsupportedTokenTypeError.exception(type: "mac")
+        iex> Exception.message(error)
+        "unsupported authorization token type, got: \\"mac\\""
+    """
+
+    defexception [:type]
+
+    @type t :: %__MODULE__{type: term()}
+
+    def message(exception),
+      do: "unsupported authorization token type, got: #{inspect(exception.type)}"
+  end
+
   @behaviour Assent.Strategy
 
   alias Assent.Strategy, as: Helpers
+  alias Assent.Strategy.OAuth2.UnsupportedTokenTypeError
 
   alias Assent.{
     CallbackCSRFError,
@@ -373,7 +398,7 @@ defmodule Assent.Strategy.OAuth2 do
   end
 
   defp authentication_params(method, _config) do
-    {:error, "Invalid `:auth_method` #{method}"}
+    {:error, ArgumentError.exception("invalid `:auth_method`, got: #{inspect(method)}")}
   end
 
   defp jwt_authentication_params(alg, secret, config) do
@@ -442,7 +467,7 @@ defmodule Assent.Strategy.OAuth2 do
   """
   @spec refresh_access_token(Keyword.t(), map(), Keyword.t()) :: {:ok, map()} | {:error, term()}
   def refresh_access_token(config, token, params \\ []) do
-    with {:ok, refresh_token} <- fetch_from_token(token, "refresh_token") do
+    with {:ok, refresh_token} <- Assent.fetch_token_param(token, "refresh_token") do
       grant_access_token(
         config,
         "refresh_token",
@@ -476,20 +501,13 @@ defmodule Assent.Strategy.OAuth2 do
   end
 
   defp authorization_headers("bearer", token) do
-    with {:ok, access_token} <- fetch_from_token(token, "access_token") do
+    with {:ok, access_token} <- Assent.fetch_token_param(token, "access_token") do
       {:ok, [{"authorization", "Bearer #{access_token}"}]}
     end
   end
 
   defp authorization_headers(type, _token) do
-    {:error, "Authorization with token type `#{type}` not supported"}
-  end
-
-  defp fetch_from_token(token, key) do
-    case Map.fetch(token, key) do
-      {:ok, value} -> {:ok, value}
-      :error -> {:error, "No `#{key}` in token map"}
-    end
+    {:error, UnsupportedTokenTypeError.exception(type: type)}
   end
 
   defp request_headers(:post, headers),
@@ -517,7 +535,7 @@ defmodule Assent.Strategy.OAuth2 do
           {:ok, user}
 
         {:error, %HTTPResponse{status: 401} = response} ->
-          {:error, RequestError.exception(message: "Unauthorized token", response: response)}
+          {:error, RequestError.exception(message: "unauthorized token", response: response)}
 
         other ->
           process_response(other)

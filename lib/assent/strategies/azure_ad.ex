@@ -40,7 +40,7 @@ defmodule Assent.Strategy.AzureAD do
   """
   use Assent.Strategy.OIDC.Base
 
-  alias Assent.Strategy.OIDC
+  alias Assent.Strategy.{OIDC, OIDC.InvalidIDTokenError}
 
   @impl true
   def default_config(config) do
@@ -117,10 +117,20 @@ defmodule Assent.Strategy.AzureAD do
 
   defp fetch_tenant_id(%{"tid" => tenant_id}) do
     case uuid?(tenant_id) do
-      true -> {:ok, tenant_id}
-      false -> {:error, "Invalid `tid` in ID Token claims"}
+      true ->
+        {:ok, tenant_id}
+
+      false ->
+        {:error, InvalidIDTokenError.exception(message: "invalid `tid` claim in ID Token")}
     end
   end
 
-  defp fetch_tenant_id(_claims), do: {:error, "Missing `tid` in ID Token claims"}
+  defp fetch_tenant_id(claims) do
+    claim_keys = claims |> Map.keys() |> Enum.sort() |> inspect()
+
+    {:error,
+     InvalidIDTokenError.exception(
+       message: "expected `tid` claim in ID Token, got: #{claim_keys}"
+     )}
+  end
 end

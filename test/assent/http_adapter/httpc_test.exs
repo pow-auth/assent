@@ -7,7 +7,8 @@ defmodule Assent.HTTPAdapter.HttpcTest do
   @httpc_opts []
 
   describe "request/5" do
-    test "with HTTPS request" do
+    @tag :tmp_dir
+    test "with HTTPS request", %{tmp_dir: tmp_dir} do
       TestServer.start(scheme: :https)
       TestServer.add("/", via: :get)
 
@@ -16,10 +17,10 @@ defmodule Assent.HTTPAdapter.HttpcTest do
       assert {:ok, %HTTPResponse{status: 200, body: "HTTP/1.1"}} =
                Httpc.request(:get, TestServer.url(), nil, [], httpc_opts)
 
-      File.mkdir_p!("tmp")
+      cacerts_path = Path.join(tmp_dir, "cacerts.pem")
 
       File.write!(
-        "tmp/cacerts.pem",
+        cacerts_path,
         :public_key.pem_encode(
           Enum.map(TestServer.x509_suite().cacerts, &{:Certificate, &1, :not_encrypted})
         )
@@ -27,7 +28,7 @@ defmodule Assent.HTTPAdapter.HttpcTest do
 
       TestServer.add("/", via: :get)
 
-      httpc_opts = Keyword.put(@httpc_opts, :ssl, cacertfile: ~c"tmp/cacerts.pem")
+      httpc_opts = Keyword.put(@httpc_opts, :ssl, cacertfile: ~c"#{cacerts_path}")
 
       assert {:ok, %HTTPResponse{status: 200, body: "HTTP/1.1"}} =
                Httpc.request(:get, TestServer.url(), nil, [], httpc_opts)
@@ -62,8 +63,9 @@ defmodule Assent.HTTPAdapter.HttpcTest do
                Httpc.request(:get, bad_host_url, nil, [], httpc_opts)
     end
 
-    test "with HTTPS request with missing `:ssl_verify_fun` dep" do
-      error = https_request_with_deps(["{:certifi, \">= 0.0.0\"}"])
+    @tag :tmp_dir
+    test "with HTTPS request with missing `:ssl_verify_fun` dep", %{tmp_dir: tmp_dir} do
+      error = https_request_with_deps(["{:certifi, \">= 0.0.0\"}"], tmp_dir)
 
       assert error =~ "RuntimeError"
       assert error =~ "This request can NOT be verified for valid SSL certificate"
@@ -71,8 +73,9 @@ defmodule Assent.HTTPAdapter.HttpcTest do
       assert error =~ "ssl: [verify_peer: :verify_peer, verify_fun: ...]"
     end
 
-    test "with HTTPS request with missing `:cacerts` dep" do
-      error = https_request_with_deps(["{:ssl_verify_fun, \">= 0.0.0\"}"])
+    @tag :tmp_dir
+    test "with HTTPS request with missing `:cacerts` dep", %{tmp_dir: tmp_dir} do
+      error = https_request_with_deps(["{:ssl_verify_fun, \">= 0.0.0\"}"], tmp_dir)
 
       assert error =~ "RuntimeError"
       assert error =~ "This request requires a CA trust store"
@@ -154,28 +157,30 @@ defmodule Assent.HTTPAdapter.HttpcTest do
 
   defp inet_error([_, {:inet, [:inet], error}]), do: error
 
-  defp https_request_with_deps(deps) do
-    deps = deps ++ ["{:assent, path: \"../../\"}"]
+  defp https_request_with_deps(deps, tmp_dir) do
+    deps = deps ++ ["{:assent, path: \"#{File.cwd!()}\"}"]
+    test_app_dir = Path.join(tmp_dir, "test_app")
+    :ok = File.mkdir_p!(test_app_dir)
 
-    File.rm_rf!("tmp/test_app")
-    File.mkdir_p!("tmp/test_app")
+    File.write!(
+      Path.join(test_app_dir, "mix.exs"),
+      """
+      defmodule TestApp.MixProject do
+        use Mix.Project
 
-    File.write!("tmp/test_app/mix.exs", """
-    defmodule TestApp.MixProject do
-      use Mix.Project
-
-      def project do
-        [
-          app: :test_app,
-          version: "0.1.0",
-          deps_path: "../../deps",
-          deps: [#{Enum.join(deps, ",")}]
-        ]
+        def project do
+          [
+            app: :test_app,
+            version: "0.1.0",
+            deps_path: "#{Path.join(File.cwd!(), "deps")}",
+            deps: [#{Enum.join(deps, ",")}]
+          ]
+        end
       end
-    end
-    """)
+      """
+    )
 
-    File.cd!("tmp/test_app", fn ->
+    File.cd!(test_app_dir, fn ->
       {_stdout, 0} = System.cmd("mix", ["deps.get"])
       {_stdout, 0} = System.cmd("mix", ["compile"])
 

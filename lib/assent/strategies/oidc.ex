@@ -129,9 +129,39 @@ defmodule Assent.Strategy.OIDC do
 
   See `Assent.Strategy.OIDC.authorize_url/1` for more.
   """
+
+  defmodule InvalidIDTokenError do
+    @moduledoc """
+    An exception for when an OpenID Connect ID Token is invalid.
+
+    ## Fields
+
+      * `:message` - the error message
+    """
+
+    defexception [:message]
+
+    @type t :: %__MODULE__{message: binary()}
+  end
+
+  defmodule InvalidOpenIDConfigurationError do
+    @moduledoc """
+    An exception for when an OpenID Connect Provider configuration is invalid.
+
+    ## Fields
+
+      * `:message` - the error message
+    """
+
+    defexception [:message]
+
+    @type t :: %__MODULE__{message: binary()}
+  end
+
   @behaviour Assent.Strategy
 
   alias Assent.Strategy, as: Helpers
+  alias Assent.Strategy.OIDC.{InvalidIDTokenError, InvalidOpenIDConfigurationError}
 
   alias Assent.{
     HTTPAdapter.HTTPResponse,
@@ -228,14 +258,23 @@ defmodule Assent.Strategy.OIDC do
 
   defp do_validate_provider_configuration_issuer(issuer, issuer), do: :ok
 
-  defp do_validate_provider_configuration_issuer(_issuer, base_url) do
-    {:error, "`issuer` does not match Issuer URL #{inspect(base_url)}"}
+  defp do_validate_provider_configuration_issuer(issuer, base_url) do
+    {:error,
+     InvalidOpenIDConfigurationError.exception(
+       message: "expected issuer #{inspect(base_url)}, got: #{inspect(issuer)}"
+     )}
   end
 
   defp fetch_from_openid_config(config, key) do
     case Map.fetch(config, key) do
-      {:ok, value} -> {:ok, value}
-      :error -> {:error, "`#{key}` not found in OpenID configuration"}
+      {:ok, value} ->
+        {:ok, value}
+
+      :error ->
+        {:error,
+         InvalidOpenIDConfigurationError.exception(
+           message: "expected `#{key}` in OpenID Provider configuration"
+         )}
     end
   end
 
@@ -332,7 +371,9 @@ defmodule Assent.Strategy.OIDC do
   defp parse_client_auth_method("private_key_jwt"), do: {:ok, :private_key_jwt}
 
   defp parse_client_auth_method(method),
-    do: {:error, "Invalid client authentication method: #{method}"}
+    do:
+      {:error,
+       ArgumentError.exception("invalid client authentication method, got: #{inspect(method)}")}
 
   # https://openid.net/specs/draft-jones-json-web-token-07.html#ReservedClaimName
   @reserved_jwt_names ~w(exp nbf iat iss aud prn jti typ)
@@ -358,14 +399,7 @@ defmodule Assent.Strategy.OIDC do
   end
 
   defp fetch_id_token(token) do
-    case Map.fetch(token, "id_token") do
-      {:ok, id_token} ->
-        {:ok, id_token}
-
-      :error ->
-        {:error,
-         "The `id_token` key not found in token params, only found these keys: #{Enum.join(Map.keys(token), ", ")}"}
-    end
+    Assent.fetch_token_param(token, "id_token")
   end
 
   @doc """
@@ -407,22 +441,34 @@ defmodule Assent.Strategy.OIDC do
 
   defp peek_header(encoded, config) do
     with {:ok, header} <- split_header(encoded),
-         {:ok, json} <- decode_base64_url(header) do
+         {:ok, json} <- decode_base64_url_header(header) do
       Assent.json_library(config).decode(json)
     end
   end
 
   defp split_header(encoded) do
     case String.split(encoded, ".") do
-      [header, _, _] -> {:ok, header}
-      _ -> {:error, "The ID Token is not a valid JWT"}
+      [header, _, _] ->
+        {:ok, header}
+
+      parts ->
+        {:error,
+         InvalidIDTokenError.exception(
+           message: "expected ID Token JWT to have three parts, got: #{inspect(length(parts))}"
+         )}
     end
   end
 
-  defp decode_base64_url(encoded) do
+  defp decode_base64_url_header(encoded) do
     case Base.url_decode64(encoded, padding: false) do
-      {:ok, decoded} -> {:ok, decoded}
-      :error -> {:error, "Invalid Base64URL"}
+      {:ok, decoded} ->
+        {:ok, decoded}
+
+      :error ->
+        {:error,
+         InvalidIDTokenError.exception(
+           message: "expected ID Token header to be URL-safe base64 encoded"
+         )}
     end
   end
 
@@ -458,35 +504,75 @@ defmodule Assent.Strategy.OIDC do
     end
   end
 
-  defp find_key(%{"kid" => kid}, [%{"kid" => kid} = key | _keys]), do: {:ok, key}
+  defp find_key(_header, []),
+    do:
+      {:error,
+       InvalidOpenIDConfigurationError.exception(
+         message: "expected `jwks_uri` in OpenID Provider configuration to contain keys"
+       )}
 
-  defp find_key(%{"kid" => _kid} = header, [%{"kid" => _other} | keys]),
-    do: find_key(header, keys)
+  defp find_key(%{"kid" => kid}, keys) do
+    case Enum.find(keys, fn
+           %{"kid" => key_id} -> key_id == kid
+           _key -> false
+         end) do
+      nil ->
+        key_ids =
+          keys
+          |> Enum.flat_map(fn
+            %{"kid" => key_id} -> [key_id]
+            _key -> []
+          end)
+          |> Enum.sort()
+          |> inspect()
 
-  defp find_key(%{"kid" => kid}, []),
-    do: {:error, "No keys found for the `kid` value \"#{kid}\" provided in ID Token"}
+        {:error,
+         InvalidIDTokenError.exception(
+           message: "expected provider key IDs to include #{inspect(kid)}, got: #{key_ids}"
+         )}
 
-  defp find_key(_header, []), do: {:error, "No keys found in `jwks_uri` provider configuration"}
+      key ->
+        {:ok, key}
+    end
+  end
+
   defp find_key(_header, [key]), do: {:ok, key}
 
   defp find_key(_header, _keys) do
     {:error,
-     "Multiple public keys found in provider configuration and no `kid` value in ID Token"}
+     InvalidIDTokenError.exception(
+       message:
+         "expected `kid` in ID Token header as provider configuration contains multiple keys"
+     )}
   end
 
   defp validate_required_fields(%{claims: claims}) do
     Enum.find_value(~w(iss sub aud exp iat), :ok, fn key ->
       case Map.has_key?(claims, key) do
-        true -> nil
-        false -> {:error, "Missing `#{key}` in ID Token claims"}
+        true ->
+          nil
+
+        false ->
+          claim_keys = claims |> Map.keys() |> Enum.sort() |> inspect()
+
+          {:error,
+           InvalidIDTokenError.exception(
+             message: "expected `#{key}` in ID Token claims, got keys: #{claim_keys}"
+           )}
       end
     end)
   end
 
   defp validate_issuer_identifier(%{claims: %{"iss" => iss}}, issuer, config) do
     case iss in [issuer | Keyword.get(config, :trusted_issuers, [])] do
-      true -> :ok
-      false -> {:error, "Untrusted issuer #{inspect(iss)} in ID Token"}
+      true ->
+        :ok
+
+      false ->
+        {:error,
+         InvalidIDTokenError.exception(
+           message: "expected a trusted issuer in ID Token, got: #{inspect(iss)}"
+         )}
     end
   end
 
@@ -507,17 +593,27 @@ defmodule Assent.Strategy.OIDC do
         :ok
 
       {true, _} ->
-        {:error, "`:client_id` not in audience #{inspect(auds)} in ID Token"}
+        {:error,
+         InvalidIDTokenError.exception(
+           message: "expected `:client_id` in ID Token audience, got: #{inspect(auds)}"
+         )}
 
       {false, untrusted_auds} ->
-        {:error, "Untrusted audience(s) #{inspect(untrusted_auds)} in ID Token"}
+        {:error,
+         InvalidIDTokenError.exception(
+           message:
+             "expected trusted ID Token audiences, got untrusted audiences: #{inspect(untrusted_auds)}"
+         )}
     end
   end
 
   defp validate_authorization_party(%{claims: %{"azp" => client_id}}, client_id, _config), do: :ok
 
   defp validate_authorization_party(%{claims: %{"azp" => azp}}, _client_id, _config) do
-    {:error, "Invalid authorized party \"#{azp}\" in ID Token"}
+    {:error,
+     InvalidIDTokenError.exception(
+       message: "expected `azp` to match `:client_id` in ID Token, got: #{inspect(azp)}"
+     )}
   end
 
   defp validate_authorization_party(_jwt, _client_id, _config), do: :ok
@@ -525,17 +621,28 @@ defmodule Assent.Strategy.OIDC do
   defp validate_alg(%{header: %{"alg" => alg}}, alg), do: :ok
 
   defp validate_alg(%{header: %{"alg" => alg}}, expected_alg),
-    do: {:error, "Expected `alg` in ID Token to be \"#{expected_alg}\", got \"#{alg}\""}
+    do:
+      {:error,
+       InvalidIDTokenError.exception(
+         message:
+           "expected `alg` in ID Token to be #{inspect(expected_alg)}, got: #{inspect(alg)}"
+       )}
 
   defp validate_verified(%{verified?: true}), do: :ok
-  defp validate_verified(%{verified?: false}), do: {:error, "Invalid JWT signature for ID Token"}
+
+  defp validate_verified(%{verified?: false}),
+    do:
+      {:error, InvalidIDTokenError.exception(message: "expected ID Token signature to be valid")}
 
   defp validate_expiration(%{claims: %{"exp" => exp}}) do
     now = :os.system_time(:second)
 
     case exp > now do
-      true -> :ok
-      false -> {:error, "The ID Token has expired"}
+      true ->
+        :ok
+
+      false ->
+        {:error, InvalidIDTokenError.exception(message: "expected ID Token to not be expired")}
     end
   end
 
@@ -550,8 +657,15 @@ defmodule Assent.Strategy.OIDC do
     now = :os.system_time(:second)
 
     case iat + ttl > now do
-      true -> :ok
-      false -> {:error, "The ID Token was issued too long ago"}
+      true ->
+        :ok
+
+      false ->
+        {:error,
+         InvalidIDTokenError.exception(
+           message:
+             "expected `iat` in ID Token to not be older than the configured `id_token_ttl_seconds: #{ttl}`"
+         )}
     end
   end
 
@@ -563,16 +677,32 @@ defmodule Assent.Strategy.OIDC do
 
   defp validate_for_nonce(%{nonce: stored_nonce}, %{claims: %{"nonce" => provided_nonce}}) do
     case Assent.constant_time_compare(stored_nonce, provided_nonce) do
-      true -> :ok
-      false -> {:error, "Invalid `nonce` included in ID Token"}
+      true ->
+        :ok
+
+      false ->
+        {:error,
+         InvalidIDTokenError.exception(
+           message: "expected `:nonce` in session params to match `nonce` in ID Token "
+         )}
     end
   end
 
-  defp validate_for_nonce(%{nonce: _nonce}, _jwt),
-    do: {:error, "`nonce` is not included in ID Token"}
+  defp validate_for_nonce(%{nonce: _nonce}, %{claims: claims}) do
+    claim_keys = claims |> Map.keys() |> Enum.sort() |> inspect()
+
+    {:error,
+     InvalidIDTokenError.exception(
+       message: "expected `nonce` in ID Token claims, got keys: #{claim_keys}"
+     )}
+  end
 
   defp validate_for_nonce(_any, %{claims: %{"nonce" => _nonce}}),
-    do: {:error, "`nonce` included in ID Token but doesn't exist in session params"}
+    do:
+      {:error,
+       InvalidIDTokenError.exception(
+         message: "expected `:nonce` in session params as ID Token contains `nonce`"
+       )}
 
   defp validate_for_nonce(_any, _jwt), do: :ok
 
@@ -602,7 +732,7 @@ defmodule Assent.Strategy.OIDC do
         maybe_validate_jwt_header(config, openid_config, headers, body)
 
       {:error, %HTTPResponse{status: 401} = response} ->
-        {:error, RequestError.exception(message: "Unauthorized token", response: response)}
+        {:error, RequestError.exception(message: "unauthorized token", response: response)}
 
       {:ok, %HTTPResponse{} = response} ->
         {:error, UnexpectedResponseError.exception(response: response)}
@@ -638,8 +768,18 @@ defmodule Assent.Strategy.OIDC do
   defp validate_userinfo_sub(_config, %{"sub" => sub}, %{"sub" => sub}), do: :ok
 
   defp validate_userinfo_sub(_config, %{"sub" => _sub_1}, %{"sub" => _sub_2}),
-    do: {:error, "`sub` in userinfo response not the same as in ID Token"}
+    do:
+      {:error,
+       InvalidIDTokenError.exception(
+         message: "expected `sub` in userinfo to match `sub` in ID Token `sub`"
+       )}
 
-  defp validate_userinfo_sub(_config, %{"sub" => _sub}, _claims),
-    do: {:error, "`sub` not in userinfo response"}
+  defp validate_userinfo_sub(_config, %{"sub" => _sub}, claims) do
+    claim_keys = claims |> Map.keys() |> Enum.sort() |> inspect()
+
+    {:error,
+     InvalidIDTokenError.exception(
+       message: "expected `sub` in userinfo response, got: #{claim_keys}"
+     )}
+  end
 end

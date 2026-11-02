@@ -36,7 +36,7 @@ defmodule Assent.Strategy.Twitter do
   def callback(config, params) do
     case Map.has_key?(params, "denied") do
       true ->
-        {:error, CallbackError.exception(message: "The user denied the authorization request")}
+        {:error, CallbackError.exception(message: "user denied the authorization request")}
 
       false ->
         Base.callback(config, params, __MODULE__)

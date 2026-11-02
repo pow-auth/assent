@@ -52,39 +52,25 @@ defmodule Assent.HTTPAdapter do
 
     @type header :: {binary(), binary()}
     @type t :: %__MODULE__{
-            http_adapter: atom(),
-            request_url: binary(),
+            http_adapter: module() | nil,
+            request_url: binary() | nil,
             status: integer(),
             headers: [header()],
             body: binary() | term()
           }
 
     defstruct http_adapter: nil, request_url: nil, status: 200, headers: [], body: ""
-
-    def format(response) do
-      [request_url | _rest] = String.split(response.request_url, "?", parts: 2)
-
-      """
-      HTTP Adapter: #{inspect(response.http_adapter)}
-      Request URL: #{request_url}
-
-      Response status: #{response.status}
-
-      Response headers:
-      #{Enum.reduce(response.headers, "", fn {k, v}, acc -> acc <> "\n#{k}: #{v}" end)}
-
-      Response body:
-      #{inspect(response.body)}
-      """
-    end
   end
 
   @type method :: :get | :post
   @type body :: binary() | nil
   @type headers :: [{binary(), binary()}]
 
+  @doc """
+  Sends an HTTP request using the adapter's client.
+  """
   @callback request(method(), binary(), body(), headers(), Keyword.t()) ::
-              {:ok, map()} | {:error, any()}
+              {:ok, HTTPResponse.t()} | {:error, term()}
 
   @doc """
   Sets a user agent header.
@@ -119,7 +105,7 @@ defmodule Assent.HTTPAdapter do
     |> http_adapter.request(request.url, request.body, request.headers, http_adapter_opts)
     |> case do
       {:ok, response} ->
-        response
+        %{response | http_adapter: http_adapter, request_url: request.url}
         |> normalize_headers()
         |> decode_response(opts)
 
@@ -132,11 +118,11 @@ defmodule Assent.HTTPAdapter do
          )}
     end
     |> case do
-      {:ok, %{status: status} = resp} when status in 200..399 ->
-        {:ok, %{resp | http_adapter: http_adapter, request_url: request.url}}
+      {:ok, %{status: status} = response} when status in 200..399 ->
+        {:ok, response}
 
-      {:ok, %{status: status} = resp} when status in 400..599 ->
-        {:error, %{resp | http_adapter: http_adapter, request_url: request.url}}
+      {:ok, %{status: status} = response} when status in 400..599 ->
+        {:error, response}
 
       {:error, error} ->
         {:error, error}
@@ -202,4 +188,25 @@ defmodule Assent.HTTPAdapter do
   end
 
   defp decode(_headers, body, _opts), do: {:ok, body}
+
+  @doc """
+  Formats an HTTP response for an error message.
+  """
+  @spec format_http_response(HTTPResponse.t()) :: binary()
+  def format_http_response(response) do
+    [request_url | _rest] = String.split(response.request_url, "?", parts: 2)
+
+    """
+    HTTP Adapter: #{inspect(response.http_adapter)}
+    Request URL: #{request_url}
+
+    Response status: #{response.status}
+
+    Response headers:
+    #{Enum.reduce(response.headers, "", fn {k, v}, acc -> acc <> "#{k}: #{v}\n" end)}
+
+    Response body:
+    #{inspect(response.body)}
+    """
+  end
 end

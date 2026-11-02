@@ -46,6 +46,11 @@ defmodule Assent.JWTAdapter do
 
     * `:jwt_adapter` - the JWT adapter module to use, optional, defaults to
       `#{inspect(@default_jwt_adapter)}`
+
+  ## Examples
+
+      iex> Assent.JWTAdapter.sign(%{"sub" => "123"}, "HS256", "secret")
+      {:ok, "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjMifQ.jROrizwXV3Yj14Ofaz1zAq07YgNrxjQNyL-0slLq5Tw"}
   """
   @spec sign(map(), binary(), binary(), Keyword.t()) :: {:ok, binary()} | {:error, term()}
   def sign(claims, alg, secret, opts \\ []) do
@@ -63,6 +68,14 @@ defmodule Assent.JWTAdapter do
 
     * `:jwt_adapter` - the JWT adapter module to use, optional, defaults to
       `#{inspect(@default_jwt_adapter)}`
+
+  ## Examples
+
+      iex> {:ok, jwt} = Assent.JWTAdapter.verify("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjMifQ.jROrizwXV3Yj14Ofaz1zAq07YgNrxjQNyL-0slLq5Tw", "secret")
+      iex> jwt.verified?
+      true
+      iex> jwt.claims
+      %{"sub" => "123"}
   """
   @spec verify(binary(), binary() | map() | nil, Keyword.t()) :: {:ok, map()} | {:error, any()}
   def verify(token, secret, opts \\ []) do
@@ -81,14 +94,31 @@ defmodule Assent.JWTAdapter do
   end
 
   @doc """
+  Decodes PEM encoded keys.
+  """
+  @spec decode_pem(binary()) :: {:ok, term()} | {:error, Exception.t()}
+  def decode_pem(pem) do
+    case :public_key.pem_decode(pem) do
+      [entry] ->
+        {:ok, :public_key.pem_entry_decode(entry)}
+
+      [] ->
+        {:error, ArgumentError.exception("expected one PEM entry, got none")}
+
+      entries ->
+        {:error, ArgumentError.exception("expected one PEM entry, got #{length(entries)}")}
+    end
+  end
+
+  @doc """
   Loads a private key from the provided configuration.
 
   ## Options
 
     * `:private_key_path` - the path to the private key file, optional
 
-    * `:private_key` - the private key, required if `:private_key_path` is not
-      set
+    * `:private_key` - the private key content, required if `:private_key_path`
+      is not set
   """
   @spec load_private_key(Keyword.t()) :: {:ok, binary()} | {:error, term()}
   def load_private_key(config) do
@@ -100,8 +130,11 @@ defmodule Assent.JWTAdapter do
 
   defp read(path) do
     case File.read(path) do
-      {:error, error} -> {:error, "Failed to read \"#{path}\", got; #{inspect(error)}"}
-      {:ok, content} -> {:ok, content}
+      {:error, reason} ->
+        {:error, File.Error.exception(action: "read file", path: path, reason: reason)}
+
+      {:ok, content} ->
+        {:ok, content}
     end
   end
 end

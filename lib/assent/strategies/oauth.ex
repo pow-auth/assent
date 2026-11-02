@@ -258,7 +258,7 @@ defmodule Assent.Strategy.OAuth do
 
   defp gen_signature(config, method, uri, request_params, :rsa_sha1, _token_secret) do
     with {:ok, pem} <- JWTAdapter.load_private_key(config),
-         {:ok, private_key} <- decode_pem(pem) do
+         {:ok, private_key} <- JWTAdapter.decode_pem(pem) do
       signature =
         method
         |> encode_signature_base(uri, request_params)
@@ -309,13 +309,6 @@ defmodule Assent.Strategy.OAuth do
       |> Enum.join("&")
 
     Enum.map_join([method, base_string_uri, normalized_request_params], "&", &percent_encode/1)
-  end
-
-  defp decode_pem(pem) do
-    case :public_key.pem_decode(pem) do
-      [entry] -> {:ok, :public_key.pem_entry_decode(entry)}
-      _any -> {:error, "Private key should only have one entry"}
-    end
   end
 
   defp request_headers(:post, headers),
@@ -378,21 +371,14 @@ defmodule Assent.Strategy.OAuth do
 
   defp gen_authorize_url(config, token) do
     with {:ok, base_url} <- Assent.fetch_config(config, :base_url),
-         {:ok, oauth_token} <- fetch_from_token(token, "oauth_token"),
-         {:ok, oauth_token_secret} <- fetch_from_token(token, "oauth_token_secret") do
+         {:ok, oauth_token} <- Assent.fetch_token_param(token, "oauth_token"),
+         {:ok, oauth_token_secret} <- Assent.fetch_token_param(token, "oauth_token_secret") do
       authorization_url = Keyword.get(config, :authorize_url, "/authorize")
       params = authorization_params(config, oauth_token: oauth_token)
       url = Helpers.to_url(base_url, authorization_url, params)
       session_params = %{oauth_token: oauth_token, oauth_token_secret: oauth_token_secret}
 
       {:ok, url, session_params}
-    end
-  end
-
-  defp fetch_from_token(token, key) do
-    case Map.fetch(token, key) do
-      {:ok, value} -> {:ok, value}
-      :error -> {:error, "No `#{key}` in token map"}
     end
   end
 
@@ -462,8 +448,8 @@ defmodule Assent.Strategy.OAuth do
           {:ok, map()} | {:error, term()}
   def request(config, token, method, url, params \\ [], headers \\ []) do
     with {:ok, base_url} <- Assent.fetch_config(config, :base_url),
-         {:ok, oauth_token} <- fetch_from_token(token, "oauth_token"),
-         {:ok, oauth_token_secret} <- fetch_from_token(token, "oauth_token_secret") do
+         {:ok, oauth_token} <- Assent.fetch_token_param(token, "oauth_token"),
+         {:ok, oauth_token_secret} <- Assent.fetch_token_param(token, "oauth_token_secret") do
       url = process_url(base_url, url)
 
       do_request(
@@ -488,7 +474,7 @@ defmodule Assent.Strategy.OAuth do
           {:ok, user}
 
         {:error, %HTTPResponse{status: 401} = response} ->
-          {:error, RequestError.exception(message: "Unauthorized token", response: response)}
+          {:error, RequestError.exception(message: "unauthorized token", response: response)}
 
         other ->
           process_response(other)

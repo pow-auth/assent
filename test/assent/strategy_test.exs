@@ -10,7 +10,7 @@ defmodule Assent.StrategyTest do
     ]
 
     assert_raise ArgumentError,
-                 "expected #{inspect(__MODULE__)}.invalid_prepare_http_request_return/1 to return an Assent.HTTPAdapter.HTTPRequest struct",
+                 "expected #{inspect(__MODULE__)}.invalid_prepare_http_request_return/1 to return %Assent.HTTPAdapter.HTTPRequest{}",
                  fn ->
                    Strategy.http_request(:get, "http://example.com/", nil, [], config)
                  end
@@ -122,15 +122,8 @@ defmodule Assent.StrategyTest do
       assert {:error, %Assent.CastClaimsError{} = error} =
                Strategy.cast_claims(claims, claim_types)
 
-      assert Exception.message(error) == """
-             The following claims couldn't be cast:
-
-             - "binary" to :binary
-             - "boolean" to :boolean
-             - "integer" to :integer
-             - "map" to :map
-             - "nested" -> "binary" to :binary
-             """
+      assert error.claims == claims
+      assert error.invalid_types == %{claim_types | "map" => :map}
     end
 
     test "with unrelated claims" do
