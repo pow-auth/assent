@@ -63,7 +63,11 @@ defmodule Assent.HTTPAdapter.HttpcTest do
     end
 
     test "with HTTPS request with missing `:ssl_verify_fun` dep" do
-      error = https_request_with_deps(["{:certifi, \">= 0.0.0\"}"])
+      {error, 1} =
+        mix_run_with_deps(
+          ["{:certifi, \">= 0.0.0\"}"],
+          "Assent.HTTPAdapter.Httpc.request(:get, \"https://localhost\", nil, [], [])"
+        )
 
       assert error =~ "RuntimeError"
       assert error =~ "This request can NOT be verified for valid SSL certificate"
@@ -72,12 +76,34 @@ defmodule Assent.HTTPAdapter.HttpcTest do
     end
 
     test "with HTTPS request with missing `:cacerts` dep" do
-      error = https_request_with_deps(["{:ssl_verify_fun, \">= 0.0.0\"}"])
+      {error, 1} =
+        mix_run_with_deps(
+          ["{:ssl_verify_fun, \">= 0.0.0\"}"],
+          "Assent.HTTPAdapter.Httpc.request(:get, \"https://localhost\", nil, [], [])"
+        )
 
       assert error =~ "RuntimeError"
       assert error =~ "This request requires a CA trust store"
       assert error =~ "Please add `:certifi` to your projects dependencies"
       assert error =~ "ssl: [cacerts: ...]"
+    end
+
+    test "with HTTPS request when no other dependency starts `:ssl`" do
+      TestServer.start(scheme: :https)
+      TestServer.add("/", via: :get)
+
+      code = """
+      {:ok, %{status: 200}} =
+        Assent.HTTPAdapter.Httpc.request(:get, "#{TestServer.url()}", nil, [],
+          ssl: [
+            cacerts: [],
+            verify: :verify_none,
+            verify_fun: {fn _cert, _event, state -> {:valid, state} end, nil}
+          ]
+        )
+      """
+
+      assert {_stdout, 0} = mix_run_with_deps([], code)
     end
 
     test "when network error" do
@@ -154,7 +180,7 @@ defmodule Assent.HTTPAdapter.HttpcTest do
 
   defp inet_error([_, {:inet, [:inet], error}]), do: error
 
-  defp https_request_with_deps(deps) do
+  defp mix_run_with_deps(deps, code) do
     deps = deps ++ ["{:assent, path: \"../../\"}"]
 
     File.rm_rf!("tmp/test_app")
@@ -179,18 +205,7 @@ defmodule Assent.HTTPAdapter.HttpcTest do
       {_stdout, 0} = System.cmd("mix", ["deps.get"])
       {_stdout, 0} = System.cmd("mix", ["compile"])
 
-      {stdout, 1} =
-        System.cmd(
-          "mix",
-          [
-            "run",
-            "-e",
-            "Assent.HTTPAdapter.Httpc.request(:get, \"https://localhost\", nil, [], [])"
-          ],
-          stderr_to_stdout: true
-        )
-
-      stdout
+      System.cmd("mix", ["run", "-e", code], stderr_to_stdout: true)
     end)
   end
 end
