@@ -9,6 +9,8 @@ Now requires Elixir 1.18 / OTP 26.
 * `Assent.HTTPAdapter.Finch` removed
 * `JSON` is now the default JSON library
 * `Assent.Strategy.Instagram` removed because the Instagram Basic Display API has been discontinued
+* `Assent.HTTPAdapter.Httpc` now verifies SSL certificates with the OS trust store and OTP's built-in hostname verification, `:certifi` and `:ssl_verify_fun` are no longer used
+* `Assent.HTTPAdapter.Httpc` now raises on HTTPS requests with `verify: :verify_none`, pass a custom `:verify_fun` to handle verification yourself
 
 ### Changes
 
