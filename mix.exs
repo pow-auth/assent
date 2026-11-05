@@ -34,8 +34,6 @@ defmodule Assent.MixProject do
       # JWT libraries
       {:jose, "~> 1.8", optional: true},
       # HTTP clients
-      {:certifi, ">= 0.0.0", optional: true},
-      {:ssl_verify_fun, ">= 0.0.0", optional: true},
       {:req, "~> 0.4", optional: true},
       # Docs and tests
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
