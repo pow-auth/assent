@@ -62,5 +62,29 @@ defmodule Assent.Strategy.VKTest do
       assert {:ok, %{user: user}} = VK.callback(config, params)
       assert user == @user
     end
+
+    test "with `:user_url_params` keeps the default params", %{
+      config: config,
+      callback_params: params
+    } do
+      config = Keyword.put(config, :user_url_params, lang: "en")
+
+      expect_oauth2_access_token_request(uri: "/access_token", params: @token_response)
+
+      expect_oauth2_user_request(
+        %{"response" => @users_response},
+        [uri: "/method/users.get"],
+        fn conn ->
+          conn = Plug.Conn.fetch_query_params(conn)
+
+          assert conn.params["lang"] == "en"
+          assert conn.params["fields"] == "photo_200,screen_name"
+          assert conn.params["v"] == "5.199"
+        end
+      )
+
+      assert {:ok, %{user: user}} = VK.callback(config, params)
+      assert user == @user
+    end
   end
 end
