@@ -3,28 +3,33 @@ if Code.ensure_loaded?(:httpc) do
     @moduledoc """
     HTTP adapter module for making http requests with `:httpc`.
 
-    SSL verification is enabled automatically when both
-    [`:certifi`](https://hexdocs.pm/certifi/) and
-    [`:ssl_verify_fun`](https://hex.pm/packages/ssl_verify_fun) are present at
-    compile time. Add them to your dependencies in `mix.exs`:
-
-        defp deps do
-          [
-            {:certifi, "~> 2.4"},
-            {:ssl_verify_fun, "~> 1.1"}
-          ]
-        end
-
-    If these dependencies are added after Assent has been compiled,
-    recompile Assent to enable SSL verification support:
-
-        mix deps.compile assent --force
-
-    You can also override the `:httpc` options by updating the configuration:
+    You can override the `:httpc` options by updating the configuration:
 
         http_adapter: {Assent.HTTPAdapter.Httpc, [...]}
 
     See `Assent.HTTPAdapter` for more.
+
+    ## TLS
+
+    By default, the `:ssl` options are:
+
+        [
+          cacerts: :public_key.cacerts_get(),
+          customize_hostname_check: [
+            match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
+          ],
+          verify: :verify_peer
+        ]
+
+    You can configure the `:ssl` options, which are merged on top of the
+    defaults:
+
+        http_adapter: {Assent.HTTPAdapter.Httpc, ssl: [cacertfile: ~c"/path/to/ca.pem"]}
+
+    HTTPS requests configured with `verify: :verify_none` are rejected. You can
+    pass in a custom `:verify_fun` to handle certificate verification manually:
+
+        http_adapter: {Assent.HTTPAdapter.Httpc, ssl: [verify_fun: {&MyModule.verify_fun/3, nil}]}
     """
     alias Assent.{HTTPAdapter, HTTPAdapter.HTTPResponse}
 
@@ -92,109 +97,40 @@ if Code.ensure_loaded?(:httpc) do
 
       case uri.scheme do
         "https" ->
-          ssl_opts =
-            opts
-            |> Keyword.get(:ssl, [])
-            |> verify_fun_ssl_opts(uri)
-            |> cacerts_ssl_opts()
-
-          Keyword.put(opts, :ssl, ssl_opts)
+          Keyword.put(opts, :ssl, ssl_opts(opts))
 
         "http" ->
           opts
       end
     end
 
-    defp verify_fun_ssl_opts(ssl_opts, uri) do
-      case Keyword.has_key?(ssl_opts, :verify_fun) do
-        true -> ssl_opts
-        false -> default_verify_fun_ssl_opts(ssl_opts, uri)
-      end
+    defp ssl_opts(opts) do
+      [
+        customize_hostname_check: [
+          match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
+        ],
+        verify: :verify_peer
+      ]
+      |> Keyword.merge(Keyword.get(opts, :ssl, []))
+      |> validate_verify_option!()
+      |> put_cacerts()
     end
 
-    if Code.ensure_loaded?(:ssl_verify_hostname) do
-      defp default_verify_fun_ssl_opts(ssl_opts, uri) do
-        # This handles certificates for wildcard domain with SAN extension for
-        # OTP >= 22
-        hostname_match_check =
-          try do
-            [
-              customize_hostname_check: [
-                match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
-              ]
-            ]
-          rescue
-            _e in UndefinedFunctionError -> []
-          end
-
-        Keyword.merge(
-          [
-            verify: :verify_peer,
-            depth: 99,
-            verify_fun:
-              {&:ssl_verify_hostname.verify_fun/3, check_hostname: to_charlist(uri.host)}
-          ] ++ hostname_match_check,
+    defp validate_verify_option!(ssl_opts) do
+      case Keyword.get(ssl_opts, :verify) do
+        :verify_peer ->
           ssl_opts
-        )
-      end
-    else
-      defp default_verify_fun_ssl_opts(_ssl_opts, _uri) do
-        raise """
-        This request can NOT be verified for valid SSL certificate.
 
-        Please add `:ssl_verify_fun` to your projects dependencies:
-
-          {:ssl_verify_fun, "~> 1.1"}
-
-        And recompile Assent:
-
-          mix deps.compile assent --force
-
-        Or specify the ssl options in the `:http_adapter` config option:
-
-          config =
-            [
-              client_id: "REPLACE_WITH_CLIENT_ID",
-              client_secret: "REPLACE_WITH_CLIENT_SECRET",
-              http_adapter: {#{__MODULE__}, ssl: [verify_peer: :verify_peer, verify_fun: ...]}
-            ]
-        """
+        other ->
+          raise ArgumentError,
+                "expected `:verify` in `:ssl` options to be `:verify_peer`, got: #{inspect(other)}"
       end
     end
 
-    defp cacerts_ssl_opts(ssl_opts) do
+    defp put_cacerts(ssl_opts) do
       case Keyword.has_key?(ssl_opts, :cacerts) || Keyword.has_key?(ssl_opts, :cacertfile) do
         true -> ssl_opts
-        false -> default_cacerts_ssl_opts(ssl_opts)
-      end
-    end
-
-    if Code.ensure_loaded?(:certifi) do
-      defp default_cacerts_ssl_opts(ssl_opts) do
-        ssl_opts ++ [cacerts: :certifi.cacerts()]
-      end
-    else
-      defp default_cacerts_ssl_opts(_ssl_opts) do
-        raise """
-        This request requires a CA trust store.
-
-        Please add `:certifi` to your projects dependencies:
-
-          {:certifi, "~> 2.4"}
-
-        And recompile Assent:
-
-          mix deps.compile assent --force
-
-        Or specify the ssl options in the `:http_adapter` config option:
-
-          config =
-            [
-              client_id: "REPLACE_WITH_CLIENT_ID",
-              client_secret: "REPLACE_WITH_CLIENT_SECRET",
-              http_adapter: {#{__MODULE__}, ssl: [cacerts: ...]}
-            ]
-        """
+        false -> Keyword.put(ssl_opts, :cacerts, :public_key.cacerts_get())
       end
     end
   end
