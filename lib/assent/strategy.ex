@@ -22,16 +22,131 @@ defmodule Assent.Strategy do
         def callback(config, params) do
           # Fetch user data
 
-          user = Helpers.normalize_userinfo(userinfo)
-
-          {:ok, %{user: user, ...}}
+          case Helpers.normalize_userinfo(userinfo) do
+            {:ok, user} -> {:ok, %{user: user}}
+            {:error, error} -> {:error, error}
+          end
         end
       end
   """
-  alias Assent.{CastClaimsError, HTTPAdapter.HTTPRequest}
 
+  defmodule CallbackError do
+    @moduledoc """
+    An exception for an error reported or detected during an authorization
+    callback.
+
+    The `:params` field is omitted from `Inspect` output as it may contain
+    sensitive data.
+
+    ## Fields
+
+      * `:message` - a description of the error
+      * `:params` - the callback parameters associated with the error
+
+    ## Examples
+
+        iex> error = Assent.Strategy.CallbackError.exception(message: "error", params: %{"a" => 1})
+        iex> Exception.message(error)
+        "error"
+        iex> error.params
+        %{"a" => 1}
+        iex> inspect(error)
+        "#Assent.Strategy.CallbackError<message: \\"error\\", ...>"
+    """
+
+    @type t :: %__MODULE__{message: binary(), params: map()}
+    @derive {Inspect, only: [:message]}
+
+    defexception [:message, :params]
+  end
+
+  defmodule CallbackCSRFError do
+    @moduledoc """
+    An exception for when callback CSRF validation fails.
+
+    ## Fields
+
+      * `:key` - the callback parameter that failed validation
+
+    ## Examples
+
+        iex> error = Assent.Strategy.CallbackCSRFError.exception(key: "state")
+        iex> Exception.message(error)
+        "expected callback parameter `state` to match its value in session params"
+    """
+
+    @type t :: %__MODULE__{key: binary()}
+
+    defexception [:key]
+
+    def message(exception) do
+      "expected callback parameter `#{exception.key}` to match its value in session params"
+    end
+  end
+
+  defmodule CastError do
+    @moduledoc """
+    An exception for when claims cannot be cast to the requested types.
+
+    The `:claims` field is omitted from `Inspect` output as it may contain
+    sensitive data.
+
+    ## Fields
+
+      * `:claims` - the original claims
+      * `:invalid_types` - the expected types for the claims that couldn't be
+        cast
+
+    ## Examples
+
+        iex> {:error, error} = Assent.Strategy.cast_claims(%{"email_verified" => "sometimes"}, %{"email_verified" => :boolean})
+        iex> error.invalid_types
+        %{"email_verified" => :boolean}
+    """
+
+    @derive {Inspect, only: [:invalid_types]}
+    defexception [:claims, :invalid_types]
+
+    @type t :: %__MODULE__{
+            claims: map(),
+            invalid_types: map()
+          }
+
+    def message(exception) do
+      """
+      claims can't be cast
+
+      The following claims did not match the expected types:
+
+      #{exception.invalid_types |> to_lines() |> Enum.join("\n")}
+      """
+    end
+
+    defp to_lines(claim_types, prepend \\ "") do
+      claim_types
+      |> Enum.sort_by(&elem(&1, 0))
+      |> Enum.reduce([], fn
+        {key, %{} = claim_types}, acc ->
+          acc ++ to_lines(claim_types, prepend <> "#{inspect(key)} -> ")
+
+        {key, type}, acc ->
+          acc ++ ["- #{prepend}#{inspect(key)} to #{inspect(type)}"]
+      end)
+    end
+  end
+
+  alias Assent.{HTTPAdapter, HTTPAdapter.HTTPRequest, HTTPAdapter.HTTPResponse}
+  alias Assent.Strategy.CastError
+
+  @doc """
+  Generates the URL that redirects the user to the authorization provider.
+  """
   @callback authorize_url(Keyword.t()) ::
               {:ok, %{:url => binary(), optional(atom()) => any()}} | {:error, term()}
+
+  @doc """
+  Completes the authorization callback and returns the authenticated user.
+  """
   @callback callback(Keyword.t(), map()) ::
               {:ok, %{:user => map(), optional(atom()) => any()}} | {:error, term()}
 
@@ -49,12 +164,19 @@ defmodule Assent.Strategy do
 
   See `Assent.HTTPAdapter.request/2` for adapter options.
   """
+  @spec http_request(
+          HTTPAdapter.method(),
+          binary(),
+          HTTPAdapter.body(),
+          HTTPAdapter.headers(),
+          Keyword.t()
+        ) :: {:ok, HTTPResponse.t()} | {:error, HTTPResponse.t()} | {:error, term()}
   def http_request(method, url, body, headers, config) do
     opts = Keyword.take(config, [:http_adapter, :json_library])
 
     %HTTPRequest{method: method, url: url, body: body, headers: headers}
     |> apply_prepare_http_request(Keyword.get(config, :prepare_http_request))
-    |> Assent.HTTPAdapter.request(opts)
+    |> HTTPAdapter.request(opts)
   end
 
   defp apply_prepare_http_request(request, nil), do: request
@@ -65,8 +187,9 @@ defmodule Assent.Strategy do
         request
 
       _other ->
-        raise ArgumentError,
-              "expected #{inspect(module)}.#{function}/#{length(args) + 1} to return an #{inspect(HTTPRequest)} struct"
+        function = "#{inspect(module)}.#{function}/#{length(args) + 1}"
+
+        raise ArgumentError, "expected #{function} to return %#{inspect(HTTPRequest)}{}"
     end
   end
 
@@ -104,6 +227,14 @@ defmodule Assent.Strategy do
 
   @doc """
   Generates a URL.
+
+  ## Examples
+
+      iex> Assent.Strategy.to_url("https://example.com", "/authorize")
+      "https://example.com/authorize"
+
+      iex> Assent.Strategy.to_url("https://example.com", "/authorize", response_type: "code")
+      "https://example.com/authorize?response_type=code"
   """
   @spec to_url(binary(), binary(), Keyword.t()) :: binary()
   def to_url(base_url, uri, params \\ [])
@@ -190,12 +321,18 @@ defmodule Assent.Strategy do
   #{inspect(@registered_claim_member_types, pretty: true)}
   ```
 
-  Returns an `Assent.CastClaimsError` if any of the above types can't be casted.
+  Returns `t:Assent.Strategy.CastError.t/0` error if any of the above types
+  can't be cast.
 
   Based on the [OpenID Connect Core 1.0 standard
   claims](https://openid.net/specs/openid-connect-core-1_0.html#rfc.section.5.1).
+
+  ## Examples
+
+      iex> Assent.Strategy.normalize_userinfo(%{"sub" => "123"}, %{"extra_claim" => "value"})
+      {:ok, %{"extra_claim" => "value", "sub" => "123"}}
   """
-  @spec normalize_userinfo(map(), map()) :: {:ok, map()} | {:error, CastClaimsError.t()}
+  @spec normalize_userinfo(map(), map()) :: {:ok, map()} | {:error, CastError.t()}
   def normalize_userinfo(claims, extra \\ %{}) do
     case cast_claims(claims, @registered_claim_member_types) do
       {:ok, casted_claims} -> {:ok, deep_merge_claims(casted_claims, extra)}
@@ -211,21 +348,23 @@ defmodule Assent.Strategy do
   can be cast to booleans.
 
   Claims that are not present in the claim types or have `nil` values are
-  discarded. An `Assent.CastClaimsError` is returned if a claim cannot be cast.
+  discarded. `t:Assent.Strategy.CastError.t/0` is returned if a claim cannot
+  be cast.
 
   ## Examples
 
       iex> claims = %{"sub" => "123", "email_verified" => "invalid"}
       iex> claim_types = %{"sub" => :binary, "email_verified" => :boolean}
-      iex> Assent.Strategy.cast_claims(claims, claim_types)
-      {:error, %Assent.CastClaimsError{claims: claims, invalid_types: %{"email_verified" => :boolean}}}
+      iex> {:error, error} = Assent.Strategy.cast_claims(claims, claim_types)
+      iex> error.invalid_types
+      %{"email_verified" => :boolean}
 
       iex> claims = %{"sub" => "123", "email_verified" => "true"}
       iex> claim_types = %{"sub" => :binary, "email_verified" => :boolean}
       iex> Assent.Strategy.cast_claims(claims, claim_types)
       {:ok, %{"sub" => "123", "email_verified" => true}}
   """
-  @spec cast_claims(map(), claim_types()) :: {:ok, map()} | {:error, CastClaimsError.t()}
+  @spec cast_claims(map(), claim_types()) :: {:ok, map()} | {:error, CastError.t()}
   def cast_claims(claims, claim_types) do
     case do_cast_claims(claims, claim_types) do
       {casted_claims, nil} ->
@@ -233,7 +372,10 @@ defmodule Assent.Strategy do
 
       {_claims, invalid_claims} ->
         {:error,
-         CastClaimsError.exception(claims: claims, invalid_types: Enum.into(invalid_claims, %{}))}
+         CastError.exception(
+           claims: claims,
+           invalid_types: Enum.into(invalid_claims, %{})
+         )}
     end
   end
 

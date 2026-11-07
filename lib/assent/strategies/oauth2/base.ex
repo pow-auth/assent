@@ -35,8 +35,13 @@ defmodule Assent.Strategy.OAuth2.Base do
   alias Assent.Strategy, as: Helpers
   alias Assent.Strategy.OAuth2
 
+  @doc "Returns the default configuration for the OAuth 2.0 strategy."
   @callback default_config(Keyword.t()) :: Keyword.t()
+
+  @doc "Normalizes provider user data into standard claims and optional extra data."
   @callback normalize(Keyword.t(), map()) :: {:ok, map()} | {:ok, map(), map()} | {:error, term()}
+
+  @doc "Fetches user data from the provider using an OAuth 2.0 access token."
   @callback fetch_user(Keyword.t(), map()) :: {:ok, map()} | {:error, term()}
 
   @doc false
@@ -48,12 +53,18 @@ defmodule Assent.Strategy.OAuth2.Base do
       alias Assent.Strategy, as: Helpers
 
       @impl Assent.Strategy
+      @doc "Generates an OAuth 2.0 authorization URL."
+      @spec authorize_url(Keyword.t()) :: Assent.Strategy.OAuth2.on_authorize_url()
       def authorize_url(config), do: unquote(__MODULE__).authorize_url(config, __MODULE__)
 
       @impl Assent.Strategy
+      @doc "Handles an OAuth 2.0 callback."
+      @spec callback(Keyword.t(), map()) :: Assent.Strategy.OAuth2.on_callback()
       def callback(config, params), do: unquote(__MODULE__).callback(config, params, __MODULE__)
 
       @impl unquote(__MODULE__)
+      @doc "Fetches user data using the access token returned by the provider."
+      @spec fetch_user(Keyword.t(), map()) :: {:ok, map()} | {:error, term()}
       def fetch_user(config, token), do: OAuth2.fetch_user(config, token)
 
       defoverridable unquote(__MODULE__)

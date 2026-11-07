@@ -1,11 +1,19 @@
 defmodule Assent.HTTPAdapterTest do
   use ExUnit.Case
-  doctest Assent.Strategy
 
-  alias Assent.{
-    HTTPAdapter,
-    HTTPAdapter.HTTPRequest,
-    HTTPAdapter.HTTPResponse,
+  doctest Assent.HTTPAdapter
+  doctest Assent.HTTPAdapter.HTTPRequest
+  doctest Assent.HTTPAdapter.HTTPResponse
+  doctest Assent.HTTPAdapter.RequestError
+  doctest Assent.HTTPAdapter.InvalidResponseError
+  doctest Assent.HTTPAdapter.UnexpectedResponseError
+  doctest Assent.HTTPAdapter.ServerUnreachableError
+
+  alias Assent.HTTPAdapter
+
+  alias Assent.HTTPAdapter.{
+    HTTPRequest,
+    HTTPResponse,
     InvalidResponseError
   }
 
@@ -93,7 +101,7 @@ defmodule Assent.HTTPAdapterTest do
                 headers: [],
                 body: nil,
                 http_adapter: HTTPMock,
-                request_url: "http-adapter"
+                request: %{request | url: "http-adapter"}
               }}
 
     assert HTTPAdapter.request(%{request | url: "http-adapter-with-opts"},
@@ -105,7 +113,7 @@ defmodule Assent.HTTPAdapterTest do
                 headers: [],
                 body: [a: 1],
                 http_adapter: HTTPMock,
-                request_url: "http-adapter-with-opts"
+                request: %{request | url: "http-adapter-with-opts"}
               }}
 
     assert HTTPAdapter.request(%{request | url: "json-encoded-body"}, opts) ==
@@ -115,7 +123,7 @@ defmodule Assent.HTTPAdapterTest do
                 headers: [{"content-type", "application/json"}],
                 body: %{"a" => 1},
                 http_adapter: HTTPMock,
-                request_url: "json-encoded-body"
+                request: %{request | url: "json-encoded-body"}
               }}
 
     assert HTTPAdapter.request(%{request | url: "json-encoded-body-already-decoded"}, opts) ==
@@ -125,7 +133,7 @@ defmodule Assent.HTTPAdapterTest do
                 headers: [{"content-type", "application/json"}],
                 body: %{"a" => 1},
                 http_adapter: HTTPMock,
-                request_url: "json-encoded-body-already-decoded"
+                request: %{request | url: "json-encoded-body-already-decoded"}
               }}
 
     assert HTTPAdapter.request(%{request | url: "json-encoded-body-text/javascript-header"}, opts) ==
@@ -135,11 +143,20 @@ defmodule Assent.HTTPAdapterTest do
                 headers: [{"content-type", "text/javascript"}],
                 body: %{"a" => 1},
                 http_adapter: HTTPMock,
-                request_url: "json-encoded-body-text/javascript-header"
+                request: %{request | url: "json-encoded-body-text/javascript-header"}
               }}
 
-    assert {:error, %InvalidResponseError{}} =
-             HTTPAdapter.request(%{request | url: "invalid-json-body"}, opts)
+    assert HTTPAdapter.request(%{request | url: "invalid-json-body"}, opts) ==
+             {:error,
+              %Assent.HTTPAdapter.InvalidResponseError{
+                response: %Assent.HTTPAdapter.HTTPResponse{
+                  http_adapter: Assent.HTTPAdapterTest.HTTPMock,
+                  request: %{request | url: "invalid-json-body"},
+                  status: 200,
+                  headers: [{"content-type", "application/json"}],
+                  body: "%"
+                }
+              }}
 
     assert HTTPAdapter.request(%{request | url: "json-no-headers"}, opts) ==
              {:ok,
@@ -148,7 +165,7 @@ defmodule Assent.HTTPAdapterTest do
                 headers: [],
                 body: JSON.encode!(%{"a" => 1}),
                 http_adapter: HTTPMock,
-                request_url: "json-no-headers"
+                request: %{request | url: "json-no-headers"}
               }}
 
     assert HTTPAdapter.request(%{request | url: "uppercase-header-names"}, opts) ==
@@ -158,7 +175,7 @@ defmodule Assent.HTTPAdapterTest do
                 headers: [{"content-type", "application/json"}],
                 body: %{"a" => 1},
                 http_adapter: HTTPMock,
-                request_url: "uppercase-header-names"
+                request: %{request | url: "uppercase-header-names"}
               }}
 
     assert HTTPAdapter.request(%{request | url: "form-data-body"}, opts) ==
@@ -168,7 +185,7 @@ defmodule Assent.HTTPAdapterTest do
                 headers: [{"content-type", "application/x-www-form-urlencoded"}],
                 body: %{"a" => "1"},
                 http_adapter: HTTPMock,
-                request_url: "form-data-body"
+                request: %{request | url: "form-data-body"}
               }}
 
     assert HTTPAdapter.request(%{request | url: "form-data-body-already-decoded"}, opts) ==
@@ -178,7 +195,7 @@ defmodule Assent.HTTPAdapterTest do
                 headers: [{"content-type", "application/x-www-form-urlencoded"}],
                 body: %{"a" => 1},
                 http_adapter: HTTPMock,
-                request_url: "form-data-body-already-decoded"
+                request: %{request | url: "form-data-body-already-decoded"}
               }}
   end
 
@@ -254,5 +271,39 @@ defmodule Assent.HTTPAdapterTest do
              HTTPAdapter.decode_response(%HTTPResponse{body: "%", headers: @headers}, [])
 
     assert error.response.body == "%"
+  end
+
+  test "format_http_request/1" do
+    request = %HTTPRequest{
+      method: :get,
+      url: "http://user:password@example.com/path?a=1",
+      headers: [{"content-type", "application/json"}]
+    }
+
+    assert HTTPAdapter.format_http_request(request) ==
+             """
+             Request: GET http://example.com/path
+             """
+  end
+
+  test "format_http_response/1" do
+    response = %HTTPResponse{
+      request: %HTTPRequest{
+        method: :get,
+        url: "http://user:password@example.com/path?a=1",
+        headers: [{"content-type", "application/json"}]
+      },
+      http_adapter: HTTPMock,
+      status: 200,
+      headers: [{"content-type", "text/plain"}],
+      body: "Hello"
+    }
+
+    assert HTTPAdapter.format_http_response(response) ==
+             """
+             HTTP adapter: #{inspect(HTTPMock)}
+             Request: GET http://example.com/path
+             Response status: 200
+             """
   end
 end

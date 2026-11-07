@@ -41,7 +41,7 @@ defmodule Assent.Strategy.AzureADTest do
     assert url =~ "response_mode=form_post"
   end
 
-  test "authorize_url/1 with `tenant_id: domain` with `:base_url` option", %{config: config} do
+  test "authorize_url/1 with `tenant_id: domain` and `:base_url` config", %{config: config} do
     base_url = "https://login.microsoftonline.us/contoso.onmicrosoft.com/v2.0"
 
     config =
@@ -130,7 +130,7 @@ defmodule Assent.Strategy.AzureADTest do
     assert user == @user
   end
 
-  test "callback/2 with `tenant_id: domain` with claim missing `tid`", %{
+  test "callback/2 with `tenant_id: domain` and claim missing `tid`", %{
     config: config,
     callback_params: params
   } do
@@ -142,10 +142,15 @@ defmodule Assent.Strategy.AzureADTest do
       id_token_opts: [claims: claims]
     )
 
-    assert AzureAD.callback(config, params) == {:error, "Missing `tid` in ID Token claims"}
+    assert {:error,
+            %Assent.Strategy.OIDC.InvalidIDTokenError{
+              message:
+                "expected `tid` claim in ID Token, got: [\"aio\", \"aud\", \"exp\", \"iat\", \"iss\", \"name\", \"nbf\", \"nonce\", \"oid\", \"preferred_username\", \"sub\", \"ver\"]"
+            }} =
+             AzureAD.callback(config, params)
   end
 
-  test "callback/2 with `tenant_id: domain` with claim with invalid `tid`", %{
+  test "callback/2 with `tenant_id: domain` and invalid `tid` claim", %{
     config: config,
     callback_params: params
   } do
@@ -157,10 +162,12 @@ defmodule Assent.Strategy.AzureADTest do
       id_token_opts: [claims: claims]
     )
 
-    assert AzureAD.callback(config, params) == {:error, "Invalid `tid` in ID Token claims"}
+    assert {:error,
+            %Assent.Strategy.OIDC.InvalidIDTokenError{message: "invalid `tid` claim in ID Token"}} =
+             AzureAD.callback(config, params)
   end
 
-  test "callback/2 with `tenant_id: domain` with claim with UUID `tid` with invalid characters",
+  test "callback/2 with `tenant_id: domain` and UUID `tid` claim containing invalid characters",
        %{
          config: config,
          callback_params: params
@@ -173,7 +180,9 @@ defmodule Assent.Strategy.AzureADTest do
       id_token_opts: [claims: claims]
     )
 
-    assert AzureAD.callback(config, params) == {:error, "Invalid `tid` in ID Token claims"}
+    assert {:error,
+            %Assent.Strategy.OIDC.InvalidIDTokenError{message: "invalid `tid` claim in ID Token"}} =
+             AzureAD.callback(config, params)
   end
 
   defp tenant_config(config, tenant, openid_configuration \\ %{}) do

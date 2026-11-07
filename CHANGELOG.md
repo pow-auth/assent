@@ -9,6 +9,25 @@ Now requires Elixir 1.18 / OTP 26.
 * `Assent.HTTPAdapter.Finch` removed
 * `JSON` is now the default JSON library
 * `Assent.Strategy.Instagram` removed because the Instagram Basic Display API has been discontinued
+* Exceptions and `Assent.HTTPAdapter.HTTPResponse` now omit potentially sensitive fields from their default `Inspect` output
+* `Assent.Strategy.OIDC` now requires `:userinfo_signed_response_alg` for signed UserInfo responses
+* The following exceptions have been renamed:
+  - `Assent.CallbackError` to `Assent.Strategy.CallbackError`, now with `:params` field instead of `:error` and `:error_uri`
+  - `Assent.CallbackCSRFError` to `Assent.Strategy.CallbackCSRFError`
+  - `Assent.CastClaimsError` to `Assent.Strategy.CastError`
+  - `Assent.RequestError` to `Assent.HTTPAdapter.RequestError`
+  - `Assent.InvalidResponseError` to `Assent.HTTPAdapter.InvalidResponseError`
+  - `Assent.UnexpectedResponseError` to `Assent.HTTPAdapter.UnexpectedResponseError`
+  - `Assent.ServerUnreachableError` to `Assent.HTTPAdapter.ServerUnreachableError`
+* Strategies now return exceptions instead of error strings: `Assent.MissingParamError` for missing parameters and `ArgumentError` for configuration errors
+* `Assent.Strategy.OAuth2` now returns `Assent.Strategy.OAuth2.UnsupportedTokenTypeError` for unsupported token types
+* `Assent.Strategy.OIDC` now returns:
+  - `Assent.Strategy.OIDC.InvalidOpenIDConfigurationError` for invalid provider configuration
+  - `Assent.Strategy.OIDC.InvalidIDTokenError` for invalid ID Tokens
+  - `Assent.Strategy.OIDC.InvalidUserInfoError` for invalid UserInfo responses
+* `Assent.Strategy.Telegram` now returns `ArgumentError` for an invalid `:authorization_channel`
+* `Assent.HTTPAdapter.HTTPResponse` replaces its `:request_url` field with a `:request` field containing an `Assent.HTTPAdapter.HTTPRequest` struct
+* `Assent.JWTAdapter.AssentJWT.Error` replaces its `:message` field with structured `:action`, `:part`, and `:reason` fields
 
 ### Changes
 
@@ -17,6 +36,7 @@ Now requires Elixir 1.18 / OTP 26.
 * `Assent.JWTAdapter.AssentJWT` now supports EC JWKs
 * `Assent.Strategy.OIDC` no longer rejects a `:client_authentication_method` missing from the provider's `token_endpoint_auth_methods_supported`
 * `Assent.Strategy.OIDC` accepts additional ID Token issuers via the `:trusted_issuers` config option
+* `Assent.Strategy.OIDC` now validates `iss` and `aud` for signed UserInfo responses
 * `Assent.Strategy.Facebook` now requests the user `picture` field
 * Strategies now accept a `:prepare_http_request` configuration option for rewriting HTTP requests
 * `Assent.HTTPAdapter.request/5` is deprecated in favor of `Assent.HTTPAdapter.request/2`

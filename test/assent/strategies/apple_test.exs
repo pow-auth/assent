@@ -2,7 +2,7 @@ defmodule Assent.Strategy.AppleTest do
   use Assent.Test.OIDCTestCase
 
   alias Assent.JWTAdapter.AssentJWT
-  alias Assent.Strategy.Apple
+  alias Assent.Strategy.{Apple, CastError}
 
   @client_id "001473.fe6f6f83bf4b8e4590aacbabdcb8598bd0.2039"
   @team_id "app.test.client"
@@ -73,17 +73,23 @@ defmodule Assent.Strategy.AppleTest do
   end
 
   if :crypto.supports()[:curves] do
-    test "callback/2 with missing private key file", %{config: config, callback_params: params} do
+    @tag :tmp_dir
+    test "callback/2 with missing private key file", %{
+      config: config,
+      callback_params: params,
+      tmp_dir: tmp_dir
+    } do
+      private_key_path = Path.join(tmp_dir, "missing.pem")
+
       config =
         config
         |> Keyword.delete(:private_key)
-        |> Keyword.put(:private_key_path, "tmp/missing.pem")
+        |> Keyword.put(:private_key_path, private_key_path)
 
-      assert Apple.callback(config, params) ==
-               {:error, "Failed to read \"tmp/missing.pem\", got; :enoent"}
+      assert {:error, %File.Error{}} = Apple.callback(config, params)
     end
 
-    test "callback/2 with invalid is_private_email claim", %{
+    test "callback/2 with invalid `is_private_email` claim", %{
       config: config,
       callback_params: params
     } do
@@ -96,13 +102,10 @@ defmodule Assent.Strategy.AppleTest do
 
       expect_oidc_jwks_uri_request(uri: "/auth/keys", keys: [@jwk])
 
-      assert {:error, %Assent.CastClaimsError{} = error} = Apple.callback(config, params)
+      assert {:error, %CastError{} = error} = Apple.callback(config, params)
 
-      assert Exception.message(error) == """
-             The following claims couldn't be cast:
-
-             - "is_private_email" to :boolean
-             """
+      assert error.claims == Map.drop(claims, ~w(aud iat iss exp))
+      assert error.invalid_types == %{"is_private_email" => :boolean}
     end
 
     test "callback/2", %{config: config, callback_params: params} do
@@ -133,10 +136,11 @@ defmodule Assent.Strategy.AppleTest do
       assert user == @user
     end
 
-    test "callback/2 without include_unverified_name: true with user param", %{
-      config: config,
-      callback_params: params
-    } do
+    test "callback/2 with default `include_unverified_name: false` config and invalid `user` param",
+         %{
+           config: config,
+           callback_params: params
+         } do
       # This would trigger an error if `include_unverified_name: true`
       params = Map.put(params, "user", "invalid")
 
@@ -151,7 +155,7 @@ defmodule Assent.Strategy.AppleTest do
       assert user == @user
     end
 
-    test "callback/2 with include_unverified_name: true with invalid JSON user param", %{
+    test "callback/2 with `include_unverified_name: true` and invalid JSON `user` param", %{
       config: config,
       callback_params: params
     } do
@@ -163,7 +167,7 @@ defmodule Assent.Strategy.AppleTest do
       end
     end
 
-    test "callback/2 with include_unverified_name: true with user param with encoded invalid value",
+    test "callback/2 with `include_unverified_name: true` and non-object JSON `user` param",
          %{
            config: config,
            callback_params: params
@@ -176,7 +180,7 @@ defmodule Assent.Strategy.AppleTest do
       end
     end
 
-    test "callback/2 with include_unverified_name: true with user param with invalid name value",
+    test "callback/2 with `include_unverified_name: true` and non-object `name` in `user` param",
          %{
            config: config,
            callback_params: params
@@ -190,7 +194,7 @@ defmodule Assent.Strategy.AppleTest do
       end
     end
 
-    test "callback/2 with include_unverified_name: true with user param with invalid name claims",
+    test "callback/2 with `include_unverified_name: true` and invalid `name` claims in `user` param",
          %{
            config: config,
            callback_params: params
@@ -199,16 +203,13 @@ defmodule Assent.Strategy.AppleTest do
       encoded_user = JSON.encode!(%{name: %{firstName: true}})
       params = Map.put(params, "user", encoded_user)
 
-      assert {:error, %Assent.CastClaimsError{} = error} = Apple.callback(config, params)
+      assert {:error, %CastError{} = error} = Apple.callback(config, params)
 
-      assert Exception.message(error) == """
-             The following claims couldn't be cast:
-
-             - "given_name" to :binary
-             """
+      assert error.claims == %{"family_name" => nil, "given_name" => true}
+      assert error.invalid_types == %{"given_name" => :binary}
     end
 
-    test "callback/2 with include_unverified_name: true with user param", %{
+    test "callback/2 with `include_unverified_name: true` and valid `user` param", %{
       config: config,
       callback_params: params
     } do
@@ -236,7 +237,7 @@ defmodule Assent.Strategy.AppleTest do
       assert user == Map.merge(@user, %{"given_name" => "John", "family_name" => "Doe"})
     end
 
-    test "callback/2 with include_unverified_name: true with user param with no name field", %{
+    test "callback/2 with `include_unverified_name: true` and `user` param missing `name`", %{
       config: config,
       callback_params: params
     } do
@@ -254,7 +255,7 @@ defmodule Assent.Strategy.AppleTest do
       assert user == @user
     end
 
-    test "callback/2 with include_unverified_name: true with no user param", %{
+    test "callback/2 with `include_unverified_name: true` and missing `user` param", %{
       config: config,
       callback_params: params
     } do

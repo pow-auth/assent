@@ -1,5 +1,6 @@
 defmodule Assent.JWTAdapter.JOSETest do
   use ExUnit.Case
+
   doctest Assent.JWTAdapter.JOSE
 
   alias Assent.JWTAdapter.JOSE

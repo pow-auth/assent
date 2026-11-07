@@ -1,5 +1,6 @@
 defmodule Assent.HTTPAdapter.ReqTest do
   use ExUnit.Case
+
   doctest Assent.HTTPAdapter.Req
 
   alias Assent.HTTPAdapter.{HTTPResponse, Req}
@@ -106,7 +107,7 @@ defmodule Assent.HTTPAdapter.ReqTest do
                Req.request(:get, bad_host_url, nil, [], req_opts)
     end
 
-    test "with HTTPS request with bad certificate with no verification" do
+    test "with HTTPS request with bad certificate and disabled verification" do
       TestServer.start(scheme: :https)
       TestServer.add("/", via: :get)
 
