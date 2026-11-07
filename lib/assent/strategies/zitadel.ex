@@ -29,7 +29,7 @@ defmodule Assent.Strategy.Zitadel do
 
     [
       authorization_params: [scope: "email profile"],
-      client_authentication_method: "none",
+      client_authentication_method: :none,
       code_verifier: true,
       trusted_audiences: trusted_audiences
     ]

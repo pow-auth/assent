@@ -16,23 +16,23 @@ defmodule Assent.Strategy.OIDC do
       defaults to `/.well-known/openid-configuration`
 
     * `:client_authentication_method` - the Client Authentication method to
-      use, optional, defaults to `client_secret_basic`. The value may be one
+      use, optional, defaults to `:client_secret_basic`. The value may be one
       of the following:
 
-      * `none` - no client authentication, used with public clients
+      * `:none` - no client authentication, used with public clients
 
-      * `client_secret_basic` - authenticate with basic authorization header
+      * `:client_secret_basic` - authenticate with basic authorization header
 
-      * `client_secret_post` - authenticate with post params
+      * `:client_secret_post` - authenticate with post params
 
-      * `client_secret_jwt` - authenticate with JWT using `:client_secret` as
+      * `:client_secret_jwt` - authenticate with JWT using `:client_secret` as
         secret
 
-      * `private_key_jwt` - authenticate with JWT using `:private_key_path` or
+      * `:private_key_jwt` - authenticate with JWT using `:private_key_path` or
         `:private_key` as secret
 
     * `:client_secret` - the client secret, required if
-      `:client_authentication_method` is `client_secret_basic`,
+      `:client_authentication_method` is `:client_secret_basic`,
       `:client_secret_post`, or `:client_secret_jwt`
 
     * `:openid_configuration` - the OpenID configuration, optional, the
@@ -414,20 +414,42 @@ defmodule Assent.Strategy.OIDC do
 
   defp fetch_client_authentication_method(config) do
     config
-    |> Keyword.get(:client_authentication_method, "client_secret_basic")
+    |> Keyword.get(:client_authentication_method, :client_secret_basic)
     |> parse_client_auth_method()
   end
 
-  defp parse_client_auth_method("none"), do: {:ok, nil}
-  defp parse_client_auth_method("client_secret_basic"), do: {:ok, :client_secret_basic}
-  defp parse_client_auth_method("client_secret_post"), do: {:ok, :client_secret_post}
-  defp parse_client_auth_method("client_secret_jwt"), do: {:ok, :client_secret_jwt}
-  defp parse_client_auth_method("private_key_jwt"), do: {:ok, :private_key_jwt}
+  # NOTE: Accept string values for backward compatibility. Remove in next major version.
+  defp parse_client_auth_method(auth_method) when is_binary(auth_method) do
+    IO.warn(
+      "The `:client_authentication_method` option as a string is deprecated, use an atom instead."
+    )
 
-  defp parse_client_auth_method(method),
-    do:
-      {:error,
-       ArgumentError.exception("invalid client authentication method, got: #{inspect(method)}")}
+    case auth_method do
+      "none" ->
+        {:ok, nil}
+
+      "client_secret_basic" ->
+        {:ok, :client_secret_basic}
+
+      "client_secret_post" ->
+        {:ok, :client_secret_post}
+
+      "client_secret_jwt" ->
+        {:ok, :client_secret_jwt}
+
+      "private_key_jwt" ->
+        {:ok, :private_key_jwt}
+
+      _ ->
+        {:error,
+         ArgumentError.exception(
+           "invalid `:client_authentication_method`, got: #{inspect(auth_method)}"
+         )}
+    end
+  end
+
+  defp parse_client_auth_method(:none), do: {:ok, nil}
+  defp parse_client_auth_method(auth_method) when is_atom(auth_method), do: {:ok, auth_method}
 
   # https://openid.net/specs/draft-jones-json-web-token-07.html#ReservedClaimName
   @reserved_jwt_names ~w(exp nbf iat iss aud prn jti typ)

@@ -89,7 +89,7 @@ defmodule Assent.Strategy.Apple do
         "token_endpoint_auth_methods_supported" => ["client_secret_post"]
       },
       authorization_params: [scope: "email", response_mode: "form_post"],
-      client_authentication_method: "client_secret_post",
+      client_authentication_method: :client_secret_post,
       openid_default_scope: nil
     ]
   end

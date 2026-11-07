@@ -23,7 +23,7 @@ defmodule Assent.Strategy.Auth0 do
   def default_config(_config) do
     [
       authorization_params: [scope: "email profile"],
-      client_authentication_method: "client_secret_post"
+      client_authentication_method: :client_secret_post
     ]
   end
 

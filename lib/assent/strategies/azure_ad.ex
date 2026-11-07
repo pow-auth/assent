@@ -52,7 +52,7 @@ defmodule Assent.Strategy.AzureAD do
     default_config = [
       base_url: base_url,
       authorization_params: [scope: "email profile", response_mode: "form_post"],
-      client_authentication_method: "client_secret_post",
+      client_authentication_method: :client_secret_post,
       tenant_id: tenant_id
     ]
 

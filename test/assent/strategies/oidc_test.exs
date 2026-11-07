@@ -1,6 +1,8 @@
 defmodule Assent.Strategy.OIDCTest do
   use Assent.Test.OIDCTestCase
 
+  import ExUnit.CaptureIO
+
   doctest Assent.Strategy.OIDC
   doctest Assent.Strategy.OIDC.InvalidIDTokenError
   doctest Assent.Strategy.OIDC.InvalidOpenIDConfigurationError
@@ -62,12 +64,31 @@ defmodule Assent.Strategy.OIDCTest do
   end
 
   describe "callback/2 with static OpenID configuration" do
-    test "with invalid authentication method", %{config: config, callback_params: params} do
-      config = Keyword.put(config, :client_authentication_method, "invalid")
+    test "with invalid `:client_authentication_method`", %{
+      config: config,
+      callback_params: params
+    } do
+      config = Keyword.put(config, :client_authentication_method, :invalid)
 
       assert {:error, %ArgumentError{} = error} = OIDC.callback(config, params)
 
-      assert Exception.message(error) == "invalid client authentication method, got: \"invalid\""
+      assert Exception.message(error) == "invalid `:client_authentication_method`, got: :invalid"
+    end
+
+    # NOTE: Testing deprecation handling. Remove in next major version.
+    test "with `client_authentication_method: \"none\"`", %{
+      config: config,
+      callback_params: params
+    } do
+      expect_oidc_access_token_request(id_token_opts: [iss: "http://localhost"])
+      expect_oidc_jwks_uri_request(count: 1)
+
+      config = Keyword.put(config, :client_authentication_method, "none")
+
+      assert capture_io(:stderr, fn ->
+               assert {:ok, _} = OIDC.callback(config, params)
+             end) =~
+               "The `:client_authentication_method` option as a string is deprecated, use an atom instead."
     end
 
     test "with missing `token_endpoint` in OpenID configuration", %{
@@ -110,7 +131,7 @@ defmodule Assent.Strategy.OIDCTest do
       "http://localhost:4000/additional" => "info"
     }
 
-    test "with `client_authentication_method: \"none\"` config", %{
+    test "with `client_authentication_method: :none` config", %{
       config: config,
       callback_params: params
     } do
@@ -125,14 +146,14 @@ defmodule Assent.Strategy.OIDCTest do
 
       expect_oidc_jwks_uri_request(count: 1)
 
-      config = Keyword.put(config, :client_authentication_method, "none")
+      config = Keyword.put(config, :client_authentication_method, :none)
 
       assert {:ok, %{user: user, token: token}} = OIDC.callback(config, params)
       assert user == @user
       assert %{"access_token" => "access_token", "id_token" => _id_token} = token
     end
 
-    test "with `client_authentication_method: \"client_secret_basic\"` config", %{
+    test "with `client_authentication_method: :client_secret_basic` config", %{
       config: config,
       callback_params: params
     } do
@@ -197,7 +218,7 @@ defmodule Assent.Strategy.OIDCTest do
     -----END PUBLIC KEY-----
     """
 
-    test "with `client_authentication_method: \"private_key_jwt\"` config", %{
+    test "with `client_authentication_method: :private_key_jwt` config", %{
       config: config,
       callback_params: params
     } do
@@ -208,7 +229,7 @@ defmodule Assent.Strategy.OIDCTest do
 
       config =
         config
-        |> Keyword.put(:client_authentication_method, "private_key_jwt")
+        |> Keyword.put(:client_authentication_method, :private_key_jwt)
         |> Keyword.put(:private_key, @private_rsa_key)
         |> Keyword.put(:private_key_id, "key_id")
         |> Keyword.put(:openid_configuration, openid_config)

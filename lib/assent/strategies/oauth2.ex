@@ -48,7 +48,7 @@ defmodule Assent.Strategy.OAuth2 do
       `:client_authentication_method` is `:private_key_jwt` and `:private_key`
       hasn't been set
 
-    * `:private_key` - the private key content that can be defined instead of
+    * `:private_key` - the private key content that can be defined when
       `:client_authentication_method` is `:private_key_jwt` and
       `:private_key_path` hasn't been set
 

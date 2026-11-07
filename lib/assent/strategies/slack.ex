@@ -42,7 +42,7 @@ defmodule Assent.Strategy.Slack do
     [
       base_url: "https://slack.com",
       authorization_params: authorization_params(config),
-      client_authentication_method: "client_secret_post"
+      client_authentication_method: :client_secret_post
     ]
   end
 

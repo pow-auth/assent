@@ -35,7 +35,7 @@ defmodule Assent.Strategy.Google do
     [
       base_url: "https://accounts.google.com",
       authorization_params: [scope: "email profile"],
-      client_authentication_method: "client_secret_post"
+      client_authentication_method: :client_secret_post
     ]
   end
 end

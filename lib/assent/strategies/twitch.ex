@@ -18,7 +18,7 @@ defmodule Assent.Strategy.Twitch do
         claims:
           "{\"id_token\":{\"email\":null,\"email_verified\":null,\"picture\":null,\"preferred_username\":null}}"
       ],
-      client_authentication_method: "client_secret_post"
+      client_authentication_method: :client_secret_post
     ]
   end
 end
