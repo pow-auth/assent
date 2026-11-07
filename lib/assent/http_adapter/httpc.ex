@@ -7,6 +7,12 @@ if Code.ensure_loaded?(:httpc) do
 
         http_adapter: {Assent.HTTPAdapter.Httpc, [...]}
 
+    Redirects are not followed by default, so credentials in headers and the
+    request body are never sent to another URL. You can enable them with
+    `:autoredirect`:
+
+        http_adapter: {Assent.HTTPAdapter.Httpc, autoredirect: true}
+
     See `Assent.HTTPAdapter` for more.
 
     ## TLS
@@ -39,7 +45,11 @@ if Code.ensure_loaded?(:httpc) do
     def request(method, url, body, headers, opts) do
       headers = headers ++ [HTTPAdapter.user_agent_header()]
       request = httpc_request(url, body, headers)
-      opts = parse_httpc_ssl_opts(opts, url)
+
+      opts =
+        opts
+        |> Keyword.put_new(:autoredirect, false)
+        |> parse_httpc_ssl_opts(url)
 
       method
       |> :httpc.request(request, opts, [])
