@@ -89,7 +89,8 @@ defmodule Assent.Strategy.Telegram do
 
   @behaviour Assent.Strategy
 
-  alias Assent.{CallbackError, Strategy}
+  alias Assent.Strategy
+  alias Assent.Strategy.CallbackError
 
   @auth_ttl_seconds 60
   @web_mini_app :web_mini_app
@@ -139,9 +140,7 @@ defmodule Assent.Strategy.Telegram do
 
       other ->
         {:error,
-         CallbackError.exception(
-           message: "Invalid `:authorization_channel` value: #{inspect(other)}"
-         )}
+         ArgumentError.exception("invalid `:authorization_channel` value, got: #{inspect(other)}")}
     end
   end
 
@@ -188,7 +187,11 @@ defmodule Assent.Strategy.Telegram do
         :ok
 
       false ->
-        {:error, CallbackError.exception(message: "Authorization request has an invalid hash")}
+        {:error,
+         CallbackError.exception(
+           message: "authorization request has an invalid hash",
+           params: params
+         )}
     end
   end
 
@@ -201,8 +204,12 @@ defmodule Assent.Strategy.Telegram do
       |> Kernel.-(auth_timestamp)
       |> Kernel.<=(@auth_ttl_seconds)
       |> case do
-        true -> :ok
-        false -> {:error, CallbackError.exception(message: "Authorization request has expired")}
+        true ->
+          :ok
+
+        false ->
+          {:error,
+           CallbackError.exception(message: "authorization request has expired", params: params)}
       end
     end
   end

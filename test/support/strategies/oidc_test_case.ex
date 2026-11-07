@@ -188,10 +188,26 @@ defmodule Assent.Test.OIDCTestCase do
 
     claims = Map.drop(claims, Enum.filter(Map.keys(claims), &is_nil(claims[&1])))
 
-    alg
-    |> signed_jwt(claims, opts)
-    |> JOSE.JWS.compact()
-    |> elem(1)
+    case alg do
+      "none" ->
+        header = Base.url_encode64(JSON.encode!(%{"alg" => "none"}), padding: false)
+        payload = Base.url_encode64(JSON.encode!(claims), padding: false)
+
+        "#{header}.#{payload}."
+
+      alg ->
+        alg
+        |> signed_jwt(claims, opts)
+        |> JOSE.JWS.compact()
+        |> elem(1)
+    end
+  end
+
+  @spec replace_jwt_header(binary(), binary()) :: binary()
+  def replace_jwt_header(token, header) do
+    [_header, payload, signature] = String.split(token, ".")
+
+    Enum.join([header, payload, signature], ".")
   end
 
   defp signed_jwt("HS256", claims, _opts) do
@@ -204,12 +220,6 @@ defmodule Assent.Test.OIDCTestCase do
     @private_key
     |> JOSE.JWK.from_pem()
     |> JOSE.JWT.sign(add_kid(%{"alg" => "RS256"}, opts), claims)
-  end
-
-  defp signed_jwt("none", claims, _opts) do
-    16
-    |> JOSE.JWK.generate_key()
-    |> JOSE.JWT.sign(%{"alg" => "none"}, claims)
   end
 
   defp add_kid(jws, opts) do

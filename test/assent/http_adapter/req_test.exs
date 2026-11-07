@@ -1,5 +1,6 @@
 defmodule Assent.HTTPAdapter.ReqTest do
   use ExUnit.Case
+
   doctest Assent.HTTPAdapter.Req
 
   alias Assent.HTTPAdapter.{HTTPResponse, Req}

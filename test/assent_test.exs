@@ -1,6 +1,9 @@
 defmodule AssentTest do
   use ExUnit.Case
+
   doctest Assent
+  doctest Assent.MissingConfigError
+  doctest Assent.MissingParamError
 
   test "fetch_config/2" do
     config = [a: 1, b: 2]
@@ -8,9 +11,9 @@ defmodule AssentTest do
     assert Assent.fetch_config(config, :a) == {:ok, 1}
 
     assert {:error, %Assent.MissingConfigError{} = error} = Assent.fetch_config(config, :c)
+
     assert error.key == :c
     assert error.config == config
-    assert Exception.message(error) == "Expected :c in config, got: [:a, :b]"
   end
 
   test "fetch_param/2" do
@@ -19,8 +22,20 @@ defmodule AssentTest do
     assert Assent.fetch_param(params, "a") == {:ok, 1}
 
     assert {:error, %Assent.MissingParamError{} = error} = Assent.fetch_param(params, "c")
+
     assert error.key == "c"
     assert error.params == params
-    assert Exception.message(error) == "Expected \"c\" in params, got: [\"a\", \"b\"]"
+    assert error.context == :params
+  end
+
+  test "fetch_token_param/2" do
+    params = %{"a" => 1, "b" => 2}
+
+    assert Assent.fetch_token_param(params, "a") == {:ok, 1}
+    assert {:error, %Assent.MissingParamError{} = error} = Assent.fetch_token_param(params, "c")
+
+    assert error.key == "c"
+    assert error.params == params
+    assert error.context == :token
   end
 end
