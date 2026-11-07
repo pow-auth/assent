@@ -291,18 +291,19 @@ end
 
 ### :httpc
 
-If `Req` is not available, Erlang's built-in `:httpc` is used for requests. SSL verification is automatically enabled when `:certifi` and `:ssl_verify_fun` packages are available at compile time. `:httpc` only supports HTTP/1.1.
+If `Req` is not available, Erlang's built-in `:httpc` is used for requests. SSL verification is enabled automatically. `:httpc` only supports HTTP/1.1.
+
+You can override the `:ssl` options to use your own trust store or verify function:
 
 ```elixir
-defp deps do
-  [
-    # ...
-    # Required for SSL validation if using the `:httpc` adapter
-    {:certifi, "~> 2.4"},
-    {:ssl_verify_fun, "~> 1.1"}
-  ]
-end
+config = [
+  client_id: "REPLACE_WITH_CLIENT_ID",
+  client_secret: "REPLACE_WITH_CLIENT_SECRET",
+  http_adapter: {Assent.HTTPAdapter.Httpc, ssl: [cacertfile: ~c"/path/to/ca.pem"]}
+]
 ```
+
+SSL verification can be turned off with `verify: :verify_none`, HTTPS requests will then raise. See `Assent.HTTPAdapter.Httpc` for more.
 
 ## JWT Adapter
 

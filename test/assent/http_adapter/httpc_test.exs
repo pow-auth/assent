@@ -7,7 +7,7 @@ defmodule Assent.HTTPAdapter.HttpcTest do
   @httpc_opts []
 
   describe "request/5" do
-    test "with HTTPS request" do
+    test "with HTTPS request with caller supplied cacerts" do
       TestServer.start(scheme: :https)
       TestServer.add("/", via: :get)
 
@@ -33,19 +33,7 @@ defmodule Assent.HTTPAdapter.HttpcTest do
                Httpc.request(:get, TestServer.url(), nil, [], httpc_opts)
     end
 
-    test "with HTTPS request with bad certificate" do
-      TestServer.start(scheme: :https)
-
-      bad_host_url = TestServer.url(host: "bad-host.localhost")
-      httpc_opts = Keyword.put(@httpc_opts, :ssl, cacerts: TestServer.x509_suite().cacerts)
-
-      assert {:error, {:failed_connect, error}} =
-               Httpc.request(:get, bad_host_url, nil, [], httpc_opts)
-
-      assert {:tls_alert, _bad_certificate} = inet_error(error)
-    end
-
-    test "with HTTPS request with bad certificate with no verification" do
+    test "with HTTPS request with caller supplied verify_fun" do
       TestServer.start(scheme: :https)
       TestServer.add("/", via: :get)
 
@@ -54,7 +42,6 @@ defmodule Assent.HTTPAdapter.HttpcTest do
       httpc_opts =
         Keyword.put(@httpc_opts, :ssl,
           cacerts: TestServer.x509_suite().cacerts,
-          verify: :verify_none,
           verify_fun: {fn _cert, _event, state -> {:valid, state} end, nil}
         )
 
@@ -62,30 +49,31 @@ defmodule Assent.HTTPAdapter.HttpcTest do
                Httpc.request(:get, bad_host_url, nil, [], httpc_opts)
     end
 
-    test "with HTTPS request with missing `:ssl_verify_fun` dep" do
-      {error, 1} =
-        mix_run_with_deps(
-          ["{:certifi, \">= 0.0.0\"}"],
-          "Assent.HTTPAdapter.Httpc.request(:get, \"https://localhost\", nil, [], [])"
-        )
+    test "with HTTPS request with default ssl options" do
+      TestServer.start(scheme: :https)
+      TestServer.add("/", via: :get)
 
-      assert error =~ "RuntimeError"
-      assert error =~ "This request can NOT be verified for valid SSL certificate"
-      assert error =~ "Please add `:ssl_verify_fun` to your projects dependencies"
-      assert error =~ "ssl: [verify_peer: :verify_peer, verify_fun: ...]"
+      load_os_cacerts(TestServer.x509_suite().cacerts)
+
+      assert {:ok, %HTTPResponse{status: 200, body: "HTTP/1.1"}} =
+               Httpc.request(:get, TestServer.url(), nil, [], @httpc_opts)
     end
 
-    test "with HTTPS request with missing `:cacerts` dep" do
-      {error, 1} =
-        mix_run_with_deps(
-          ["{:ssl_verify_fun, \">= 0.0.0\"}"],
-          "Assent.HTTPAdapter.Httpc.request(:get, \"https://localhost\", nil, [], [])"
-        )
+    test "with HTTPS request with verify_none" do
+      verify_fun = {fn _cert, _event, state -> {:valid, state} end, nil}
 
-      assert error =~ "RuntimeError"
-      assert error =~ "This request requires a CA trust store"
-      assert error =~ "Please add `:certifi` to your projects dependencies"
-      assert error =~ "ssl: [cacerts: ...]"
+      for ssl_opts <- [
+            [verify: :verify_none],
+            [verify: :verify_none, verify_fun: verify_fun, cacerts: []]
+          ] do
+        error =
+          assert_raise RuntimeError, fn ->
+            Httpc.request(:get, "https://localhost", nil, [], ssl: ssl_opts)
+          end
+
+        assert error.message =~ "This request can NOT be verified for valid SSL certificate"
+        assert error.message =~ "ssl: [verify_fun: ...]"
+      end
     end
 
     test "with HTTPS request when no other dependency starts `:ssl`" do
@@ -97,7 +85,6 @@ defmodule Assent.HTTPAdapter.HttpcTest do
         Assent.HTTPAdapter.Httpc.request(:get, "#{TestServer.url()}", nil, [],
           ssl: [
             cacerts: [],
-            verify: :verify_none,
             verify_fun: {fn _cert, _event, state -> {:valid, state} end, nil}
           ]
         )
@@ -179,6 +166,16 @@ defmodule Assent.HTTPAdapter.HttpcTest do
   end
 
   defp inet_error([_, {:inet, [:inet], error}]), do: error
+
+  # Replaces the OS trust store returned by `:public_key.cacerts_get/0` until the
+  # test exits.
+  defp load_os_cacerts(cacerts) do
+    File.mkdir_p!("tmp")
+    pem = :public_key.pem_encode(Enum.map(cacerts, &{:Certificate, &1, :not_encrypted}))
+    File.write!("tmp/os_cacerts.pem", pem)
+    :ok = :public_key.cacerts_load("tmp/os_cacerts.pem")
+    on_exit(fn -> :public_key.cacerts_clear() end)
+  end
 
   defp mix_run_with_deps(deps, code) do
     deps = deps ++ ["{:assent, path: \"../../\"}"]
