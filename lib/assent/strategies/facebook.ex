@@ -80,7 +80,7 @@ defmodule Assent.Strategy.Facebook do
       user_url: "/me",
       authorization_params: [scope: "email"],
       user_url_request_fields: "email,name,first_name,last_name,middle_name,link,picture",
-      auth_method: :client_secret_post
+      client_authentication_method: :client_secret_post
     ]
   end
 

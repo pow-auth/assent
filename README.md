@@ -176,7 +176,7 @@ defmodule TestProvider do
       token_url: "/oauth/access_token",
       user_url: "/user",
       authorization_params: [scope: "email profile"],
-      auth_method: :client_secret_post
+      client_authentication_method: :client_secret_post
     ]
   end
 

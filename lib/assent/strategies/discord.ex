@@ -22,7 +22,7 @@ defmodule Assent.Strategy.Discord do
       token_url: "/oauth2/token",
       user_url: "/users/@me",
       authorization_params: [scope: "identify email"],
-      auth_method: :client_secret_post
+      client_authentication_method: :client_secret_post
     ]
   end
 

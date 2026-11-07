@@ -25,7 +25,7 @@ defmodule Assent.Strategy.Linkedin do
     [
       base_url: "https://www.linkedin.com/oauth",
       authorization_params: [scope: "profile email"],
-      client_authentication_method: "client_secret_post"
+      client_authentication_method: :client_secret_post
     ]
   end
 end

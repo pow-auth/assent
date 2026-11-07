@@ -1,6 +1,8 @@
 defmodule Assent.Strategy.OAuth2Test do
   use Assent.Test.OAuth2TestCase
 
+  import ExUnit.CaptureIO
+
   doctest Assent.Strategy.OAuth2
   doctest Assent.Strategy.OAuth2.UnsupportedTokenTypeError
 
@@ -289,12 +291,15 @@ defmodule Assent.Strategy.OAuth2Test do
       assert {:ok, _any} = OAuth2.callback(config, params)
     end
 
-    test "with invalid `:auth_method`", %{config: config, callback_params: params} do
-      config = Keyword.put(config, :auth_method, :invalid)
+    test "with invalid `:client_authentication_method`", %{
+      config: config,
+      callback_params: params
+    } do
+      config = Keyword.put(config, :client_authentication_method, :invalid)
 
       assert {:error, %ArgumentError{} = error} = OAuth2.callback(config, params)
 
-      assert Exception.message(error) == "invalid `:auth_method`, got: :invalid"
+      assert Exception.message(error) == "invalid `:client_authentication_method`, got: :invalid"
     end
 
     test "with unreachable `:token_url`", %{config: config, callback_params: params} do
@@ -331,7 +336,10 @@ defmodule Assent.Strategy.OAuth2Test do
 
     @user_api_params %{name: "Dan Schultzer", email: "foo@example.com", uid: "1"}
 
-    test "with missing `:auth_method` config", %{config: config, callback_params: params} do
+    test "with missing `:client_authentication_method` config", %{
+      config: config,
+      callback_params: params
+    } do
       expect_oauth2_access_token_request([], fn _conn, params ->
         assert params["grant_type"] == "authorization_code"
         assert params["code"] == "code_test_value"
@@ -345,13 +353,34 @@ defmodule Assent.Strategy.OAuth2Test do
       assert {:ok, _any} = OAuth2.callback(config, params)
     end
 
-    test "with `auth_method: :client_secret_basic` and special characters in credentials", %{
-      config: config,
-      callback_params: params
-    } do
+    # NOTE: Testing deprecation handling. Remove in next major version.
+    test "with `auth_method: :client_secret_basic`",
+         %{
+           config: config,
+           callback_params: params
+         } do
+      config = Keyword.put(config, :auth_method, :client_secret_basic)
+
+      expect_oauth2_access_token_request([], fn conn, _params ->
+        assert ["Basic " <> _token] = Plug.Conn.get_req_header(conn, "authorization")
+      end)
+
+      expect_oauth2_user_request(@user_api_params)
+
+      assert capture_io(:stderr, fn ->
+               assert {:ok, _any} = OAuth2.callback(config, params)
+             end) =~
+               "The :auth_method option is deprecated, use :client_authentication_method instead."
+    end
+
+    test "with `client_authentication_method: :client_secret_basic` and special characters in credentials",
+         %{
+           config: config,
+           callback_params: params
+         } do
       config =
         config
-        |> Keyword.put(:auth_method, :client_secret_basic)
+        |> Keyword.put(:client_authentication_method, :client_secret_basic)
         |> Keyword.put(:client_id, "client:id/")
         |> Keyword.put(:client_secret, "client secret?")
 
@@ -366,11 +395,11 @@ defmodule Assent.Strategy.OAuth2Test do
       assert {:ok, _any} = OAuth2.callback(config, params)
     end
 
-    test "with `auth_method: :client_secret_post` config", %{
+    test "with `client_authentication_method: :client_secret_post` config", %{
       config: config,
       callback_params: params
     } do
-      config = Keyword.put(config, :auth_method, :client_secret_post)
+      config = Keyword.put(config, :client_authentication_method, :client_secret_post)
 
       expect_oauth2_access_token_request([], fn _conn, params ->
         assert params["grant_type"] == "authorization_code"
@@ -385,11 +414,11 @@ defmodule Assent.Strategy.OAuth2Test do
       assert {:ok, _any} = OAuth2.callback(config, params)
     end
 
-    test "with `auth_method: :client_secret_jwt`", %{
+    test "with `client_authentication_method: :client_secret_jwt`", %{
       config: config,
       callback_params: params
     } do
-      config = Keyword.put(config, :auth_method, :client_secret_jwt)
+      config = Keyword.put(config, :client_authentication_method, :client_secret_jwt)
       token_url = TestServer.url("/oauth/token")
 
       expect_oauth2_access_token_request([], fn _conn, params ->
@@ -420,7 +449,7 @@ defmodule Assent.Strategy.OAuth2Test do
       assert {:ok, _any} = OAuth2.callback(config, params)
     end
 
-    test "with `auth_method: :client_secret_jwt` and `:jwt_audience` config", %{
+    test "with `client_authentication_method: :client_secret_jwt` and `:jwt_audience` config", %{
       config: config,
       callback_params: params
     } do
@@ -428,7 +457,7 @@ defmodule Assent.Strategy.OAuth2Test do
 
       config =
         config
-        |> Keyword.put(:auth_method, :client_secret_jwt)
+        |> Keyword.put(:client_authentication_method, :client_secret_jwt)
         |> Keyword.put(:jwt_audience, audience)
 
       expect_oauth2_access_token_request([], fn _conn, params ->
@@ -446,11 +475,14 @@ defmodule Assent.Strategy.OAuth2Test do
       assert {:ok, _any} = OAuth2.callback(config, params)
     end
 
-    test "with `auth_method: :private_key_jwt` config", %{config: config, callback_params: params} do
+    test "with `client_authentication_method: :private_key_jwt` config", %{
+      config: config,
+      callback_params: params
+    } do
       config =
         config
         |> Keyword.delete(:client_secret)
-        |> Keyword.put(:auth_method, :private_key_jwt)
+        |> Keyword.put(:client_authentication_method, :private_key_jwt)
         |> Keyword.put(:private_key, @private_key)
         |> Keyword.put(:private_key_id, @private_key_id)
 
@@ -486,7 +518,7 @@ defmodule Assent.Strategy.OAuth2Test do
     end
 
     @tag :tmp_dir
-    test "with `auth_method: :private_key_jwt` and private key file", %{
+    test "with `client_authentication_method: :private_key_jwt` and private key file", %{
       config: config,
       callback_params: params,
       tmp_dir: tmp_dir
@@ -497,7 +529,7 @@ defmodule Assent.Strategy.OAuth2Test do
       config =
         config
         |> Keyword.delete(:client_secret)
-        |> Keyword.put(:auth_method, :private_key_jwt)
+        |> Keyword.put(:client_authentication_method, :private_key_jwt)
         |> Keyword.put(:private_key_path, private_key_path)
         |> Keyword.put(:private_key_id, @private_key_id)
 
@@ -517,7 +549,7 @@ defmodule Assent.Strategy.OAuth2Test do
     end
 
     @tag :tmp_dir
-    test "with `auth_method: :private_key_jwt` and missing private key file", %{
+    test "with `client_authentication_method: :private_key_jwt` and missing private key file", %{
       config: config,
       callback_params: params,
       tmp_dir: tmp_dir
@@ -527,7 +559,7 @@ defmodule Assent.Strategy.OAuth2Test do
       config =
         config
         |> Keyword.delete(:client_secret)
-        |> Keyword.put(:auth_method, :private_key_jwt)
+        |> Keyword.put(:client_authentication_method, :private_key_jwt)
         |> Keyword.put(:private_key_path, private_key_path)
         |> Keyword.put(:private_key_id, @private_key_id)
 

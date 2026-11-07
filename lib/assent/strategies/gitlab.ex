@@ -19,7 +19,7 @@ defmodule Assent.Strategy.Gitlab do
     [
       base_url: "https://gitlab.com",
       authorization_params: [scope: "email profile"],
-      client_authentication_method: "client_secret_post"
+      client_authentication_method: :client_secret_post
     ]
   end
 end

@@ -39,7 +39,7 @@ defmodule Assent.Strategy.VK do
       user_url: "/method/users.get",
       authorization_params: [scope: "email"],
       user_url_params: user_url_params,
-      auth_method: :client_secret_post
+      client_authentication_method: :client_secret_post
     ]
   end
 

@@ -27,7 +27,7 @@ defmodule Assent.Strategy.DigitalOcean do
         scope: "read write",
         response_type: "code"
       ],
-      auth_method: :client_secret_post
+      client_authentication_method: :client_secret_post
     ]
   end
 

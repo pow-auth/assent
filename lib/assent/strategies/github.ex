@@ -30,7 +30,7 @@ defmodule Assent.Strategy.Github do
       user_url: "/user",
       user_emails_url: "/user/emails",
       authorization_params: [scope: "read:user,user:email"],
-      auth_method: :client_secret_post
+      client_authentication_method: :client_secret_post
     ]
   end
 
