@@ -7,6 +7,12 @@ if Code.ensure_loaded?(Req) do
 
         http_adapter: {Assent.HTTPAdapter.Req, [...]}
 
+    Redirects are not followed by default, so credentials in headers and the
+    request body are never sent to another URL. You can enable them with
+    `:redirect`:
+
+        http_adapter: {Assent.HTTPAdapter.Req, redirect: true}
+
     See `Assent.HTTPAdapter` for more.
     """
     alias Assent.{HTTPAdapter, HTTPAdapter.HTTPResponse}
@@ -23,7 +29,8 @@ if Code.ensure_loaded?(Req) do
             method: method,
             url: url,
             headers: headers,
-            body: body
+            body: body,
+            redirect: false
           ],
           opts
         )

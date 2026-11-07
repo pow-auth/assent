@@ -30,6 +30,7 @@ Now requires Elixir 1.18 / OTP 26.
 * `Assent.JWTAdapter.AssentJWT.Error` replaces its `:message` field with structured `:action`, `:part`, and `:reason` fields
 * `Assent.HTTPAdapter.Httpc` now verifies SSL certificates with the OS trust store and OTP's built-in hostname verification, `:certifi` and `:ssl_verify_fun` are no longer used
 * `Assent.HTTPAdapter.Httpc` now raises `ArgumentError` on HTTPS requests configured with `verify: :verify_none`
+* `Assent.HTTPAdapter.Httpc` and `Assent.HTTPAdapter.Req` no longer follow redirects by default
 
 ### Changes
 

@@ -48,6 +48,23 @@ defmodule Assent.HTTPAdapter.HttpcTest do
       assert {"x-header", "value"} in headers
     end
 
+    test "with redirect response" do
+      TestServer.start()
+      location = TestServer.url("/redirected")
+
+      TestServer.add("/",
+        via: :get,
+        to: fn conn ->
+          conn
+          |> Plug.Conn.put_resp_header("location", location)
+          |> Plug.Conn.send_resp(302, "")
+        end
+      )
+
+      assert {:ok, %HTTPResponse{status: 302}} =
+               Httpc.request(:get, TestServer.url(), nil, [], @httpc_opts)
+    end
+
     test "with POST request" do
       TestServer.add("/post",
         via: :post,
