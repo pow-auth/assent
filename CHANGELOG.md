@@ -40,9 +40,8 @@ Now requires Elixir 1.18 / OTP 26.
 * `Assent.Strategy.Facebook` now requests the user `picture` field
 * Strategies now accept a `:prepare_http_request` configuration option for rewriting HTTP requests
 * `Assent.HTTPAdapter.request/5` is deprecated in favor of `Assent.HTTPAdapter.request/2`
-* `Assent.Strategy.Apple` no longer allows unverified `user` callback parameters to override identity claims
 * `Assent.Strategy.Apple` now returns `is_private_email`, `real_user_status`, and `org_id` in the user info
-* `Assent.Strategy.cast_claims/2` added to support casting provider-specific claims
+* `Assent.Strategy.cast_claims/2` was added to support casting provider-specific claims
 * `Assent.Strategy.OAuth2.grant_access_token/3` accepts `:jwt_audience` for JWT client authentication
 
 ### Bug fixes
@@ -63,6 +62,7 @@ Now requires Elixir 1.18 / OTP 26.
 * `Assent.Strategy.Discord` now uses the API v10 endpoints
 * `Assent.Strategy.Bitbucket` and `Assent.Strategy.Spotify` now use `client_secret_basic` authentication
 * `Assent.Strategy.LINE` now uses `client_secret_post` authentication
+* `Assent.Strategy.Apple` no longer allows unverified `user` callback parameters to override identity claims
 
 ## v0.3
 
