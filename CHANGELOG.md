@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.4.0 (TBA)
+## v0.4.0 (2026-11-07)
 
 Now requires Elixir 1.18 / OTP 26.
 
