@@ -1,4 +1,7 @@
 defmodule Assent.Strategy.VK do
+  @profile_fields ["photo_200", "screen_name"]
+  @url_params [fields: Enum.join(@profile_fields, ","), v: "5.199"]
+
   @moduledoc """
   VK.com OAuth 2.0 strategy.
 
@@ -8,7 +11,8 @@ defmodule Assent.Strategy.VK do
   ## Configuration
 
     * `:user_url_params` - parameters to send along with the user fetch
-      request, optional, defaults to `[]`
+      request, merged with the defaults, optional, defaults to
+      `#{inspect(@url_params)}`
 
   See `Assent.Strategy.OAuth2` for more.
 
@@ -24,21 +28,14 @@ defmodule Assent.Strategy.VK do
 
   alias Assent.Strategy.OAuth2
 
-  @profile_fields ["photo_200", "screen_name"]
-  @url_params [fields: Enum.join(@profile_fields, ","), v: "5.199"]
-
   @impl true
-  def default_config(config) do
-    params = Keyword.get(config, :user_url_params, [])
-    user_url_params = Keyword.merge(@url_params, params)
-
+  def default_config(_config) do
     [
       base_url: "https://api.vk.com",
       authorize_url: "https://oauth.vk.com/authorize",
       token_url: "https://oauth.vk.com/access_token",
       user_url: "/method/users.get",
       authorization_params: [scope: "email"],
-      user_url_params: user_url_params,
       client_authentication_method: :client_secret_post
     ]
   end
@@ -58,8 +55,8 @@ defmodule Assent.Strategy.VK do
   @impl true
   def fetch_user(config, token) do
     params =
-      config
-      |> Keyword.get(:user_url_params, [])
+      @url_params
+      |> Keyword.merge(Keyword.get(config, :user_url_params, []))
       |> Keyword.put(:access_token, token["access_token"])
 
     config
