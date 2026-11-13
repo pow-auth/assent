@@ -19,8 +19,8 @@ defmodule Assent.StrategyTest do
   def invalid_prepare_http_request_return(_request), do: :invalid
 
   test "http_request/5 with `prepare_http_request: {module, function, arguments}`" do
-    TestServer.add("/path",
-      via: :get,
+    TestServer.HTTP.handle("/path",
+      method: :get,
       to: fn conn ->
         assert Plug.Conn.get_req_header(conn, "x-api-version") == ["1"]
 
@@ -31,7 +31,7 @@ defmodule Assent.StrategyTest do
     config = [prepare_http_request: {__MODULE__, :put_header, ["x-api-version", "1"]}]
 
     assert {:ok, _response} =
-             Strategy.http_request(:get, TestServer.url("/path"), nil, [], config)
+             Strategy.http_request(:get, TestServer.HTTP.url("/path"), nil, [], config)
   end
 
   def put_header(request, key, value) do

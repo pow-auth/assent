@@ -29,7 +29,7 @@ defmodule Assent.Strategy.DigitalOceanTest do
   end
 
   test "callback/2", %{config: config, callback_params: params} do
-    config = Keyword.put(config, :token_url, TestServer.url("/v1/oauth/token"))
+    config = Keyword.put(config, :token_url, TestServer.HTTP.url("/v1/oauth/token"))
 
     expect_oauth2_access_token_request([uri: "/v1/oauth/token"], fn _conn, params ->
       assert params["client_secret"] == config[:client_secret]

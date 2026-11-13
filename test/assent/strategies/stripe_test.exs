@@ -106,7 +106,7 @@ defmodule Assent.Strategy.StripeTest do
   }
 
   setup %{config: config} do
-    config = Keyword.put(config, :token_url, TestServer.url("/oauth/token"))
+    config = Keyword.put(config, :token_url, TestServer.HTTP.url("/oauth/token"))
 
     {:ok, config: config}
   end

@@ -98,7 +98,7 @@ defmodule Assent.Strategy.OAuth2Test do
                |> OAuth2.authorize_url()
 
       assert String.length(session_params.state) == 32
-      assert url =~ TestServer.url("/oauth/authorize?")
+      assert url =~ TestServer.HTTP.url("/oauth/authorize?")
 
       query_params = url |> URI.parse() |> Map.fetch!(:query) |> URI.decode_query()
 
@@ -303,8 +303,8 @@ defmodule Assent.Strategy.OAuth2Test do
     end
 
     test "with unreachable `:token_url`", %{config: config, callback_params: params} do
-      oauth_token_url = TestServer.url("/oauth/token")
-      TestServer.stop()
+      oauth_token_url = TestServer.HTTP.url("/oauth/token")
+      TestServer.HTTP.stop()
 
       assert {:error, %ServerUnreachableError{} = error} = OAuth2.callback(config, params)
 
@@ -419,7 +419,7 @@ defmodule Assent.Strategy.OAuth2Test do
       callback_params: params
     } do
       config = Keyword.put(config, :client_authentication_method, :client_secret_jwt)
-      token_url = TestServer.url("/oauth/token")
+      token_url = TestServer.HTTP.url("/oauth/token")
 
       expect_oauth2_access_token_request([], fn _conn, params ->
         assert params["grant_type"] == "authorization_code"
@@ -486,7 +486,7 @@ defmodule Assent.Strategy.OAuth2Test do
         |> Keyword.put(:private_key, @private_key)
         |> Keyword.put(:private_key_id, @private_key_id)
 
-      token_url = TestServer.url("/oauth/token")
+      token_url = TestServer.HTTP.url("/oauth/token")
 
       expect_oauth2_access_token_request([], fn _conn, params ->
         assert params["grant_type"] == "authorization_code"
@@ -790,7 +790,7 @@ defmodule Assent.Strategy.OAuth2Test do
   test "request/6 as POST request", %{config: config} do
     token = %{"access_token" => "access_token"}
 
-    expect_oauth2_api_request("/info", %{"success" => true}, [], nil, "POST")
+    expect_oauth2_api_request("/info", %{"success" => true}, [], nil, :post)
 
     assert {:ok, response} = OAuth2.request(config, token, :post, "/info")
     assert response.body == %{"success" => true}
@@ -805,7 +805,7 @@ defmodule Assent.Strategy.OAuth2Test do
 
         assert params["a"] == "1"
       end,
-      "POST"
+      :post
     )
 
     assert {:ok, response} = OAuth2.request(config, token, :post, "/info", a: 1)
