@@ -39,7 +39,7 @@ defmodule Assent.MixProject do
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
       {:credo, "~> 1.1", only: [:dev, :test]},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
-      {:test_server, "~> 0.1.0", only: :test},
+      {:test_server, github: "danschultzer/test_server", only: :test},
       {:plug, ">= 0.0.0", only: [:dev, :test]},
       {:bandit, ">= 0.0.0", only: :test}
     ]

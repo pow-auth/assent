@@ -41,7 +41,7 @@ defmodule Assent.Strategy.SpotifyTest do
   end
 
   test "callback/2", %{config: config, callback_params: params} do
-    config = Keyword.put(config, :token_url, TestServer.url("/api/token"))
+    config = Keyword.put(config, :token_url, TestServer.HTTP.url("/api/token"))
 
     expect_oauth2_access_token_request([uri: "/api/token"], fn conn, _params ->
       assert ["Basic " <> _token] = Plug.Conn.get_req_header(conn, "authorization")

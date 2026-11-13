@@ -161,7 +161,7 @@ defmodule Assent.Strategy.TwitterTest do
              Twitter.authorize_url(config)
 
     assert url ==
-             TestServer.url(
+             TestServer.HTTP.url(
                "/oauth/authenticate?oauth_token=NPcudxy0yU5T3tBzho7iCotZ3cnetKwcTIRlX0iwRl0"
              )
 

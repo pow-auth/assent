@@ -59,7 +59,7 @@ defmodule Assent.Strategy.FacebookTest do
       expect_oauth2_user_request(Map.delete(@user_response, "picture"), uri: "/me")
 
       assert {:ok, %{user: user}} = Facebook.callback(config, params)
-      assert user["picture"] == TestServer.url("/1000001/picture")
+      assert user["picture"] == TestServer.HTTP.url("/1000001/picture")
     end
   end
 end

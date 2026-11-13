@@ -3,14 +3,14 @@ defmodule Assent.Test.OAuthTestCase do
   use ExUnit.CaseTemplate
 
   setup _context do
-    TestServer.start()
+    TestServer.HTTP.start()
 
     params = %{"oauth_token" => "hh5s93j4hdidpola", "oauth_verifier" => "hfdp7dh39dks9884"}
 
     config = [
       consumer_key: "dpf43f3p2l4k3l03",
       consumer_secret: "kd94hf93k423kf44",
-      base_url: TestServer.url(),
+      base_url: TestServer.HTTP.url(),
       redirect_uri: "http://localhost:4000/auth/callback",
       session_params: %{
         oauth_token: "hh5s93j4hdidpola",
@@ -42,7 +42,7 @@ defmodule Assent.Test.OAuthTestCase do
 
     uri = Keyword.get(opts, :uri, "/request_token")
 
-    expect_oauth_request("POST", uri, opts, response, assert_fn)
+    expect_oauth_request(:post, uri, opts, response, assert_fn)
   end
 
   defp expect_oauth_request(method, uri, opts, response, assert_fn) do
@@ -56,8 +56,8 @@ defmodule Assent.Test.OAuthTestCase do
         _any -> response
       end
 
-    TestServer.add(uri,
-      via: method,
+    TestServer.HTTP.handle(uri,
+      method: method,
       to: fn conn ->
         if assert_fn, do: assert_fn.(conn, parse_auth_header(conn))
 
@@ -75,7 +75,7 @@ defmodule Assent.Test.OAuthTestCase do
 
     uri = Keyword.get(opts, :uri, "/access_token")
 
-    expect_oauth_request("POST", uri, opts, params, assert_fn)
+    expect_oauth_request(:post, uri, opts, params, assert_fn)
   end
 
   defp parse_auth_header(conn) do
@@ -96,11 +96,11 @@ defmodule Assent.Test.OAuthTestCase do
     uri = Keyword.get(opts, :uri, "/api/user")
     opts = Keyword.put(opts, :content_type, "application/json")
 
-    expect_oauth_request("GET", uri, opts, user_params, assert_fn)
+    expect_oauth_request(:get, uri, opts, user_params, assert_fn)
   end
 
   @spec expect_oauth_api_request(binary(), map(), Keyword.t(), function() | nil) :: :ok
-  def expect_oauth_api_request(uri, response, opts \\ [], assert_fn \\ nil, method \\ "GET") do
+  def expect_oauth_api_request(uri, response, opts \\ [], assert_fn \\ nil, method \\ :get) do
     opts = Keyword.put(opts, :content_type, "application/json")
 
     expect_oauth_request(method, uri, opts, response, assert_fn)

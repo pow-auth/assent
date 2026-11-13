@@ -87,8 +87,8 @@ defmodule Assent.Strategy.OAuthTest do
     end
 
     test "with unreachable `:request_token_url`", %{config: config} do
-      request_token_url = TestServer.url("/request_token")
-      TestServer.stop()
+      request_token_url = TestServer.HTTP.url("/request_token")
+      TestServer.HTTP.stop()
 
       assert {:error, %ServerUnreachableError{} = error} = OAuth.authorize_url(config)
 
@@ -105,7 +105,7 @@ defmodule Assent.Strategy.OAuthTest do
       assert {:error, %UnexpectedResponseError{} = error} = OAuth.authorize_url(config)
 
       assert error.response.http_adapter == Assent.HTTPAdapter.Httpc
-      assert error.response.request.url == TestServer.url("/request_token")
+      assert error.response.request.url == TestServer.HTTP.url("/request_token")
       assert error.response.status == 200
 
       assert error.response.body == %{
@@ -123,7 +123,7 @@ defmodule Assent.Strategy.OAuthTest do
       assert {:error, %InvalidResponseError{} = error} = OAuth.authorize_url(config)
 
       assert error.response.http_adapter == Assent.HTTPAdapter.Httpc
-      assert error.response.request.url == TestServer.url("/request_token")
+      assert error.response.request.url == TestServer.HTTP.url("/request_token")
       assert error.response.status == 500
 
       assert error.response.body == %{
@@ -197,7 +197,7 @@ defmodule Assent.Strategy.OAuthTest do
     end
 
     test "with default config", %{config: config} do
-      request_token_url = TestServer.url("/request_token")
+      request_token_url = TestServer.HTTP.url("/request_token")
 
       expect_oauth_request_token_request([], fn _conn, oauth_params ->
         signature_base_string =
@@ -229,12 +229,12 @@ defmodule Assent.Strategy.OAuthTest do
                oauth_token_secret: "hdhd0244k9j7ao03"
              }
 
-      assert url == TestServer.url("/authorize?oauth_token=hh5s93j4hdidpola")
+      assert url == TestServer.HTTP.url("/authorize?oauth_token=hh5s93j4hdidpola")
     end
 
     test "with `:request_token_url` URI query params", %{config: config} do
       config = Keyword.put(config, :request_token_url, "/request_token?a=1&c=3&b=2")
-      request_token_url = TestServer.url("/request_token")
+      request_token_url = TestServer.HTTP.url("/request_token")
 
       expect_oauth_request_token_request([], fn conn, oauth_params ->
         signature_base_string =
@@ -264,7 +264,7 @@ defmodule Assent.Strategy.OAuthTest do
                OAuth.authorize_url(config)
 
       assert url ==
-               TestServer.url(
+               TestServer.HTTP.url(
                  "/authorize?another_param=param&oauth_token=hh5s93j4hdidpola&scope=reading+writing"
                )
     end
@@ -283,7 +283,7 @@ defmodule Assent.Strategy.OAuthTest do
       assert {:ok, %{url: url, session_params: %{oauth_token_secret: "encoded_uri_token_secret"}}} =
                OAuth.authorize_url(config)
 
-      assert url == TestServer.url("/authorize?oauth_token=encoded_uri_request_token")
+      assert url == TestServer.HTTP.url("/authorize?oauth_token=encoded_uri_request_token")
     end
   end
 
@@ -321,7 +321,7 @@ defmodule Assent.Strategy.OAuthTest do
     end
 
     test "with default config", %{config: config} do
-      request_token_url = TestServer.url("/request_token")
+      request_token_url = TestServer.HTTP.url("/request_token")
 
       expect_oauth_request_token_request([], fn _conn, oauth_params ->
         decoded_public_key =
@@ -352,7 +352,7 @@ defmodule Assent.Strategy.OAuthTest do
       assert {:ok, %{url: url, session_params: %{oauth_token_secret: "hdhd0244k9j7ao03"}}} =
                OAuth.authorize_url(config)
 
-      assert url == TestServer.url("/authorize?oauth_token=hh5s93j4hdidpola")
+      assert url == TestServer.HTTP.url("/authorize?oauth_token=hh5s93j4hdidpola")
     end
 
     @tag :tmp_dir
@@ -371,7 +371,7 @@ defmodule Assent.Strategy.OAuthTest do
                OAuth.authorize_url(config)
 
       refute is_nil(oauth_token_secret)
-      assert url == TestServer.url("/authorize?oauth_token=hh5s93j4hdidpola")
+      assert url == TestServer.HTTP.url("/authorize?oauth_token=hh5s93j4hdidpola")
     end
 
     @tag :tmp_dir
@@ -417,7 +417,7 @@ defmodule Assent.Strategy.OAuthTest do
                OAuth.authorize_url(config)
 
       refute is_nil(oauth_token_secret)
-      assert url == TestServer.url("/authorize?oauth_token=hh5s93j4hdidpola")
+      assert url == TestServer.HTTP.url("/authorize?oauth_token=hh5s93j4hdidpola")
     end
   end
 
@@ -474,8 +474,8 @@ defmodule Assent.Strategy.OAuthTest do
       config: config,
       callback_params: callback_params
     } do
-      access_token_url = TestServer.url("/access_token")
-      TestServer.stop()
+      access_token_url = TestServer.HTTP.url("/access_token")
+      TestServer.HTTP.stop()
 
       assert {:error, %ServerUnreachableError{} = error} = OAuth.callback(config, callback_params)
 
@@ -564,7 +564,7 @@ defmodule Assent.Strategy.OAuthTest do
     end
 
     test "with valid user response", %{config: config, callback_params: callback_params} do
-      access_token_url = TestServer.url("/access_token")
+      access_token_url = TestServer.HTTP.url("/access_token")
 
       expect_oauth_access_token_request([], fn _conn, oauth_params ->
         signature_base_string =
@@ -637,8 +637,8 @@ defmodule Assent.Strategy.OAuthTest do
     end
 
     test "with network error", %{config: config, token: token} do
-      info_url = TestServer.url("/info")
-      TestServer.stop()
+      info_url = TestServer.HTTP.url("/info")
+      TestServer.HTTP.stop()
 
       assert {:error, %ServerUnreachableError{} = error} =
                OAuth.request(config, token, :get, "/info")
@@ -650,7 +650,7 @@ defmodule Assent.Strategy.OAuthTest do
 
     test "with default token", %{config: config, token: token} do
       shared_secret = "#{config[:consumer_secret]}&#{token["oauth_token_secret"]}"
-      info_url = TestServer.url("/info")
+      info_url = TestServer.HTTP.url("/info")
 
       expect_oauth_api_request("/info", %{"success" => true}, [], fn _conn, oauth_params ->
         signature_base_string =
@@ -674,7 +674,7 @@ defmodule Assent.Strategy.OAuthTest do
 
     test "with params", %{config: config, token: token} do
       shared_secret = "#{config[:consumer_secret]}&#{token["oauth_token_secret"]}"
-      info_url = TestServer.url("/info")
+      info_url = TestServer.HTTP.url("/info")
 
       expect_oauth_api_request("/info", %{"success" => true}, [params: [a: 1]], fn conn,
                                                                                    oauth_params ->
@@ -698,7 +698,7 @@ defmodule Assent.Strategy.OAuthTest do
 
     test "with params and request header", %{config: config, token: token} do
       shared_secret = "#{config[:consumer_secret]}&#{token["oauth_token_secret"]}"
-      info_url = TestServer.url("/info")
+      info_url = TestServer.HTTP.url("/info")
 
       expect_oauth_api_request("/info", %{"success" => true}, [params: [a: 1]], fn conn,
                                                                                    oauth_params ->
@@ -723,7 +723,7 @@ defmodule Assent.Strategy.OAuthTest do
     test "with uppercase scheme and host", %{config: config, token: token} do
       shared_secret = "#{config[:consumer_secret]}&#{token["oauth_token_secret"]}"
       config = Keyword.put(config, :base_url, String.upcase(config[:base_url]))
-      info_url = TestServer.url("/Info")
+      info_url = TestServer.HTTP.url("/Info")
 
       expect_oauth_api_request("/Info", %{"success" => true}, [], fn _conn, oauth_params ->
         signature_base_string =
@@ -748,7 +748,7 @@ defmodule Assent.Strategy.OAuthTest do
         |> Keyword.put(:private_key, @private_key)
         |> Keyword.delete(:consumer_secret)
 
-      info_url = TestServer.url("/info")
+      info_url = TestServer.HTTP.url("/info")
 
       expect_oauth_api_request("/info", %{"success" => true}, [], fn _conn, oauth_params ->
         decoded_public_key =
@@ -798,7 +798,7 @@ defmodule Assent.Strategy.OAuthTest do
   test "request/6 as POST request", %{config: config} do
     token = %{"oauth_token" => "token", "oauth_token_secret" => "token_secret"}
     shared_secret = "#{config[:consumer_secret]}&#{token["oauth_token_secret"]}"
-    info_url = TestServer.url("/info")
+    info_url = TestServer.HTTP.url("/info")
 
     expect_oauth_api_request(
       "/info",
@@ -813,7 +813,7 @@ defmodule Assent.Strategy.OAuthTest do
 
         assert :crypto.mac(:hmac, :sha, shared_secret, signature_base_string) == decoded_signature
       end,
-      "POST"
+      :post
     )
 
     assert {:ok, response} = OAuth.request(config, token, :post, "/info")
@@ -840,7 +840,7 @@ defmodule Assent.Strategy.OAuthTest do
 
         assert :crypto.mac(:hmac, :sha, shared_secret, signature_base_string) == decoded_signature
       end,
-      "POST"
+      :post
     )
 
     assert {:ok, response} = OAuth.request(config, token, :post, "/info", a: 1)
