@@ -60,11 +60,11 @@ defmodule Assent.Strategy.AzureADTest do
 
   test "authorize_url/1 with `tenant_id: tenant_id`", %{config: config} do
     tenant_id = "3338040d-6c67-4c5b-b112-36a304b66dad"
-    base_url = TestServer.url("/#{tenant_id}/v2.0")
+    base_url = TestServer.HTTP.url("/#{tenant_id}/v2.0")
 
     openid_config = %{
       "issuer" => base_url,
-      "authorization_endpoint" => TestServer.url("/#{tenant_id}/oauth2/v2.0/authorize")
+      "authorization_endpoint" => TestServer.HTTP.url("/#{tenant_id}/oauth2/v2.0/authorize")
     }
 
     expect_openid_config_request(openid_config,
@@ -86,7 +86,7 @@ defmodule Assent.Strategy.AzureADTest do
     config =
       tenant_config(config, tenant_id, %{
         "issuer" => "https://login.microsoftonline.com/#{tenant_id}/v2.0",
-        "jwks_uri" => TestServer.url("/jwks_uri.json")
+        "jwks_uri" => TestServer.HTTP.url("/jwks_uri.json")
       })
 
     [key | _rest] = expect_oidc_jwks_uri_request()
@@ -102,10 +102,10 @@ defmodule Assent.Strategy.AzureADTest do
 
   test "callback/2 with default `tenant_id: common`", %{config: config, callback_params: params} do
     tenant_id = @id_token_claims["tid"]
-    issuer = TestServer.url("/#{tenant_id}/v2.0")
+    issuer = TestServer.HTTP.url("/#{tenant_id}/v2.0")
 
     expect_openid_config_request(
-      %{"issuer" => issuer, "jwks_uri" => TestServer.url("/jwks_uri.json")},
+      %{"issuer" => issuer, "jwks_uri" => TestServer.HTTP.url("/jwks_uri.json")},
       uri: "/#{tenant_id}/v2.0/.well-known/openid-configuration"
     )
 
@@ -116,7 +116,7 @@ defmodule Assent.Strategy.AzureADTest do
       config
       |> Keyword.delete(:openid_configuration)
       |> Keyword.merge(
-        base_url: TestServer.url("/common/v2.0"),
+        base_url: TestServer.HTTP.url("/common/v2.0"),
         client_id: "6cb04018-a3f5-46a7-b995-940c78f5aef3",
         session_params: Map.put(config[:session_params], :nonce, "123523")
       )
@@ -192,14 +192,14 @@ defmodule Assent.Strategy.AzureADTest do
       Map.put_new(
         openid_configuration,
         "token_endpoint",
-        TestServer.url("/#{tenant}/oauth2/v2.0/token")
+        TestServer.HTTP.url("/#{tenant}/oauth2/v2.0/token")
       )
 
     Keyword.merge(
       config,
       openid_configuration: openid_configuration,
       tenant_id: tenant,
-      base_url: TestServer.url("/#{tenant}/v2.0"),
+      base_url: TestServer.HTTP.url("/#{tenant}/v2.0"),
       client_id: "6cb04018-a3f5-46a7-b995-940c78f5aef3",
       session_params: session_params
     )

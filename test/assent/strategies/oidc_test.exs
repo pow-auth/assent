@@ -30,7 +30,7 @@ defmodule Assent.Strategy.OIDCTest do
       refute is_nil(state)
 
       assert url =~
-               TestServer.url(
+               TestServer.HTTP.url(
                  "/oauth/authorize?client_id=id&redirect_uri=http%3A%2F%2Flocalhost%3A4000%2Fauth%2Fcallback&response_type=code&scope=openid&state=#{state}"
                )
     end
@@ -44,7 +44,7 @@ defmodule Assent.Strategy.OIDCTest do
       assert nonce == "n-0S6_WzA2Mj"
 
       assert url =~
-               TestServer.url(
+               TestServer.HTTP.url(
                  "/oauth/authorize?client_id=id&nonce=n-0S6_WzA2Mj&redirect_uri=http%3A%2F%2Flocalhost%3A4000%2Fauth%2Fcallback&response_type=code&scope=openid&state=#{state}"
                )
     end
@@ -225,7 +225,7 @@ defmodule Assent.Strategy.OIDCTest do
       openid_config =
         config
         |> Keyword.get(:openid_configuration)
-        |> Map.put("token_endpoint", TestServer.url("/oidc/token"))
+        |> Map.put("token_endpoint", TestServer.HTTP.url("/oidc/token"))
 
       config =
         config
@@ -234,7 +234,7 @@ defmodule Assent.Strategy.OIDCTest do
         |> Keyword.put(:private_key_id, "key_id")
         |> Keyword.put(:openid_configuration, openid_config)
 
-      token_url = TestServer.url("/oidc/token")
+      token_url = TestServer.HTTP.url("/oidc/token")
 
       expect_oidc_access_token_request(
         [
@@ -272,7 +272,7 @@ defmodule Assent.Strategy.OIDCTest do
 
       openid_config = %{
         "token_endpoint" => "/dynamic/token/path",
-        "jwks_uri" => TestServer.url("/jwks_uri.json"),
+        "jwks_uri" => TestServer.HTTP.url("/jwks_uri.json"),
         "issuer" => config[:base_url]
       }
 
@@ -280,8 +280,8 @@ defmodule Assent.Strategy.OIDCTest do
     end
 
     test "with unreachable OpenID configuration URL", %{config: config, callback_params: params} do
-      openid_config_url = TestServer.url("/.well-known/openid-configuration")
-      TestServer.stop()
+      openid_config_url = TestServer.HTTP.url("/.well-known/openid-configuration")
+      TestServer.HTTP.stop()
 
       assert {:error, %ServerUnreachableError{} = error} = OIDC.callback(config, params)
 
@@ -735,8 +735,8 @@ defmodule Assent.Strategy.OIDCTest do
     end
 
     test "with unreachable `jwks_uri` URL", %{config: config, id_token: id_token} do
-      jwks_uri_url = TestServer.url("/jwks_uri.json")
-      TestServer.stop()
+      jwks_uri_url = TestServer.HTTP.url("/jwks_uri.json")
+      TestServer.HTTP.stop()
 
       assert {:error, %ServerUnreachableError{} = error} =
                OIDC.validate_id_token(config, id_token)
@@ -756,8 +756,8 @@ defmodule Assent.Strategy.OIDCTest do
     end
 
     test "with `jwks_uri` URL returning 404", %{config: config, id_token: id_token} do
-      TestServer.add("/jwks_uri.json",
-        via: :get,
+      TestServer.HTTP.handle("/jwks_uri.json",
+        method: :get,
         to: fn conn ->
           Plug.Conn.send_resp(conn, 404, "")
         end
@@ -769,8 +769,8 @@ defmodule Assent.Strategy.OIDCTest do
     end
 
     test "with `jwks_uri` URL response missing `keys`", %{config: config, id_token: id_token} do
-      TestServer.add("/jwks_uri.json",
-        via: :get,
+      TestServer.HTTP.handle("/jwks_uri.json",
+        method: :get,
         to: fn conn ->
           conn
           |> Plug.Conn.put_resp_content_type("application/json")
@@ -1131,7 +1131,7 @@ defmodule Assent.Strategy.OIDCTest do
 
       openid_config = %{
         "issuer" => config[:base_url],
-        "userinfo_endpoint" => TestServer.url("/userinfo")
+        "userinfo_endpoint" => TestServer.HTTP.url("/userinfo")
       }
 
       expect_openid_config_request(openid_config)

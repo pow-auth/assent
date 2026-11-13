@@ -109,7 +109,7 @@ defmodule Assent.Strategy.AppleTest do
     end
 
     test "callback/2", %{config: config, callback_params: params} do
-      url = TestServer.url()
+      url = TestServer.HTTP.url()
 
       expect_oidc_access_token_request(
         [id_token_opts: [claims: @id_token_claims], uri: "/auth/token"],

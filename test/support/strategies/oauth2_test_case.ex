@@ -3,14 +3,14 @@ defmodule Assent.Test.OAuth2TestCase do
   use ExUnit.CaseTemplate
 
   setup _tags do
-    TestServer.start()
+    TestServer.HTTP.start()
 
     params = %{"code" => "code_test_value", "state" => "state_test_value"}
 
     config = [
       client_id: "id",
       client_secret: "secret",
-      base_url: TestServer.url(),
+      base_url: TestServer.HTTP.url(),
       redirect_uri: "http://localhost:4000/auth/callback",
       session_params: %{state: "state_test_value"}
     ]
@@ -35,8 +35,8 @@ defmodule Assent.Test.OAuth2TestCase do
     uri = Keyword.get(opts, :uri, "/oauth/token")
     status_code = Keyword.get(opts, :status_code, 200)
 
-    TestServer.add(uri,
-      via: :post,
+    TestServer.HTTP.handle(uri,
+      method: :post,
       to: fn conn ->
         {:ok, body, _conn} = Plug.Conn.read_body(conn, [])
         params = URI.decode_query(body)
@@ -60,8 +60,8 @@ defmodule Assent.Test.OAuth2TestCase do
     access_token = Keyword.get(opts, :access_token, "access_token")
     status_code = Keyword.get(opts, :status_code, 200)
 
-    TestServer.add(uri,
-      via: method,
+    TestServer.HTTP.handle(uri,
+      method: method,
       to: fn conn ->
         if assert_fn, do: assert_fn.(conn)
 

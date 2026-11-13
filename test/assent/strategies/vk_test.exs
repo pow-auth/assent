@@ -30,7 +30,7 @@ defmodule Assent.Strategy.VKTest do
 
   describe "callback/2" do
     setup %{config: config} do
-      config = Keyword.put(config, :token_url, TestServer.url("/access_token"))
+      config = Keyword.put(config, :token_url, TestServer.HTTP.url("/access_token"))
 
       {:ok, config: config}
     end

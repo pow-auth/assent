@@ -55,7 +55,7 @@ defmodule Assent.Test.OIDCTestCase do
   }
 
   setup _tags do
-    TestServer.start()
+    TestServer.HTTP.start()
 
     params = %{"code" => "test_code_value", "state" => "test_state_value"}
 
@@ -63,13 +63,13 @@ defmodule Assent.Test.OIDCTestCase do
       client_id: @client_id,
       openid_configuration: %{
         "issuer" => "http://localhost",
-        "authorization_endpoint" => TestServer.url("/oauth/authorize"),
-        "token_endpoint" => TestServer.url("/oauth/token"),
-        "userinfo_endpoint" => TestServer.url("/userinfo"),
-        "jwks_uri" => TestServer.url("/jwks_uri.json")
+        "authorization_endpoint" => TestServer.HTTP.url("/oauth/authorize"),
+        "token_endpoint" => TestServer.HTTP.url("/oauth/token"),
+        "userinfo_endpoint" => TestServer.HTTP.url("/userinfo"),
+        "jwks_uri" => TestServer.HTTP.url("/jwks_uri.json")
       },
       client_secret: @client_secret,
-      base_url: TestServer.url(),
+      base_url: TestServer.HTTP.url(),
       redirect_uri: "http://localhost:4000/auth/callback",
       session_params: %{state: "test_state_value"}
     ]
@@ -91,8 +91,8 @@ defmodule Assent.Test.OIDCTestCase do
     uri = Keyword.get(opts, :uri, "/.well-known/openid-configuration")
     status_code = Keyword.get(opts, :status_code, 200)
 
-    TestServer.add(uri,
-      via: :get,
+    TestServer.HTTP.handle(uri,
+      method: :get,
       to: fn conn ->
         send_json_resp(conn, openid_config, status_code)
       end
@@ -105,7 +105,7 @@ defmodule Assent.Test.OIDCTestCase do
       Keyword.get_lazy(opts, :id_token, fn ->
         opts
         |> Keyword.get(:id_token_opts, [])
-        |> Keyword.put_new(:iss, TestServer.url())
+        |> Keyword.put_new(:iss, TestServer.HTTP.url())
         |> gen_id_token()
       end)
 
@@ -125,8 +125,8 @@ defmodule Assent.Test.OIDCTestCase do
     keys = opts[:keys] || gen_keys(opts)
     status_code = Keyword.get(opts, :status_code, 200)
 
-    TestServer.add(uri,
-      via: :get,
+    TestServer.HTTP.handle(uri,
+      method: :get,
       to: fn conn ->
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
@@ -151,8 +151,8 @@ defmodule Assent.Test.OIDCTestCase do
     access_token = Keyword.get(opts, :access_token, "access_token")
     status_code = Keyword.get(opts, :status_code, 200)
 
-    TestServer.add(uri,
-      via: :get,
+    TestServer.HTTP.handle(uri,
+      method: :get,
       to: fn conn ->
         assert {"authorization", "Bearer #{access_token}"} in conn.req_headers
 
