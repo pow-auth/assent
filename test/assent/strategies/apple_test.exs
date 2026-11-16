@@ -162,7 +162,7 @@ defmodule Assent.Strategy.AppleTest do
       config = Keyword.put(config, :include_unverified_name, true)
       params = Map.put(params, "user", "invalid")
 
-      assert_raise ArgumentError, "invalid user param, expected valid JSON", fn ->
+      assert_raise ArgumentError, "expected valid JSON in user param", fn ->
         Apple.callback(config, params)
       end
     end
@@ -175,7 +175,7 @@ defmodule Assent.Strategy.AppleTest do
       config = Keyword.put(config, :include_unverified_name, true)
       params = Map.put(params, "user", JSON.encode!("invalid"))
 
-      assert_raise ArgumentError, "invalid user param, expected a JSON object", fn ->
+      assert_raise ArgumentError, "expected a JSON object in user param", fn ->
         Apple.callback(config, params)
       end
     end
@@ -189,7 +189,7 @@ defmodule Assent.Strategy.AppleTest do
       encoded_user = JSON.encode!(%{name: "invalid"})
       params = Map.put(params, "user", encoded_user)
 
-      assert_raise ArgumentError, "invalid user param, expected name to be a JSON object", fn ->
+      assert_raise ArgumentError, "expected name to be a JSON object in user param", fn ->
         Apple.callback(config, params)
       end
     end

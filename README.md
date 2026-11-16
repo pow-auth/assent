@@ -1,8 +1,6 @@
 # Assent
 
-[![GitHub CI](https://github.com/pow-auth/assent/workflows/CI/badge.svg)](https://github.com/pow-auth/assent/actions?query=workflow%3ACI)
-[![hexdocs.pm](https://img.shields.io/badge/api-docs-green.svg?style=flat)](https://hexdocs.pm/assent)
-[![hex.pm](https://img.shields.io/hexpm/v/assent.svg?style=flat)](https://hex.pm/packages/assent)
+[![hex.pm](https://img.shields.io/hexpm/v/assent.svg?style=flat)](https://hex.pm/packages/assent) [![GitHub CI](https://github.com/pow-auth/assent/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/pow-auth/assent/actions?query=workflow%3ACI)
 
 <!-- MDOC !-->
 
@@ -259,7 +257,7 @@ end
 
 ## HTTP Client
 
-Assent supports [`Req`](https://github.com/wojtekmach/req) and [`:httpc`](https://www.erlang.org/doc/man/httpc.html) out of the box. The `Req` HTTP client adapter will be used by default if enabled, otherwise Erlang's `:httpc` adapter will be used.
+Assent supports [`Req`](https://github.com/wojtekmach/req) and [`:httpc`](https://www.erlang.org/doc/man/httpc.html) out of the box. The `Req` HTTP client adapter will be used by default if enabled, otherwise Erlang's `m::httpc` adapter will be used.
 
 You can explicitly set the HTTP client adapter in the configuration:
 
@@ -292,7 +290,7 @@ end
 
 ### :httpc
 
-If `Req` is not available, Erlang's built-in `:httpc` is used for requests. SSL verification is enabled automatically. `:httpc` only supports HTTP/1.1.
+If `Req` is not available, Erlang's built-in `m::httpc` is used for requests. SSL verification is enabled automatically. `m::httpc` only supports HTTP/1.1.
 
 You can override the `:ssl` options to use your own trust store or verify function:
 

@@ -164,16 +164,16 @@ defmodule Assent.Strategy.Apple do
         )
 
       {:ok, %{"name" => _invalid}} ->
-        raise ArgumentError, "invalid user param, expected name to be a JSON object"
+        raise ArgumentError, "expected name to be a JSON object in user param"
 
       {:ok, user} when is_map(user) ->
         {:ok, %{}}
 
       {:ok, _user} ->
-        raise ArgumentError, "invalid user param, expected a JSON object"
+        raise ArgumentError, "expected a JSON object in user param"
 
       {:error, _error} ->
-        raise ArgumentError, "invalid user param, expected valid JSON"
+        raise ArgumentError, "expected valid JSON in user param"
     end
   end
 

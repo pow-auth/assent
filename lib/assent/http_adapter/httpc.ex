@@ -1,9 +1,9 @@
 if Code.ensure_loaded?(:httpc) do
   defmodule Assent.HTTPAdapter.Httpc do
     @moduledoc """
-    HTTP adapter module for making http requests with `:httpc`.
+    HTTP adapter module for making http requests with `m::httpc`.
 
-    You can override the `:httpc` options by updating the configuration:
+    You can override the `m::httpc` options by updating the configuration:
 
         http_adapter: {Assent.HTTPAdapter.Httpc, [...]}
 
@@ -63,9 +63,7 @@ if Code.ensure_loaded?(:httpc) do
       do_httpc_request(url, body, headers)
     end
 
-    defp do_httpc_request(url, nil, headers) do
-      {url, headers}
-    end
+    defp do_httpc_request(url, nil, headers), do: {url, headers}
 
     defp do_httpc_request(url, body, headers) do
       {content_type, headers} = split_content_type_headers(headers)
